@@ -1,0 +1,320 @@
+﻿<!DOCTYPE HTML>
+<html><head><meta charset="utf-8">
+<title>Columns++ for Notepad++</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style type="text/css">
+html, body                   {margin: 0; padding: 0; width: 100%; height: 100%;}
+body                         {display: flex; flex-direction: column; font: 1em Calibri, Tahoma, sans-serif;}
+
+header                       {padding: 0; width: 100%; display: flex; flex-direction: row; justify-content: space-around;}
+header                       {border-style: none none solid none; border-width: 0 0 2px 0;}
+header                       {font-size: min(5vw,10vh,1.75rem); font-weight: bold;}
+
+footer                       {padding: 4px 0; width: 100%; display: flex; flex-direction: row; align-items: center; font-size: medium;}
+footer                       {border-style: solid none none none; border-width: 2px 0 0 0;}
+footer a[rel=license]        {padding: 0 8px; text-decoration: none;}
+footer a[rel=license] img    {border: none;}
+
+#foottext                    {flex: 1; margin: 0 1em; text-align: center;}
+#foottext a                  {white-space: nowrap; text-decoration: none; color: inherit; }
+#foottext a:hover            {text-decoration: underline;}
+#foottext.linklist a:link    {color: #00c;}
+#foottext.linklist a:visited {color: #900;}
+
+#fontdown, #fontup           {margin: 0 8px; padding: 0; height: 28px; width: 48px; text-align: center; display: none;}
+#fontdown, #fontup           {color: #000; border: none; border-radius: 15%/20%; cursor: pointer;}
+#fontdown, #fontup           {background: transparent;}
+#fontdown:hover,
+#fontup:hover                {background: #333; color: #fff;}
+#fontdown                    {font: inherit; font-size: 13px;}
+#fontup                      {font: inherit; font-size: 19px; line-height: 1.0;}
+
+main                         {flex: 1; overflow: auto;}
+article                      {padding: 0 1em; line-height: 1.4;}
+p                            {margin: 0 0 .5em 0; padding: 0;}
+h1                           {line-height: 1.25; margin: .5em 0 0 0;}
+h1                           {font-size: 1.5rem; text-align: center; font-weight: bold; font-style: normal; padding: 0;}
+h2                           {font-size: 1.2rem; text-align: left;   font-weight: bold; font-style: normal; padding: 0; margin: 0;}
+h3                           {font-size: 1rem;   text-align: left;   font-weight: bold; font-style: normal; padding: 0; margin: 0;}
+
+main a                       {white-space: nowrap; text-decoration: none;}
+main a:link                  {color: #00c;}
+main a:visited               {color: #900;}
+main a:hover                 {text-decoration: underline;}
+
+@media (max-width:  480px)   {
+    main      a {white-space: normal;}
+    #foottext a {white-space: normal;}
+}
+
+main article section         {border-style: none; border-width: 0; padding: 0 1em 1px 1em; background: #eee;}
+main article section         {margin: 1.25rem 0 .4rem 0;}
+main article section h2      {border-style: none none solid none; border-width: 0 0 1px 0;}
+main article section h2      {margin: 0 0 .3em -6px; padding: .2em 0 .2em 6px;}
+main article h1+section      {margin-top: .75rem;}
+main article h1+p            {margin-top: .6em;}
+main article section+p       {margin-top: .75em;}
+main article section >
+             p:first-child   {margin-top: .3em;}
+
+main article section.note    {font-size: .85em; border-style: solid; border-width: 3px 1px 1px 6px; padding: 0 6px;}
+
+body h1              {margin: 0;}
+body .pagenav        {font-weight: bold; text-align: center; margin: .5em .5em 0 .5em; line-height: 1.6; background: #eee;}
+body .pagenav a      {margin: 0 .5em; white-space: nowrap;} /* nowrap overrides main a {white-space: normal;} in @media rule */
+
+@media (min-width: 640px) {
+   body main         {display: flex; flex-direction: row; padding: 0;}
+   body .pagenav     {padding: .5em 0 0 0; margin: 1.25em 1em .4em;}
+   body .pagenav     {white-space: pre;}
+   body article      {flex: 1; overflow: auto; padding: 0 1em 0 0;}
+   body h1           {margin-top: .5em;}
+}
+
+body #centershortlines ~ article h1        {max-width: calc(32em + 12px);}
+body #centershortlines ~ article section   {max-width: 48em;}
+
+p.subsub            {margin-left: 1.5em;}
+
+
+table.optionsTable    {border: none; margin: 1em 0 1em 1em; border-collapse: collapse;}
+table.optionsTable th {padding: .5em .5em .5em .5em; font-weight: bold;   text-align: left; vertical-align: top; border: 1px solid black;}
+table.optionsTable td {padding: .5em .5em .5em .5em; font-weight: normal; text-align: left; vertical-align: top; border: 1px solid black;}
+
+ul.optionslist    {margin-top: .5em; margin-bottom: .5em;}
+ul.optionslist li {font-weight: bold;}
+
+body                {color: #000; background: #d0d0d0; line-height: 1.4;}
+*                   {border-color: #999;}
+#centershortlines   {width: calc((100vw - (13em + 48em + 2em + 24px)) / 2);}
+}
+</style>
+<script type="text/javascript">
+function doPageLoad() {
+    if (document.getElementById("fontdown")) {
+        document.getElementById("fontdown").style.display = "inline-block";
+        document.getElementById("fontup").style.display = "inline-block";
+        if (window.localStorage) {
+            var n = localStorage.getItem("ColumnsPlusPlusFontSize");
+            if (!isNaN(n) && n >= 9 && n <= 40) {
+                document.documentElement.style.fontSize = n + "px";
+                document.documentElement.style.fontSize = n + "px";
+            }
+        }
+    }
+}
+
+function setFontDown() {
+    var n = parseFloat(window.getComputedStyle(document.documentElement).fontSize);
+    if (n > 9) --n;
+    document.documentElement.style.fontSize = n + "px";
+    if (window.localStorage) localStorage.setItem("ColumnsPlusPlusFontSize", n);
+}
+
+function setFontUp() {
+    var n = parseFloat(window.getComputedStyle(document.documentElement).fontSize);
+    if (n < 40) ++n;
+    document.documentElement.style.fontSize = n + "px";
+    if (window.localStorage) localStorage.setItem("ColumnsPlusPlusFontSize", n);
+    if (window.getComputedStyle(document.body).display == "block") window.scrollBy(0,10000);
+}
+
+window.addEventListener("load", doPageLoad);
+</script>
+</head>
+<body>
+
+<header>Columns++ for Notepad++ documentation</header>
+
+<main>
+
+<div id=centershortlines></div>
+
+<nav class=pagenav><a href="#introduction">Introduction</a>
+<a href="#elastic"    >Elastic tabstops</a>
+<a href="#rectangular">Rectangular selections</a>
+<a href="#search"     >Search</a>
+<a href="#calculation">Calculation</a>
+<a href="#alignment"  >Alignment</a>
+<a href="#sorting"    >Sorting</a>
+<a href="#conversion" >Conversion</a>
+<a href="#options"    >Options</a></nav>
+
+<article>
+
+<section id=introduction><h2>Introduction</h2>
+
+<p><strong>Columns++</strong> is an extension for <a href="https://notepad-plus-plus.org/">Notepad++</a> offering various features for working with text and data arranged in columns. Like <strong>Notepad++</strong>, <strong>Columns++</strong> is released under the <a href="https://www.gnu.org/licenses/gpl.html">GNU General Public License</a> (either <a href="https://www.gnu.org/licenses/gpl-2.0.html">version 2</a> of the License, or, at your option, any later version). <strong>Columns++</strong> was first released by <a href="http://www.coises.com/">Randall Joseph Fellmy</a> in 2023; you can find the source code  on <a href="https://github.com/Coises/ColumnsPlusPlus">GitHub</a>.</p>
+
+</section>
+
+<section id=elastic><h2>Elastic tabstops</h2>
+
+<p><strong>Columns++</strong> includes a new implementation of Nick Gravgaard’s <a href="https://nickgravgaard.com/elastic-tabstops/">Elastic tabstops</a>. (<em>Please note that as of this writing I have not communicated with Mr. Gravgaard about my implementation of his proposal, and no endorsement on his part is implied. — RJF</em>)</p>
+
+<p>The first item of the <strong>Columns++</strong> menu enables or disables <strong>Elastic tabstops</strong>. <strong>Elastic tabstops</strong> stretches tabs so that columns line up to fit their content, using only a single tab to separate one column from the next.</p>
+
+<p>This implementation of <strong>Elastic tabstops</strong> includes some options that were not part of the original proposal. These options can be accessed by using the <strong>Profile...</strong> menu option. There are three “built-in” profiles:</p>
+
+<table class=optionsTable>
+<tr><th>Classic</th><td>endeavors to reproduce precisely the behavior described in the proposal linked above.</td></tr>
+<tr><th>General</th><td>ensures that leading tabs are always used for indentation, and are not lined up with elastic tabstops.</td></tr>
+<tr><th>Tabular</th><td>is suitable for tab-separated values files, in which the entire file is a single table with the values in each row separated by single tabs.</td></tr>
+</table>
+
+<p>You can select a profile from the drop-down box in the <strong>Elastic tabstops profile</strong> dialog. You can also change individual settings; choose some options to automatically enable a profile or disable elastic tabstops for different types of files; and save, rename or delete profiles.</p>
+
+<h3>Settings in an elastic tabstops profile</h3>
+
+<p>Along with the enabled or disabled status of elastic tabstops, the settings in an elastic tabstops profile are kept independently for each document you have open. These settings, which are available in the <strong>Elastic tabstops profile</strong> dialog, are:</p>
+
+<table class=optionsTable>
+<tr><th>Use leading tabs for indentation only; don't make them elastic.</th><td>When checked, this option treats tabs which occur at the beginning of a line, before the first non-tab character, as ordinary fixed-width tabs instead of elastic tabs. Without this option, a line with a tab used to line up a column of data cannot be followed by a line that uses tabs for indentation without an intervening blank line; otherwise, the first leading tab will expand to line up with the tab on the previous line. The disadvantage is that if you want an empty column at the beginning of a line, you must place a space before the first tab to make it line up with the next column.</td></tr>
+<tr><th>Line up elastic tabstops throughout the entire document.</th><td>Normally elastic tabstops are positioned independently whenever a column is interrupted; that is, tabstops created by tabs that appear on adjacent lines are lined up, but they don’t “project through” lines with fewer (or no) tabs. This option indicates that a single set of tabstops is to be used for the entire document, so that columns line up even when intervening lines have fewer columns.</td></tr>
+<tr><th>Do not allow text following the last tab on a line to span columns.</th><td>Normally, text following the last tab on a line is not treated as belonging to a “column” at all. This makes sense for documents that mix text and tables. However, for documents that are entirely tabular but have omitted tabs at the end of lines where the final columns are blank, this option (along with the one above) is needed to keep things lined up properly.</td></tr>
+<tr><th>Override default/language tab size (used for indent or minimum):</th><td>Elastic tabstops uses the “tab size” in different ways depending on whether <strong>Use leading tabs for indentation only</strong> is checked: when checked, the tab size represents the number of spaces each leading tab indents, and it is otherwise ignored; when unchecked, it is the minimum space between any two tabstops (that is, the width of the intervening column plus the space between columns). When the <strong>Override tab size</strong> box is unchecked, <strong>Columns++</strong> uses the tab size set in <strong>Notepad++</strong>; when checked, the spin box to the right specifies the size (in spaces) to be used.</td></tr>
+<tr><th>Minimum space between elastic columns:</th><td>This spin box specifies the size (in spaces) occupied by the tab following the longest span of text in a column.</td></tr>
+</table>
+
+<p>These settings are only applied when you click the <strong>OK</strong> button near the bottom right of the dialog.</p>
+
+<h3>Saving, renaming and deleting profiles</h3>
+
+<p>You can save the settings in a profile by clicking the <strong>Save As...</strong> button to the right of the profile selection drop-down box. You can give the profile any name that does not begin with an asterisk or an open parenthesis and is not one of the three built-in profiles (“Classic,” “General” and “Tabular”). You can use the additional options from the drop-down menu at the right of the <strong>Save As...</strong> button to rename or delete a profile. If you have made changes to an existing profile that is not a built-in profile, you can save the changes without having to type the profile name again by using the <strong>Save</strong> option.</p>
+
+<h3>Automatically enabling or disabling elastic tabstops</h3>
+
+<p>By default, <strong>Columns++</strong> uses whatever settings were in effect for the last active tab when you open a file or a new tab. You can change this behavior with the remaining options on the <strong>Elastic tabstops profile</strong> dialog.</p>
+
+<p>The checkbox under the profile selection dropdown labeled <strong>Automatically enable this profile when opening <em>type</em> files.</strong> is available when a built-in or saved profile is selected (and <strong>Disable... when opening <em>type</em> files.</strong> in the bottom section of the dialog, which will be explained later, is not checked). Checking this box assigned the selected built-in or saved profile to be enabled whenever you open a file of the same <em>type</em> as the one you are currently viewing. The <em>Type</em> can be existing files with the same extension, existing files with no extension, or new files. This option is only applied when you click the <strong>OK</strong> button near the bottom right of the dialog.</p>
+
+<p>The options in the box labeled <strong>When opening an existing file without an explicit rule for its extension</strong> allow you choose what happens when opening existing files for which you haven’t set either <strong>Automatically enable this profile...</strong> or <strong>Disable... when opening...</strong>:</p>
+
+<table class=optionsTable>
+<tr><th>keep the same settings as the last viewed tab.</th><td>This is the default behavior: each existing file you open begins with same the elastic tabstops settings you had previously. Note that setting does not affect the default for <em>new</em> files; if you want a profile enabled, or elastic tabstops disabled, whenever you open a new tab with <strong>File|New</strong> you must set that behavior specifically using one of the <strong>when opening new files</strong> options in the <strong>Elastic tabstops profile</strong> dialog opened when viewing a new file.</td></tr>
+<tr><th>disable elastic tabstops.</th><td>Elastic tabstops will be turned off when opening any existing file unless you’ve specifically set a rule to turn it on for that file’s extension.</td></tr>
+<tr><th>enable this profile:</th><td>You can select any built-in or saved profile, which will be enabled when opening any existing file unless you’ve set a different rule for that file’s extension.</td></tr>
+</table>
+
+<p>The options in the box labeled <strong>Disable elastic tabstops (applies to all profiles)</strong> allow you choose specific conditions under which elastic tabstops should always be disabled:</p>
+
+<table class=optionsTable>
+<tr><th>when opening <em>type</em> files.</th><td>If you always want elastic tabstops disabled when you open the type of file in the current tab, check this box.</td></tr>
+<tr><th>when opening files over ____ KB.</th><td rowspan=2>Elastic tabstops can cause loading and editing to be slow for large files. These options disable elastic tabstops when loading files over the specified limits, regardless of any other settings. The default values disable elastic tabstops for files over 1000 KB or 5000 lines.</td></tr>
+<tr><th>when opening files over ____ lines.</th></tr>
+</table>
+
+<p>Note that although the options for automatically enabling or disabling elastic tabstops do not affect the tab you have open, they are only applied when you click the <strong>OK</strong> button near the bottom right of the dialog.</p>
+
+</section>
+
+<section id=rectangular><h2>Rectangular selections</h2>
+
+<p>Most of the commands from the <strong>Columns++</strong> menu operate on rectangular selections.
+
+<p>You can select a single column or multiple columns separated by tabs. Since each tab is interpreted as a column separator, this works as expected when elastic tabstops are used. The results with traditional fixed tabs are not likely to be obvious or expected when sequences of multiple fixed tabs are included in the selection, since <strong>Columns++</strong> interprets each tab as starting a new “logical” column without regard to physical placement.</p>
+
+<p>When selecting one or more columns in a document using tabs, you should generally <em>include the tab that ends the rightmost selected column</em> in your selection. Unless all the entries in the last column are the same width, it is often difficult or impossible to get a complete selection without including the final tabs; in any case, <strong>Columns++</strong> will process the trailing tabs intelligently.</p>
+
+<p>When you invoke a command that requires a rectangular selection and the current selection is not a non-zero width rectangular selection, by default <strong>Columns++</strong> will interpret some selections as “implicit” rectangular selections:</p>
+
+<h3>A single selection on a single line including at least one character:</h3>
+
+<p>The selection is “projected” downward to the last line of the file. This allows you to select full columns (skipping headers, if desired) without scrolling all the way to the end of the file. If the last line of the file is completely empty — that is, the file ends with the end-of-line sequence — that line will not be included in the selection.</p>
+
+<h3>A selection of full lines:</h3>
+
+<p>The selection is replaced by a rectangular selection wide enough to include all the text on all lines in the selection. Usually you get this kind of selection by dragging in the left margin. If the selection ends at the beginning of a line (as when dragging downward in the left margin), that line is not included in the rectangular selection. The selection made by <strong>Edit|Select All</strong> will be converted to a rectangular selection that encompasses the entire file (excluding the last line, if it consists of only a line ending).</p>
+
+<h3>A zero-width rectangular or “thin” selection:</h3>
+
+<p>The selection is extended to the right far enough to enclose the end of the longest line in the selection. When selecting a rectangular region meant to extend from some column far enough to the right include the ends of all lines, this avoids the need to scroll through and figure out how wide the selection needs to be.</p>
+
+<p>If you do not want some or all of these to be interpreted as implicit rectangular selections, you can change this behavior in the <a href="#options">Options</a> dialog.</p>
+
+</section>
+
+<section id=search><h2>Search</h2>
+
+<p><strong>Columns++</strong> offers the ability to find and replace in a rectangular selection. The <strong>Search...</strong> item on the <strong>Columns++</strong> menu opens the <strong>Search in rectangular selection</strong> dialog. Most of the options on this dialog are similar to the corresponding <strong>Notepad++</strong> search options.</p>
+
+<p>To allow for repeated finding and replacing, <strong>Columns++</strong> remembers your last rectangular selection even after it finds and selects text. Within reason, you can move the caret or even edit text and still resume searching, from the caret position, within the previous selection. You can tell whether the previous selection will be restored by the text on the <strong>Find</strong> button: if it says <strong>Find First</strong> or <strong>Find Last</strong> a new search will begin in a new rectangular selection; if it says <strong>Find Next</strong> or <strong>Find Previous</strong>, searching will resume within the previous rectangular selection.</p>
+
+<p>Lines are searched sequentially (forward or backward), one at a time. It is not possible for a single match to span multiple lines. When no more occurrences of the search string can be found, <strong>Columns++</strong> restores the rectangular selection.</p>
+
+<p>When using regular expressions, the circumflex (<strong>^</strong>) matches only if the left end of the selection is at the beginning of the line; the dollar sign (<strong>$</strong>) matches the end of the selection on each line regardless of whether it is at the end of the line. If you select both <strong>Backward direction</strong> and <strong>Regular expression</strong> lines are searched from bottom to top, but from left to right within each line.</p>
+
+</section>
+
+<section id=calculation><h2>Calculation</h2>
+
+<p>The <strong>Add numbers</strong> and <strong>Average numbers</strong> items on the <strong>Columns++</strong> menu perform calculations on a rectangular selection of a column of numbers, or of multiple columns separated by elastic tabstops. (These commands can be used on selections that include traditional fixed tabs; but the results may not be as expected, since they treat tabs as logical separators, ignoring physical positioning.)</p>
+
+<p>Numbers can include thousands separators and decimals. The <strong>Decimal separator is comma</strong> item near the bottom of the <strong>Columns++</strong> menu determines whether the comma or the period is the decimal separator; thousands separators may be a space, an apostrophe, or whichever of comma or period is not the decimal separator. Numbers can also be times, using colons to separate days, hours, minutes and seconds. When only a single colon is used, the values can be either hours and minutes or minutes and seconds, so an additional colon will not be introduced in the results; when two or three colons are used, the rightmost value is assumed to be seconds.</p>
+
+<p>There is some flexibility in what can be included along with a number in a column. Common currency signs can precede the number with or without a space, and a minus sign can precede or follow a currency sign. Non-numeric characters (such as units, like “mg” or “ft”) can follow the number. (These are not interpreted, though; <strong>Columns++</strong> will add 5 yards and 5 inches to get 10 without complaint.) Non-numeric characters can precede the number if they are separated from the number by at least one space.</p>
+
+<p>If the selection in the last line of the rectangular selection is empty (spaces, tabs and/or virtual space), <strong>Columns++</strong> will insert the results of the calculation into that space. Otherwise, the results are copied to the clipboard. The total or average of all columns is always displayed in a pop-up and copied to the clipboard.</p>
+
+<p><strong>Columns++</strong> will skip items that have no digits; but if an item which includes one or more digits cannot be unambiguously interpreted as a number, <strong>Columns++</strong> will select the item and will not perform the calculation.</p>
+
+</section>
+
+<section id=alignment><h2>Alignment</h2>
+
+<p><strong>Align left</strong>, <strong>Align right</strong> and <strong>Align numeric</strong> process rectangular selections. The selection can be a single column, or multiple columns separated by elastic tabs. (These commands can be used on selections that include traditional fixed tabs; but the results may not be as expected, since they treat tabs as logical separators, ignoring physical positioning.)</p>
+
+<p>The <strong>Decimal separator is comma</strong> item near the bottom of the <strong>Columns++</strong> menu determines whether the comma or the period is the decimal separator for <strong>Align numeric</strong>. Numbers are recognized in a similar (but somewhat more lenient) fashion as for calculation; the alignment of items which are not recognized as numbers is unchanged. </p>
+
+</section>
+
+<section id=sorting><h2>Sorting</h2>
+
+<p><strong>Notepad++</strong> supports sorting lines using a rectangular selection to define the sort keys, but this does not work as expected when tabs (whether elastic or traditional fixed) are used. The sort commands in <strong>Columns++</strong> use a rectangular selection to identify the sort keys and work as expected when tabs are present. These are “stable” sorts, meaning the order of lines with equal sort keys is unchanged. There are three variants of ascending and descending sorts:</p>
+
+<table class=optionsTable>
+<th>binary</th><td>The raw byte values of the internal representations of the selected sort strings are used as sort keys. For most purposes, this matches what you would expect from a “case sensitive” sort, with the sort order dependent on the active code page. Unicode files sort by code point.</td></tr>
+<th>locale</th><td>The sort order is defined by the current Windows locale. For most purposes, this matches what you would expect from a “case insensitive” sort.</td></tr>
+<th>numeric</th><td>The selections on each line are interpreted as tab-separated numbers in the same way as described for the Calculation functions. Items which can’t be interpreted as numbers sort first (whether the sort is ascending or descending).</td></tr>
+</table>
+
+</section>
+
+<section id=conversion><h2>Conversion</h2>
+
+<p>Use <strong>Convert tabs to spaces</strong> on any selection to replace tabs in the selection with equivalent spaces, taking elastic tabstops into account if enabled. If nothing is selected, the entire file is converted.</strong>
+
+</section>
+
+<section id=options><h2>Options</h2>
+
+<p><strong>Decimal separator is comma</strong> may be checked or unchecked to control how calculations, numeric alignment and numeric sorts interpret numbers.</p>
+
+<p><strong>Options...</strong> opens a dialog that allows you to control some aspects of <strong>Columns++</strong>:
+
+<table class=optionsTable>
+<th>Show Columns++ on the main menu bar</th><td>lets you choose whether to add an entry for <strong>Columns++</strong> to the main menu bar, just to the left of the <strong>Plugins</strong> menu, or leave it as an entry on the <strong>Plugins</strong> menu.</td></tr>
+<th>Automatically extend selections to form rectangles:</th><td>You can enable or disable the interpretation of “implicit” selections for <strong>Columns++</strong> commands that require rectangular selections:
+
+<ul class=optionslist>
+<li>Selections on one line extend downward to the last line.
+<li>Full row selections are replaced by the enclosing rectangle.
+<li>Zero-width selections extend right to the end of the longest line.
+</ul>
+
+See the section on <a href="#rectangular">Rectangular selections</a> for an explanation of implicit selection.
+</td></tr>
+</table>
+
+<p><strong>Help/About...</strong> provides access to release/version identification, this help file, and changelog, license and source information.</p>
+
+</section>
+
+</article>
+
+</main><footer id=footer><div id=foottext class=linklist>
+
+<a href="https://notepad-plus-plus.org/">Notepad++</a> • <a href="http://www.coises.com/">coises.com (author’s web site)</a> • <a href="https://github.com/Coises/columns-plus-plus">Columns++ on GitHub</a>
+
+</div><button type=button id=fontdown onclick="setFontDown();">Txt-</button><button type=button id=fontup onclick="setFontUp();">Txt+</button>
+</footer></body></html>

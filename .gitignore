@@ -1,0 +1,3 @@
+vs.proj/*
+!vs.proj/ColumnsPlusPlus.vcxproj
+*.aps
