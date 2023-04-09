@@ -12,6 +12,8 @@ Like Notepad++, Columns++ is released under the GNU General Public License (eith
 * __Alignment:__ You can left- or right-align text, or line up numbers.
 * __Sorting:__ Columns++ includes  sort commands that work correctly with rectangular selections in files that use tabs.
 
+There is a [help file](https://coises.github.io/ColumnsPlusPlus/help.htm).
+
 ## Status
 
 Columns++ is currently pre-release, meaning it hasn't been broadly tested, and anything can happen. For me, it's already useful; but it will remain "use at your own risk" until I have enough feedback from others to warrant more confidence.
