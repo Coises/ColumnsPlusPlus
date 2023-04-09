@@ -79,6 +79,8 @@ BOOL ColumnsPlusPlusData::aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam
                                              + L"." + std::to_wstring(versionPart2);
                         if (versionPart3 || versionPart4) version += L"." + std::to_wstring(versionPart3);
                         if (versionPart4) version += L"." + std::to_wstring(versionPart4);
+                        if constexpr (sizeof(size_t) == 8) version += L" (x64)";
+                        else if constexpr (sizeof(size_t) == 4) version += L" (x86)";
                         HANDLE file = CreateFile(moduleFileName.data(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
                         if (file != INVALID_HANDLE_VALUE) {
                             FILETIME fileTime;
@@ -91,7 +93,7 @@ BOOL ColumnsPlusPlusData::aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam
                                 std::wstring date(dateLen, 0);
                                 GetDateFormatEx(LOCALE_NAME_USER_DEFAULT, DATE_LONGDATE, &sysTime, 0, date.data(), dateLen, 0);
                                 date.resize(dateLen - 1);
-                                version += L", updated on " + date;
+                                version += L".\n\nFile date: " + date;
                                 int timeLen = GetTimeFormatEx(LOCALE_NAME_USER_DEFAULT, 0, &sysTime, L"HH':'mm", 0, 0);
                                 if (timeLen) {
                                     std::wstring time(timeLen, 0);
