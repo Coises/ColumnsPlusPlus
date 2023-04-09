@@ -133,10 +133,7 @@ void updateReplaceHistory(SearchData& searchData) { updateSearchHistory(searchDa
 void setSearchMessage(const ColumnsPlusPlusData& data, const std::wstring& text) {
     HWND msgHwnd = GetDlgItem(data.searchData.dialog, IDC_SEARCH_MESSAGE);
     SetWindowText(msgHwnd, text.data());
-    RECT msgRect;
-    GetWindowRect(msgHwnd, &msgRect);
-    MapWindowPoints(0, data.searchData.dialog, reinterpret_cast<LPPOINT>(&msgRect), 1);
-    InvalidateRect(data.searchData.dialog, &msgRect, TRUE);
+    InvalidateRect(data.searchData.dialog, 0, TRUE);
 }
 
 
