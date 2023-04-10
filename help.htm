@@ -86,7 +86,7 @@ ul.optionslist li {font-weight: bold;}
 
 body                {color: #000; background: #d0d0d0; line-height: 1.4;}
 *                   {border-color: #999;}
-#centershortlines   {width: calc((100vw - (13em + 48em + 2em + 24px)) / 2);}
+#centershortlines   {width: calc((100vw - (13.5em + 48em + 2em + 24px)) / 2);}
 }
 </style>
 <script type="text/javascript">
@@ -131,6 +131,7 @@ window.addEventListener("load", doPageLoad);
 <div id=centershortlines></div>
 
 <nav class=pagenav><a href="#introduction">Introduction</a>
+<a href="#purpose"    >Purpose and limitations</a>
 <a href="#elastic"    >Elastic tabstops</a>
 <a href="#rectangular">Rectangular selections</a>
 <a href="#search"     >Search</a>
@@ -144,7 +145,22 @@ window.addEventListener("load", doPageLoad);
 
 <section id=introduction><h2>Introduction</h2>
 
-<p><strong>Columns++</strong> is an extension for <a href="https://notepad-plus-plus.org/">Notepad++</a> offering various features for working with text and data arranged in columns. Like <strong>Notepad++</strong>, <strong>Columns++</strong> is released under the <a href="https://www.gnu.org/licenses/gpl.html">GNU General Public License</a> (either <a href="https://www.gnu.org/licenses/gpl-2.0.html">version 2</a> of the License, or, at your option, any later version). <strong>Columns++</strong> was first released by <a href="http://www.coises.com/">Randall Joseph Fellmy</a> in 2023; you can find the source code  on <a href="https://github.com/Coises/ColumnsPlusPlus">GitHub</a>.</p>
+<p><strong>Columns++</strong> is a plugin for <a href="https://notepad-plus-plus.org/">Notepad++</a> offering various features for working with text and data arranged in columns. Like <strong>Notepad++</strong>, <strong>Columns++</strong> is released under the <a href="https://www.gnu.org/licenses/gpl.html">GNU General Public License</a> (either <a href="https://www.gnu.org/licenses/gpl-2.0.html">version 2</a> of the License, or, at your option, any later version). <strong>Columns++</strong> was first released by <a href="http://www.coises.com/">Randall Joseph Fellmy</a> in 2023; you can find the source code  on <a href="https://github.com/Coises/ColumnsPlusPlus">GitHub</a>.</p>
+
+</section>
+
+<section id=purpose><h2>Purpose and limitations</h2>
+
+<p><strong>Columns++</strong> is designed to provide some helpful functions for editing text or data that is lined up visually in columns, so that you can make a rectangular selection of the column(s) you want to process.</p>
+
+<p>The integrated implementation of <a href="#elastic">Elastic tabstops</a> works to line up columns when tabs are used as logical separators, including tab-separated values data files as well as any ordinary text or code document containing sections in which you want to line up columns easily using tabs. You can use this feature on its own or with the other functions in <strong>Columns++</strong>.</p>
+
+<p><strong>Columns++</strong> is not optimized for files that use traditional, fixed tabs for alignment. The  commands offered can still be useful for these files, but it is recommended to select only one column at at a time.</p>
+
+<p><strong>Columns++</strong> is generally not helpful when columns do not line up visually, such as in comma-separated values files.</p>
+
+<p>Elastic tabstops can cause loading and editing to be slow for large files. By default, elastic tabstops is automatically turned off for files over 1000 KB or 5000 lines. You can change these limits.</p>
+
 
 </section>
 

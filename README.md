@@ -4,6 +4,12 @@ Columns++ is a plugin for [Notepad++](https://github.com/notepad-plus-plus/notep
 
 Like Notepad++, Columns++ is released under the GNU General Public License (either version 2 of the License, or, at your option, any later version).
 
+## Purpose
+
+Columns++ is designed to provide some helpful functions for editing text or data that is lined up visually in columns, so that you can make a rectangular selection of the column(s) you want to process.
+
+The integrated implementation of __Elastic tabstops__ works to line up columns when tabs are used as logical separators, including tab-separated values data files as well as any ordinary text or code document containing sections in which you want to line up columns easily using tabs. You can use this feature on its own or with the other functions in Columns++.
+
 ## Main Features
 
 * __Elastic tabstops:__ Columns++ includes a new implementation of Nick Gravgaard's [Elastic tabstops](https://nickgravgaard.com/elastic-tabstops/). _(Please note that as of this writing I have not communicated with Mr. Gravgaard about my implementation of his proposal, and no endorsement on his part is implied.)_
@@ -13,6 +19,14 @@ Like Notepad++, Columns++ is released under the GNU General Public License (eith
 * __Sorting:__ Columns++ includes  sort commands that work correctly with rectangular selections in files that use tabs.
 
 There is a [help file](https://coises.github.io/ColumnsPlusPlus/help.htm).
+
+## Limitations
+
+Columns++ is not optimized for files that use traditional, fixed tabs for alignment. The  commands offered can still be useful for these files, but it is recommended to select only one column at at a time.
+
+Columns++ is generally not helpful when columns do not line up visually, such as in comma-separated values files.
+
+Elastic tabstops can cause loading and editing to be slow for large files. By default, elastic tabstops is automatically turned off for files over 1000 KB or 5000 lines. You can change these limits.
 
 ## Status
 
