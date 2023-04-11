@@ -18,7 +18,7 @@
 #include "ColumnsPlusPlus.h"
 
 
-RectangularSelection& RectangularSelection::refit() {
+RectangularSelection& RectangularSelection::refit(bool addLine) {
 
     if (!_size) return *this;
     if (data.settings.elasticEnabled) {
@@ -49,13 +49,19 @@ RectangularSelection& RectangularSelection::refit() {
     if (leftToRight()) { _anchor.px = pxLeft ; _caret.px = pxRight; }
                   else { _anchor.px = pxRight; _caret.px = pxLeft ; }
 
+    if (addLine) {
+        (topToBottom() ? _caret.ln : _anchor.ln)++;
+        _size++;
+    }
+
     for (Corner* corner : {&_anchor, &_caret}) {
-        Scintilla::Position cpEnd = data.sci.LineEndPosition(corner->ln);
-        Scintilla::Position pxEnd = data.sci.PointXFromPosition(cpEnd);
-        corner->cp = corner->px <= pxEnd ? data.positionFromLineAndPointX(corner->ln, corner->px) : cpEnd;
-        corner->vs = corner->px <= pxEnd ? 0 : (2 * (corner->px - pxEnd) + blankWidth) / (2 * blankWidth);
+        corner->en = data.sci.LineEndPosition(corner->ln);
+        Scintilla::Position pxEnd = data.sci.PointXFromPosition(corner->en);
+        corner->cp = corner->px < pxEnd ? data.positionFromLineAndPointX(corner->ln, corner->px) : corner->en;
+        corner->vs = corner->px < pxEnd ? 0 : (2 * (corner->px - pxEnd) + blankWidth) / (2 * blankWidth);
         corner->st = data.sci.PositionFromLine(corner->ln);
-        corner->px -= data.sci.PointXFromPosition(corner->st);
+        corner->sx = data.sci.PointXFromPosition(corner->st);
+        corner->px -= corner->sx;
     }
     data.sci.SetRectangularSelectionAnchor            (_anchor.cp);
     data.sci.SetRectangularSelectionAnchorVirtualSpace(_anchor.vs);

@@ -82,6 +82,16 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 else if (setting == "extendsingleline"          ) extendSingleLine                 = value != "0";
                 else if (setting == "extendfulllines"           ) extendFullLines                  = value != "0";
                 else if (setting == "extendzerowidth"           ) extendZeroWidth                  = value != "0";
+                else if (setting == "calculateinsert"           ) calculateInsert                  = value != "0";
+                else if (setting == "calculateaddline"          ) calculateAddLine                 = value != "0";
+                else if (setting == "thousandsseparator") {
+                    strlwr(value.data());
+                    thousands = value == "comma"      ? Thousands::Comma
+                              : value == "period"     ? Thousands::Comma
+                              : value == "apostrophe" ? Thousands::Apostrophe
+                              : value == "blank"      ? Thousands::Blank
+                                                      : Thousands::None;
+                }
                 else if (std::regex_match(value, integerValue)) {
                     if      (setting == "minimumorleadingtabsize"   ) settings.minimumOrLeadingTabSize    = std::stoi(value);
                     else if (setting == "minimumspacebetweencolumns") settings.minimumSpaceBetweenColumns = std::stoi(value);
@@ -184,6 +194,12 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "extendSingleLine\t"            << extendSingleLine                        << std::endl;
     file << "extendFullLines\t"             << extendFullLines                         << std::endl;
     file << "extendZeroWidth\t"             << extendZeroWidth                         << std::endl;
+    file << "calculateInsert\t"             << calculateInsert                         << std::endl;
+    file << "calculateAddLine\t"            << calculateAddLine                        << std::endl;
+    file << "thousandsSeparator\t" << ( thousands == Thousands::Comma      ? (settings.decimalSeparatorIsComma ? "period" : "comma" )
+                                      : thousands == Thousands::Apostrophe ? "apostrophe" 
+                                      : thousands == Thousands::Blank      ? "blank"
+                                                                           : "none" ) << std::endl;
 
     file << std::endl << "Search" << std::endl << std::endl;
 

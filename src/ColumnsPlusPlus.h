@@ -193,6 +193,9 @@ public:
     bool extendSingleLine = true;      // Extend single line selections to the last line
     bool extendFullLines  = true;      // Extend selections of full lines to the enclosing rectangle
     bool extendZeroWidth  = true;      // Extend zero-width rectangular selections to the right
+    bool calculateInsert  = true;      // Insert calculation results when empty space is available
+    bool calculateAddLine = false;     // Add a line to insert calculation results when no empty space is available
+    enum class Thousands {None, Comma, Apostrophe, Blank} thousands = Thousands::None;  // calculation dialog last selection
 
     Scintilla::Position positionFromLineAndPointX(Scintilla::Line line, int px) {
         // [Char]PositionFromPoint does not work with negative horizontal positions, but PointXFromPosition does
@@ -399,7 +402,7 @@ public:
     RectangularSelection& reverse(bool yes) { _reverse = yes == topToBottom(); return *this;}
 
     RectangularSelection& extend();
-    RectangularSelection& refit();
+    RectangularSelection& refit(bool addLine = false);
 
     RectangularBounds getBounds() const;
     bool loadBounds(const RectangularBounds& rb);

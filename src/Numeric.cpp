@@ -89,31 +89,153 @@ const std::wregex wrxGroupingForPeriod(L"[\\s,']", std::regex::optimize);
 const std::wregex wrxGroupingForComma(L"[\\s\\.']", std::regex::optimize);
 
 
-INT_PTR CALLBACK calcResultDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM) {
+struct CalculationResultsInfo {
+    ColumnsPlusPlusData& data;
+    std::vector<std::string> results;
+    std::wstring showResults;
+    std::string copyResults;
+    int columns = 0;
+    int numbers = 0;
+    bool isMean = false;
+    bool hasSpace = false;
+    HFONT font;
+    CalculationResultsInfo(ColumnsPlusPlusData& data) : data(data) {}
+};
+
+
+void applyThousandsSeparator(CalculationResultsInfo& cri) {
+    cri.showResults.clear();
+    cri.copyResults.clear();
+    const char decimal = cri.data.settings.decimalSeparatorIsComma ? ',' : '.';
+    const char separator = cri.data.thousands == ColumnsPlusPlusData::Thousands::None       ? 0
+                         : cri.data.thousands == ColumnsPlusPlusData::Thousands::Apostrophe ? '\''
+                         : cri.data.thousands == ColumnsPlusPlusData::Thousands::Blank      ? ' '
+                         : cri.data.settings.decimalSeparatorIsComma                        ? '.' : ',';
+    for (size_t i = 0; i < cri.results.size(); ++i) {
+        std::string s = cri.results[i];
+        if (separator && !s.empty()) {
+            size_t j = s.find_first_not_of("0123456789");
+            if (j == std::string::npos) j = s.length();
+            else {
+                size_t k = s.find_last_not_of("0123456789");
+                if (s[k] == decimal) {
+                    size_t p = s.length() - k - 1;
+                    if (p > 3) {
+                        for (size_t q = s.length() - (p - 1) % 3 - 1; q > k + 1; q -= 3)
+                            s = s.substr(0, q) + separator + s.substr(q);
+                    }
+                }
+            }
+            if (j > 3) for (ptrdiff_t q = j - 3; q > 0; q -= 3)
+                s = s.substr(0, q) + separator + s.substr(q);
+        }
+        if (!cri.showResults.empty() && !s.empty()) cri.showResults += L" | ";
+        cri.showResults += toWide(s, CP_UTF8);
+        if (i > 0) cri.copyResults += '\t';
+        cri.copyResults += s;
+    }
+
+}
+
+
+INT_PTR CALLBACK calculationResultsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+
+    CalculationResultsInfo* crip = 0;
+    if (uMsg == WM_INITDIALOG) {
+        SetWindowLongPtr(hwndDlg, DWLP_USER, lParam);
+        crip = reinterpret_cast<CalculationResultsInfo*>(lParam);
+    }
+    else crip = reinterpret_cast<CalculationResultsInfo*>(GetWindowLongPtr(hwndDlg, DWLP_USER));
+    if (!crip) return TRUE;
+    CalculationResultsInfo& cri = *crip;
+    ColumnsPlusPlusData& data = cri.data;
+
     switch (uMsg) {
+
     case WM_DESTROY:
-        SendMessage(GetParent(hwndDlg), NPPM_MODELESSDIALOG, MODELESSDIALOGREMOVE, reinterpret_cast<LPARAM>(hwndDlg));
         return TRUE;
+
     case WM_INITDIALOG:
-        SendMessage(GetParent(hwndDlg), NPPM_MODELESSDIALOG, MODELESSDIALOGADD, reinterpret_cast<LPARAM>(hwndDlg));
-        return TRUE;
+    {
+        RECT rcNpp, rcDlg;
+        GetWindowRect(data.nppData._nppHandle, &rcNpp);
+        GetWindowRect(hwndDlg, &rcDlg);
+        SetWindowPos(hwndDlg, HWND_TOP, (rcNpp.left + rcNpp.right + rcDlg.left - rcDlg.right) / 2,
+            (rcNpp.top + rcNpp.bottom + rcDlg.top - rcDlg.bottom) / 2, 0, 0, SWP_NOSIZE);
+        std::wstring message = cri.isMean ? L"Mean" : L"Sum";
+        message += cri.columns == 1 ? L" of " + std::to_wstring(cri.numbers) + L" &values:"
+                                    : L"s of " + std::to_wstring(cri.numbers) + L" &values in " + std::to_wstring(cri.columns) + L" columns:";
+        SetDlgItemText(hwndDlg, IDC_CALCULATION_MESSAGE, message.data());
+        message = cri.hasSpace ? L"&Insert these results in the last line of the selection."
+                               : L"&Insert a line containing these results following the last line of the selection.";
+        SetDlgItemText(hwndDlg, IDC_CALCULATION_INSERT, message.data());
+        SetDlgItemText(hwndDlg, IDC_THOUSANDS_COMMA, data.settings.decimalSeparatorIsComma ? L"&Period" : L"&Comma");
+        applyThousandsSeparator(cri);
+        HDC sciDC = GetDC(data.activeScintilla);
+        int logpixelsy = GetDeviceCaps(sciDC, LOGPIXELSY);
+        ReleaseDC(data.activeScintilla, sciDC);
+        RECT resultsRectangle;
+        SendDlgItemMessage(hwndDlg, IDC_CALCULATION_RESULTS, EM_GETRECT, 0, reinterpret_cast<LPARAM>(&resultsRectangle));
+        LOGFONT lf;
+        lf.lfHeight = -std::min((data.sci.StyleGetSize(0) + data.sci.Zoom()) * logpixelsy / 72L, resultsRectangle.bottom - resultsRectangle.top);
+        lf.lfWidth = 0;
+        lf.lfEscapement = 0;
+        lf.lfOrientation = 0;
+        lf.lfWeight = static_cast<LONG>(data.sci.StyleGetWeight(0));
+        lf.lfItalic = data.sci.StyleGetItalic(0);
+        lf.lfUnderline = data.sci.StyleGetUnderline(0);
+        lf.lfStrikeOut = FALSE;
+        lf.lfCharSet = ANSI_CHARSET;
+        lf.lfOutPrecision = OUT_DEFAULT_PRECIS;
+        lf.lfClipPrecision = CLIP_DEFAULT_PRECIS;
+        lf.lfQuality = PROOF_QUALITY;
+        lf.lfPitchAndFamily = 0;
+        std::wstring fontName = toWide(data.sci.StyleGetFont(0), CP_UTF8);
+        if (fontName.length() > LF_FACESIZE - 1) fontName.resize(LF_FACESIZE - 1);
+        wcsncpy(lf.lfFaceName, fontName.data(), LF_FACESIZE);
+        cri.font = CreateFontIndirect(&lf);
+        SendDlgItemMessage(hwndDlg, IDC_CALCULATION_RESULTS, WM_SETFONT, reinterpret_cast<WPARAM>(cri.font), 0);
+        SetDlgItemText(hwndDlg, IDC_CALCULATION_RESULTS, cri.showResults.data());
+        CheckDlgButton(hwndDlg, IDC_CALCULATION_INSERT, cri.hasSpace ? data.calculateInsert : data.calculateAddLine);
+        switch (data.thousands) {
+        case ColumnsPlusPlusData::Thousands::None      : CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_NONE      ); break;
+        case ColumnsPlusPlusData::Thousands::Comma     : CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_COMMA     ); break;
+        case ColumnsPlusPlusData::Thousands::Apostrophe: CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_APOSTROPHE); break;
+        case ColumnsPlusPlusData::Thousands::Blank     : CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_BLANK     ); break;
+        }
+        return FALSE;
+    }
+
     case WM_COMMAND:
         switch (LOWORD(wParam)) {
         case IDCANCEL:
-            DestroyWindow(hwndDlg);
+            EndDialog(hwndDlg, 1);
+            DeleteObject(cri.font);
             return TRUE;
         case IDOK:
-            DestroyWindow(hwndDlg);
+            data.sci.CopyText(cri.copyResults.length(), cri.copyResults.data());
+            EndDialog(hwndDlg, 0);
+            DeleteObject(cri.font);
             return TRUE;
+        case IDC_THOUSANDS_NONE:
+        case IDC_THOUSANDS_COMMA:
+        case IDC_THOUSANDS_APOSTROPHE:
+        case IDC_THOUSANDS_BLANK:
+            data.thousands = IsDlgButtonChecked(hwndDlg, IDC_THOUSANDS_COMMA     ) == BST_CHECKED ? ColumnsPlusPlusData::Thousands::Comma     
+                           : IsDlgButtonChecked(hwndDlg, IDC_THOUSANDS_APOSTROPHE) == BST_CHECKED ? ColumnsPlusPlusData::Thousands::Apostrophe
+                           : IsDlgButtonChecked(hwndDlg, IDC_THOUSANDS_BLANK     ) == BST_CHECKED ? ColumnsPlusPlusData::Thousands::Blank
+                                                                                                  : ColumnsPlusPlusData::Thousands::None;
+            applyThousandsSeparator(cri);
+            SetDlgItemText(hwndDlg, IDC_CALCULATION_RESULTS, cri.showResults.data());
+            break;
+        case IDC_CALCULATION_INSERT:
+            (cri.hasSpace ? data.calculateInsert : data.calculateAddLine) = IsDlgButtonChecked(hwndDlg, IDC_CALCULATION_INSERT) == BST_CHECKED;
+            break;
+        default:;
         }
         break;
-    case WM_ACTIVATE:
-        if (LOWORD(wParam) == WA_INACTIVE) PostMessage(hwndDlg, WM_COMMAND, IDCANCEL, 0);
-        return FALSE;
-    case WM_LBUTTONDOWN:
-    case WM_NCLBUTTONDOWN:
-        DestroyWindow(hwndDlg);
-        return TRUE;
+
+    default:;
     }
     return FALSE;
 }
@@ -314,119 +436,96 @@ void ColumnsPlusPlusData::accumulate(bool isMean) {
         }
     }
 
-    if (!total.count) return;
+    if (!total.count) {
+        MessageBox(nppData._nppHandle, L"No numbers found in the selection.", isMean ? L"Average Numbers" : L"Add Numbers", MB_ICONINFORMATION);
+        return;
+    }
 
-    int columnCount = 0;
-    std::string answer;
-    std::string pendingTabs;
-    for (size_t i = 0; i < column.size(); ++i) {
-        if (i) pendingTabs += '\t';
-        Column& col = column[i];
+    CalculationResultsInfo cri(*this);
+    cri.isMean = isMean;
+    cri.hasSpace = rs.back().text().find_first_not_of("\t ") == std::string::npos;
+    for (Column& col : column) {
         if (col.count) {
-            answer += pendingTabs;
             if (isMean) {
                 int dp = col.count == 1 ? 0 : col.count == 2 || col.count == 5 || col.count == 10 ? 1
-                       : col.count == 20 || col.count == 25 || col.count == 50 || col.count == 100 ? 2 : 3;
-                answer += formatValue(col.sum/col.count, col.decimalPlaces + dp, col.timeSegments, settings.decimalSeparatorIsComma);
+                    : col.count == 20 || col.count == 25 || col.count == 50 || col.count == 100 ? 2 : 3;
+                cri.results.push_back(formatValue(col.sum / col.count, col.decimalPlaces + dp, col.timeSegments, settings.decimalSeparatorIsComma));
             }
-            else answer += formatValue(col.sum, col.decimalPlaces, col.timeSegments, settings.decimalSeparatorIsComma);
-            ++columnCount;
-            pendingTabs = "";
+            else cri.results.push_back(formatValue(col.sum, col.decimalPlaces, col.timeSegments, settings.decimalSeparatorIsComma));
+            ++cri.columns;
+            cri.numbers += col.count;
         }
+        else cri.results.push_back("");
+    }
+
+    DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_CALCULATION_RESULTS), nppData._nppHandle, calculationResultsDialogProc, reinterpret_cast<LPARAM>(&cri));
+
+    if (cri.hasSpace ? !calculateInsert : !calculateAddLine) return;
+
+    sci.BeginUndoAction();
+
+    if (!cri.hasSpace) {
+        std::string EOL;
+        switch (sci.EOLMode()) {
+        case Scintilla::EndOfLine::Cr  : EOL = "\r";
+        case Scintilla::EndOfLine::Lf  : EOL = "\n";
+        case Scintilla::EndOfLine::CrLf: EOL = "\r\n";
+        }
+        sci.InsertText(rs.bottom().en, EOL.data());
+        rs.refit(true);
+        if (!rs.topToBottom()) indexOfLastRowWithValues++;
     }
 
     auto answerRow = rs.back();
-    bool answerSpaceAvailable = answerRow.text().find_first_not_of("\t ") == std::string::npos;
-    std::string answerTotal;
-    if (isMean) {
-        int dp = total.count == 1 ? 0 : total.count == 2 || total.count == 5 || total.count == 10 ? 1
-               : total.count == 20 || total.count == 25 || total.count == 50 || total.count == 100 ? 2 : 3;
-        answerTotal = formatValue(total.sum/total.count, total.decimalPlaces + dp, total.timeSegments, settings.decimalSeparatorIsComma);
-    }
-    else answerTotal = formatValue(total.sum, total.decimalPlaces, total.timeSegments, settings.decimalSeparatorIsComma);
-    std::string copyAnswer = columnCount > 1 && !answerSpaceAvailable ? answer + '\t' + answerTotal : answerTotal;
-    sci.CopyText(copyAnswer.length(), copyAnswer.data());
-    answer += pendingTabs;
+    auto& answer = cri.copyResults;
 
-    if (answerSpaceAvailable) {
-        if (answerRow.vsMin() == 0 || !settings.elasticEnabled) {
+    if (answerRow.vsMin() == 0 || !settings.elasticEnabled) {
+        if (column.size() == 1) {
+            size_t space = answerRow.cpMax() - answerRow.cpMin() + answerRow.vsMax();
+            answerRow.replace(space > answer.length() ? std::string(space - answer.length(), ' ') + answer : answer);
+        }
+        else answerRow.replace(std::string(answerRow.vsMin(), ' ') + answer);
+    }
+    else {
+        auto modelRow = rs[indexOfLastRowWithValues];
+        std::string model  = sci.StringOfRange(Scintilla::Span(sci.PositionFromLine(modelRow .line()), modelRow .cpMin()));
+        std::string prefix = sci.StringOfRange(Scintilla::Span(sci.PositionFromLine(answerRow.line()), answerRow.cpMin()));
+        if (settings.leadingTabsIndent) {
+            size_t modelFirstNonTab = model.find_first_not_of('\t');
+            size_t prefixFirstNonTab = prefix.find_first_not_of('\t');
+            model = modelFirstNonTab == std::string::npos ? "" : model.substr(modelFirstNonTab);
+            prefix = prefixFirstNonTab == std::string::npos ? "" : prefix.substr(prefixFirstNonTab);
+        }
+        auto modelTabs = std::count(model.begin(), model.end(), '\t');
+        auto prefixTabs = std::count(prefix.begin(), prefix.end(), '\t');
+        std::string leftPad;
+        if (modelTabs > prefixTabs) {
+            if (settings.leadingTabsIndent && prefix.length() == 0) leftPad = " ";
+            leftPad += std::string(modelTabs - prefixTabs, '\t');
+            size_t charsAfterLastTab = model.length() - model.find_last_of('\t') - 1;
+            size_t padTabToLeft = 0;
+            if (charsAfterLastTab > 0) {
+                int pxDifference = sci.PointXFromPosition(modelRow.cpMin()) - sci.PointXFromPosition(modelRow.cpMin() - charsAfterLastTab);
+                padTabToLeft = (2 * pxDifference + rs.blankWidth) / (2 * rs.blankWidth);
+            }
             if (column.size() == 1) {
-                size_t space = answerRow.cpMax() - answerRow.cpMin() + answerRow.vsMax();
+                size_t space = padTabToLeft + answerRow.vsMax() - answerRow.vsMin();
+                if (space > answer.length()) leftPad += std::string(space - answer.length(), ' ');
+            }
+            else {
+                leftPad += std::string(padTabToLeft, ' ');
+            }
+            answerRow.replace(leftPad + answer);
+        }
+        else {
+            if (column.size() == 1) {
+                size_t space = answerRow.vsMax();
                 answerRow.replace(space > answer.length() ? std::string(space - answer.length(), ' ') + answer : answer);
             }
             else answerRow.replace(std::string(answerRow.vsMin(), ' ') + answer);
         }
-        else {
-            auto modelRow = rs[indexOfLastRowWithValues];
-            std::string model  = sci.StringOfRange(Scintilla::Span(sci.PositionFromLine(modelRow .line()), modelRow .cpMin()));
-            std::string prefix = sci.StringOfRange(Scintilla::Span(sci.PositionFromLine(answerRow.line()), answerRow.cpMin()));
-            if (settings.leadingTabsIndent) {
-                size_t modelFirstNonTab = model.find_first_not_of('\t');
-                size_t prefixFirstNonTab = prefix.find_first_not_of('\t');
-                model = modelFirstNonTab == std::string::npos ? "" : model.substr(modelFirstNonTab);
-                prefix = prefixFirstNonTab == std::string::npos ? "" : prefix.substr(prefixFirstNonTab);
-            }
-            auto modelTabs = std::count(model.begin(), model.end(), '\t');
-            auto prefixTabs = std::count(prefix.begin(), prefix.end(), '\t');
-            std::string leftPad;
-            if (modelTabs > prefixTabs) {
-                if (settings.leadingTabsIndent && prefix.length() == 0) leftPad = " ";
-                leftPad += std::string(modelTabs - prefixTabs, '\t');
-                size_t charsAfterLastTab = model.length() - model.find_last_of('\t') - 1;
-                size_t padTabToLeft = 0;
-                if (charsAfterLastTab > 0) {
-                    int pxDifference = sci.PointXFromPosition(modelRow.cpMin()) - sci.PointXFromPosition(modelRow.cpMin() - charsAfterLastTab);
-                    padTabToLeft = (2 * pxDifference + rs.blankWidth) / (2 * rs.blankWidth);
-                }
-                if (column.size() == 1) {
-                    size_t space = padTabToLeft + answerRow.vsMax() - answerRow.vsMin();
-                    if (space > answer.length()) leftPad += std::string(space - answer.length(), ' ');
-                }
-                else {
-                    leftPad += std::string(padTabToLeft, ' ');
-                }
-                answerRow.replace(leftPad + answer);
-            }
-            else {
-                if (column.size() == 1) {
-                    size_t space = answerRow.vsMax();
-                    answerRow.replace(space > answer.length() ? std::string(space - answer.length(), ' ') + answer : answer);
-                }
-                else answerRow.replace(std::string(answerRow.vsMin(), ' ') + answer);
-            }
-        }
-        rs.refit();
     }
 
-    HWND flyout = CreateDialog(dllInstance, MAKEINTRESOURCE(IDD_CALC_RESULT), nppData._nppHandle, calcResultDialogProc);
-
-    std::wstring flyoutTitle =
-        isMean ? ( answerSpaceAvailable ? ( columnCount == 1 ? L"Wrote/copied mean of " + std::to_wstring(total.count) + L" values:"
-                                                             : L"Wrote " + std::to_wstring(columnCount) + L" means; copied average:")
-                                        : ( columnCount == 1 ? L"Copied mean of " + std::to_wstring(total.count) + L" values:"
-                                                             : L"Copied " + std::to_wstring(columnCount) + L" means with average:"))
-               : ( answerSpaceAvailable ? ( columnCount == 1 ? L"Wrote/copied sum of " + std::to_wstring(total.count) + L" values:"
-                                                             : L"Wrote " + std::to_wstring(columnCount) + L" sums; copied total:")
-                                        : ( columnCount == 1 ? L"Copied sum of " + std::to_wstring(total.count) + L" values:"
-                                                             : L"Copied " + std::to_wstring(columnCount) + L" sums with total:"));
-
-    SetWindowText(flyout, flyoutTitle.data());
-    SetDlgItemTextA(flyout, IDC_CALC_RESULT, answerTotal.data());
-
-    POINT position;
-    position.x = (rs.leftToRight() ? rs.caret().px + rs.caret().sx : rs.anchor().px + rs.anchor().sx);
-    position.y = sci.PointYFromPosition(rs.caret().cp);
-
-    RECT rcFlyout, rcNpp;
-    MapWindowPoints(activeScintilla, nppData._nppHandle, &position, 1);
-    GetWindowRect(flyout, &rcFlyout);
-    OffsetRect(&rcFlyout, -rcFlyout.left, -rcFlyout.top);
-    GetClientRect(nppData._nppHandle, &rcNpp);
-    if (position.x + rcFlyout.right > rcNpp.right) position.x = rcNpp.right - rcFlyout.right;
-    if (position.y + rcFlyout.bottom > rcNpp.bottom) position.y = rcNpp.bottom - rcFlyout.bottom;
-    if (position.x < 0) position.x = 0;
-    if (position.y < 0) position.y = 0;
-    MapWindowPoints(nppData._nppHandle, 0, &position, 1);
-    SetWindowPos(flyout, HWND_TOP, position.x, position.y, 0, 0, SWP_NOSIZE | SWP_SHOWWINDOW);
-
+    rs.refit();
+    sci.EndUndoAction();
 }

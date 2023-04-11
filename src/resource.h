@@ -7,9 +7,9 @@
 #define IDD_MORE                        107
 #define IDD_OPTIONS                     108
 #define IDD_ABOUT                       111
-#define IDD_CALC_RESULT                 115
 #define IDD_PROFILE_SAVE                117
 #define IDD_PROFILE_RENAME              118
+#define IDD_CALCULATION_RESULTS         120
 #define IDC_LINE_UP_ALL                 1003
 #define IDC_LEADING_TABS_INDENT         1006
 #define IDC_DISABLE_FILE_SIZE           1007
@@ -51,7 +51,6 @@
 #define IDC_OPTIONS_EXTEND_SINGLELINE   1060
 #define IDC_OPTIONS_EXTEND_ROWS         1061
 #define IDC_OPTIONS_EXTEND_ZEROWIDTH    1063
-#define IDC_CALC_RESULT                 1066
 #define IDC_OPTIONS_EXTEND_BOX          1067
 #define IDC_PROFILE_SAVE_NAME           1073
 #define IDC_PROFILE_RENAME_NAME         1075
@@ -60,14 +59,21 @@
 #define IDC_DEFAULT_ENABLE              1078
 #define IDC_COMBO1                      1079
 #define IDC_DEFAULT_PROFILE             1079
+#define IDC_CALCULATION_RESULTS         1080
+#define IDC_CALCULATION_MESSAGE         1082
+#define IDC_THOUSANDS_NONE              1083
+#define IDC_THOUSANDS_COMMA             1084
+#define IDC_THOUSANDS_APOSTROPHE        1085
+#define IDC_THOUSANDS_BLANK             1086
+#define IDC_CALCULATION_INSERT          1087
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        120
+#define _APS_NEXT_RESOURCE_VALUE        122
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1080
+#define _APS_NEXT_CONTROL_VALUE         1088
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
