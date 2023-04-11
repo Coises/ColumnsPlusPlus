@@ -114,6 +114,11 @@ void applyThousandsSeparator(CalculationResultsInfo& cri) {
     for (size_t i = 0; i < cri.results.size(); ++i) {
         std::string s = cri.results[i];
         if (separator && !s.empty()) {
+            bool negative = false;
+            if (s[0] == '-') {
+                s = s.substr(1);
+                negative = true;
+            }
             size_t j = s.find_first_not_of("0123456789");
             if (j == std::string::npos) j = s.length();
             else {
@@ -128,6 +133,7 @@ void applyThousandsSeparator(CalculationResultsInfo& cri) {
             }
             if (j > 3) for (ptrdiff_t q = j - 3; q > 0; q -= 3)
                 s = s.substr(0, q) + separator + s.substr(q);
+            if (negative) s = '-' + s;
         }
         if (!cri.showResults.empty() && !s.empty()) cri.showResults += L" | ";
         cri.showResults += toWide(s, CP_UTF8);
@@ -324,7 +330,7 @@ std::string formatValue(long double value, size_t decimalPlaces, size_t timeSegm
         long double t = value;
         if (decimalPlaces) {
             int m = 10;
-            for (size_t i = 2; i < decimalPlaces; ++i) m *= 10;
+            for (size_t i = 1; i < decimalPlaces; ++i) m *= 10;
             t = std::round(m * t) / m;
         }
         bool negative = false;
