@@ -1,4 +1,6 @@
 .vs/*
 vs.proj/*
+!vs.proj/ColumnsPlusPlus.sln
 !vs.proj/ColumnsPlusPlus.vcxproj
 *.aps
+*.zip
