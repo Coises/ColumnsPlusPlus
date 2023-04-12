@@ -209,7 +209,7 @@ INT_PTR CALLBACK calculationResultsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wP
         case ColumnsPlusPlusData::Thousands::Apostrophe: CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_APOSTROPHE); break;
         case ColumnsPlusPlusData::Thousands::Blank     : CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_BLANK     ); break;
         }
-        return FALSE;
+        return TRUE;
     }
 
     case WM_COMMAND:
