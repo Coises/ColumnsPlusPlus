@@ -1,5 +1,10 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Version 0.1.0.5-alpha - April 14th, 2023
+
+* Added new prompts when a command needs a rectangular selection and the current selection is not rectangular or is zero-width.
+* Changed default behavior not to make any implicit selections, so the prompts will be seen; settings from older versions are ignored and reset to the new defaults. You can still enable the same implicit selections by going to the Options dialog; they're just not the defaults anymore.
+
 ## Version 0.0.3.4-alpha - April 11th, 2023
 
 * Correct dialog text "Copy these results to the clipboard" truncated on some systems.

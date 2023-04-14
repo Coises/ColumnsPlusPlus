@@ -22,7 +22,7 @@ There is a [help file](https://coises.github.io/ColumnsPlusPlus/help.htm).
 
 ## Limitations
 
-Columns++ is not optimized for files that use traditional, fixed tabs for alignment. The  commands offered can still be useful for these files, but it is recommended to select only one column at at a time.
+Columns++ is optimized for use with Elastic tabstops. It also works with files that use traditional, fixed tabs for alignment, or no tabs at all; however, you should ordinarily select only one column at a time in files that don't use Elastic tabstops.
 
 Columns++ is generally not helpful when columns do not line up visually, such as in comma-separated values files.
 

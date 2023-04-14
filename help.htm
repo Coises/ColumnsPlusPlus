@@ -155,11 +155,11 @@ window.addEventListener("load", doPageLoad);
 
 <p>The integrated implementation of <a href="#elastic">Elastic tabstops</a> works to line up columns when tabs are used as logical separators, including tab-separated values data files as well as any ordinary text or code document containing sections in which you want to line up columns easily using tabs. You can use this feature on its own or with the other functions in <strong>Columns++</strong>.</p>
 
-<p><strong>Columns++</strong> is not optimized for files that use traditional, fixed tabs for alignment. The  commands offered can still be useful for these files, but it is recommended to select only one column at at a time.</p>
+<p><strong>Columns++</strong> is optimized for use with Elastic tabstops. It also works with files that use traditional, fixed tabs for alignment, or no tabs at all; however, you should ordinarily select only one column at a time in files that don’t use Elastic tabstops.</p>
 
 <p><strong>Columns++</strong> is generally not helpful when columns do not line up visually, such as in comma-separated values files.</p>
 
-<p>Elastic tabstops can cause loading and editing to be slow for large files. By default, elastic tabstops is automatically turned off for files over 1000 KB or 5000 lines. You can change these limits.</p>
+<p>Elastic tabstops can cause loading and editing to be slow for large files. By default, Elastic tabstops is automatically turned off for files over 1000 KB or 5000 lines. You can change these limits.</p>
 
 
 </section>
@@ -232,21 +232,9 @@ window.addEventListener("load", doPageLoad);
 
 <p>When selecting one or more columns in a document using tabs, you should generally <em>include the tab that ends the rightmost selected column</em> in your selection. Unless all the entries in the last column are the same width, it is often difficult or impossible to get a complete selection without including the final tabs; in any case, <strong>Columns++</strong> will process the trailing tabs intelligently.</p>
 
-<p>When you invoke a command that requires a rectangular selection and the current selection is not a non-zero width rectangular selection, by default <strong>Columns++</strong> will interpret some selections as “implicit” rectangular selections:</p>
+<p>When you invoke a command that requires a rectangular selection and the current selection is not a non-zero-width rectangular selection, <strong>Columns++</strong> will inform you of this and, if possible, offer reasonable options to create a rectangular selection based on the current selection or cursor position.</p>
 
-<h3>A single selection on a single line including at least one character:</h3>
-
-<p>The selection is “projected” downward to the last line of the file. This allows you to select full columns (skipping headers, if desired) without scrolling all the way to the end of the file. If the last line of the file is completely empty — that is, the file ends with the end-of-line sequence — that line will not be included in the selection.</p>
-
-<h3>A selection of full lines:</h3>
-
-<p>The selection is replaced by a rectangular selection wide enough to include all the text on all lines in the selection. Usually you get this kind of selection by dragging in the left margin. If the selection ends at the beginning of a line (as when dragging downward in the left margin), that line is not included in the rectangular selection. The selection made by <strong>Edit|Select All</strong> will be converted to a rectangular selection that encompasses the entire file (excluding the last line, if it consists of only a line ending).</p>
-
-<h3>A zero-width rectangular or “thin” selection:</h3>
-
-<p>The selection is extended to the right far enough to enclose the end of the longest line in the selection. When selecting a rectangular region meant to extend from some column far enough to the right include the ends of all lines, this avoids the need to scroll through and figure out how wide the selection needs to be.</p>
-
-<p>If you do not want some or all of these to be interpreted as implicit rectangular selections, you can change this behavior in the <a href="#options">Options</a> dialog.</p>
+<p>You can enable specific “implicit” rectangular selections in the <a href="#options">Options</a> dialog if you would prefer that <strong>Columns++</strong> make those selections without prompting you.</p>
 
 </section>
 
@@ -312,15 +300,15 @@ window.addEventListener("load", doPageLoad);
 
 <table class=optionsTable>
 <th>Show Columns++ on the main menu bar</th><td>lets you choose whether to add an entry for <strong>Columns++</strong> to the main menu bar, just to the left of the <strong>Plugins</strong> menu, or leave it as an entry on the <strong>Plugins</strong> menu.</td></tr>
-<th>Automatically extend selections to form rectangles:</th><td>You can enable or disable the interpretation of “implicit” selections for <strong>Columns++</strong> commands that require rectangular selections:
-
-<ul class=optionslist>
-<li>Selections on one line extend downward to the last line.
-<li>Full row selections are replaced by the enclosing rectangle.
-<li>Zero-width selections extend right to the end of the longest line.
-</ul>
-
-See the section on <a href="#rectangular">Rectangular selections</a> for an explanation of implicit selection.
+<th>Automatically extend selections to form rectangles:</th><td>You can enable “implicit” selections for <strong>Columns++</strong> commands that require rectangular selections, bypassing the dialogs that ask you if you want to make a rectangular selection:
+<table class=optionsTable>
+<tr><th>Selections on one line extend downward to the last line.</th>
+<td>A selection of one or more characters on a single line is “projected” downward to the last line of the file. This allows you to select full columns (skipping headers, if desired) without scrolling all the way to the end of the file. If the last line of the file is completely empty (that is, the file ends with an end-of-line sequence) that line will not be included in the selection.</td></tr>
+<tr><th>Full row selections are replaced by the enclosing rectangle.</th>
+<td>A single selection of complete lines is replaced by a rectangular selection wide enough to include all the text on all lines in the selection. Usually you get this kind of selection by dragging in the left margin. If the selection ends at the beginning of a line (as when dragging downward in the left margin), that line is not included in the rectangular selection. The selection made by <strong>Edit|Select All</strong> will be converted to a rectangular selection that encompasses the entire file (excluding the last line, if it consists of only a line ending).</td></tr>
+<tr><th>Zero-width selections extend right to the end of the longest line.</th>
+<td>A “thin” selection, or a rectangular selection containing no characters or virtual space, is extended to the right far enough to enclose the end of the longest line in the selection. When selecting a rectangular region meant to extend from some column far enough to the right include the ends of all lines, this avoids the need to scroll through and figure out how wide the selection needs to be.</td></tr>
+</table>
 </td></tr>
 </table>
 
