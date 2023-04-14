@@ -190,9 +190,9 @@ public:
     int disableOverSize   = 1000;      // active if greater than zero; if negative, inactive and is negative of last used setting   
     int disableOverLines  = 5000;      // active if greater than zero; if negative, inactive and is negative of last used setting
     bool showOnMenuBar    = false;     // Show the Columns++ menu on the menu bar instead of the Plugins menu
-    bool extendSingleLine = true;      // Extend single line selections to the last line
-    bool extendFullLines  = true;      // Extend selections of full lines to the enclosing rectangle
-    bool extendZeroWidth  = true;      // Extend zero-width rectangular selections to the right
+    bool extendSingleLine = false;     // Extend single line selections to the last line
+    bool extendFullLines  = false;     // Extend selections of full lines to the enclosing rectangle
+    bool extendZeroWidth  = false;     // Extend zero-width rectangular selections to the right
     bool calculateInsert  = true;      // Insert calculation results when empty space is available
     bool calculateAddLine = false;     // Add a line to insert calculation results when no empty space is available
     enum class Thousands {None, Comma, Apostrophe, Blank} thousands = Thousands::None;  // calculation dialog last selection

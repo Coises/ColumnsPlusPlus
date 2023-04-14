@@ -15,6 +15,9 @@
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
+// Configuration level 1 - 0.0.0.1 - initial releases
+// Configuration level 2 - 0.1.0.5 - reset extendX values to new default, false, since we now offer a dialog to extend selections
+
 #include "ColumnsPlusPlus.h"
 #include <fstream>
 #include <iostream>
@@ -50,9 +53,9 @@ void ColumnsPlusPlusData::loadConfiguration() {
 
     std::smatch match;
     if (!std::regex_match(line, match, configurationHeader)) return;
-//  int configLevel  = std::stoi(match[1]);  // not presently used
+    int configLevel  = std::stoi(match[1]);
     int configCompat = std::stoi(match[2]);
-    if (configCompat > 1) return;
+    if (configCompat > 2) return;
 
     enum {sectionNone, sectionLastSettings, sectionSearch, sectionProfile, sectionExtensions} readingSection = sectionNone;
     std::wstring profileName;
@@ -79,11 +82,11 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 else if (setting == "treateolastab"             ) settings.treatEolAsTab           = value != "0";
                 else if (setting == "overridetabsize"           ) settings.overrideTabSize         = value != "0";
                 else if (setting == "showonmenubar"             ) showOnMenuBar                    = value != "0";
-                else if (setting == "extendsingleline"          ) extendSingleLine                 = value != "0";
-                else if (setting == "extendfulllines"           ) extendFullLines                  = value != "0";
-                else if (setting == "extendzerowidth"           ) extendZeroWidth                  = value != "0";
                 else if (setting == "calculateinsert"           ) calculateInsert                  = value != "0";
                 else if (setting == "calculateaddline"          ) calculateAddLine                 = value != "0";
+                else if (setting == "extendsingleline"          ) {if (configLevel > 1) extendSingleLine = value != "0";}
+                else if (setting == "extendfulllines"           ) {if (configLevel > 1) extendFullLines  = value != "0";}
+                else if (setting == "extendzerowidth"           ) {if (configLevel > 1) extendZeroWidth  = value != "0";}
                 else if (setting == "thousandsseparator") {
                     strlwr(value.data());
                     thousands = value == "comma"      ? Thousands::Comma
@@ -175,7 +178,7 @@ void ColumnsPlusPlusData::saveConfiguration() {
     std::ofstream file(filePath);
     if (!file) return;
 
-    file << "\xEF\xBB\xBF" << "Notepad++ Columns++ Configuration 1 1" << std::endl;
+    file << "\xEF\xBB\xBF" << "Notepad++ Columns++ Configuration 2 1" << std::endl;
 
     file << std::endl << "LastSettings" << std::endl << std::endl;
 
