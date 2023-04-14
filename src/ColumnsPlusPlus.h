@@ -401,7 +401,7 @@ public:
     RectangularSelection& reverse()         { _reverse = !_reverse;            return *this;}
     RectangularSelection& reverse(bool yes) { _reverse = yes == topToBottom(); return *this;}
 
-    RectangularSelection& extend();
+    RectangularSelection& extend(bool allowMultipleSelections = false);
     RectangularSelection& refit(bool addLine = false);
 
     RectangularBounds getBounds() const;
@@ -419,6 +419,18 @@ public:
     RectangularSelection_Row operator[](int index) const;
     RectangularSelection_Row front() const;
     RectangularSelection_Row back () const;
+
+    Corner corner(Scintilla::Position cp, Scintilla::Position vs) const {
+        Corner c;
+        c.cp = cp;
+        c.vs = vs;
+        c.ln = data.sci.LineFromPosition(c.cp);
+        c.st = data.sci.PositionFromLine(c.ln);
+        c.en = data.sci.LineEndPosition(c.ln);
+        c.sx = data.sci.PointXFromPosition(c.st);
+        c.px = data.sci.PointXFromPosition(c.cp) - c.sx + blankWidth * static_cast<int>(c.vs);
+        return c;
+    }
 
 };
 
