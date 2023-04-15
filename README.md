@@ -2,7 +2,7 @@
 
 Columns++ is a plugin for [Notepad++](https://github.com/notepad-plus-plus/notepad-plus-plus) offering various features for working with text and data arranged in columns.
 
-Like Notepad++, Columns++ is released under the GNU General Public License (either version 2 of the License, or, at your option, any later version).
+Like Notepad++, Columns++ is released under the GNU General Public License (either version 3 of the License, or, at your option, any later version).
 
 ## Purpose
 
