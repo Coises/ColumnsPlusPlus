@@ -249,55 +249,6 @@ RectangularSelection& RectangularSelection::refit(bool addLine) {
 }
 
 
-RectangularBounds RectangularSelection::getBounds() const {
-    RectangularBounds rb;
-    rb.pxAnchor = _anchor.px;
-    rb.pxCaret  = _caret.px;
-    if (_anchor.cp > _caret.cp || (_anchor.cp == _caret.cp && _anchor.px > _caret.px)) {
-        rb.lineAnchor = _anchor.ln - data.sci.LineCount();
-        rb.lineCaret = _caret.ln;
-    }
-    else  {
-        rb.lineAnchor = _anchor.ln;
-        rb.lineCaret = _caret.ln - data.sci.LineCount();
-    }
-    return rb;
-}
-
-
-bool RectangularSelection::loadBounds(const RectangularBounds& rb) {
-    Scintilla::Line lineCount = data.sci.LineCount();
-    Corner anchor, caret;
-    for (auto [corner, rbLine, rbPx] : { std::tuple(&anchor, rb.lineAnchor, rb.pxAnchor),
-                                         std::tuple(&caret , rb.lineCaret , rb.pxCaret ) }) {
-        if (rbLine < 0) rbLine += lineCount;
-        if (rbLine < 0 || rbLine >= lineCount) return false;
-        corner->ln = rbLine;
-        corner->px = rbPx;
-        corner->st = data.sci.PositionFromLine(corner->ln);
-        corner->en = data.sci.LineEndPosition(corner->ln);
-        corner->sx = data.sci.PointXFromPosition(corner->st);
-        int px     = corner->px + corner->sx;
-        int pxEnd  = data.sci.PointXFromPosition(corner->en);
-        corner->cp = px <= pxEnd ? data.positionFromLineAndPointX(corner->ln, px) : corner->en;
-        corner->vs = px <= pxEnd ? 0 : (2 * (px - pxEnd) + blankWidth) / (2 * blankWidth);
-    }
-    bool reverse = anchor.ln > caret.ln;
-    Scintilla::Position size = reverse ? anchor.ln - caret.ln + 1 : caret.ln - anchor.ln + 1;
-    if (size > std::numeric_limits<int>::max()) return false;
-    _anchor  = anchor;
-    _caret   = caret;
-    _mode    = Scintilla::SelectionMode::Rectangle;
-    _size    = static_cast<int>(size);
-    _reverse = reverse;
-    data.sci.SetRectangularSelectionAnchor            (_anchor.cp);
-    data.sci.SetRectangularSelectionAnchorVirtualSpace(_anchor.vs);
-    data.sci.SetRectangularSelectionCaret             (_caret.cp );
-    data.sci.SetRectangularSelectionCaretVirtualSpace (_caret.vs );
-    return true;
-}
-
-
 RectangularSelection::RectangularSelection(ColumnsPlusPlusData& data)
     : data(data), blankWidth(data.sci.TextWidth(0, " ")), tabWidth(data.sci.TabWidth()) {
     _mode   = data.sci.SelectionMode();

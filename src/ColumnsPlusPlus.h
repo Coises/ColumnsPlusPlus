@@ -94,12 +94,6 @@ inline std::wstring toWide(const std::string& s, unsigned int codepage) {
 
 class RectangularSelection;
 
-class RectangularBounds {
-public:
-    Scintilla::Position lineAnchor, lineCaret;
-    int pxAnchor, pxCaret;
-};
-
 class SearchSettings {
 public:
     std::wstring findWhat, replaceWith;
@@ -116,6 +110,7 @@ public:
     int dialogMinWidth;
     int dialogButtonLeft;
     int dialogComboWidth;
+    bool wrap = false;
     RECT dialogLastPosition = { 0, 0, 0, 0 };
     std::vector<std::wstring> findHistory;
     std::vector<std::wstring> replaceHistory;
@@ -158,12 +153,6 @@ public:
     bool     deleteWithoutLayoutChange = false;
     Scintilla::Position deleteWithoutLayoutChangePosition;
     Scintilla::Position deleteWithoutLayoutChangeLength;
-    struct {
-        RectangularBounds selection;                    // current or last rectangular selection used by search in this document
-        Scintilla::Position lastAnchor, lastCaret;      // last stream selection resulting from search in this document
-        enum { None, Find, Replace } lastMatch = None;  // last stream selection was from Find, was from Replace or is not valid
-        bool selectionValid = false;                    // rectangular selection is or is not valid
-    } search;
 };
 
 class ColumnsPlusPlusData {
@@ -188,6 +177,7 @@ public:
     SearchData            searchData;  // status and settings remembered for the Find/Replace dialog
     int disableOverSize   = 1000;      // active if greater than zero; if negative, inactive and is negative of last used setting   
     int disableOverLines  = 5000;      // active if greater than zero; if negative, inactive and is negative of last used setting
+    int searchIndicator   = 18;        // indicator number used for search indicator
     bool showOnMenuBar    = false;     // Show the Columns++ menu on the menu bar instead of the Plugins menu
     bool extendSingleLine = false;     // Extend single line selections to the last line
     bool extendFullLines  = false;     // Extend selections of full lines to the enclosing rectangle
@@ -255,15 +245,17 @@ public:
 
     RectangularSelection getRectangularSelection();
 
-    void syncFindButton(DocumentData& dd) {
+    bool searchRegionReady() {
+        if (sci.SelectionMode() != Scintilla::SelectionMode::Stream) return false;
+        if (sci.IndicatorValueAt(searchIndicator, 0)) return true;
+        return sci.IndicatorEnd(searchIndicator, 0) != sci.Length();
+    }
+
+    void syncFindButton() {
         if (searchData.dialog) {
             HWND findButton = GetDlgItem(searchData.dialog, IDOK);
-            Scintilla::Position anchor = sci.Anchor();
-            Scintilla::Position caret = sci.CurrentPos();
-            if (dd.search.selectionValid && (anchor == caret || (  anchor == dd.search.lastAnchor
-                                                                && caret  == dd.search.lastCaret)))
-                 SetWindowText(findButton, searchData.backward ? L"Find Previous" : L"Find Next" );
-            else SetWindowText(findButton, searchData.backward ? L"Find Last"     : L"Find First");
+            if (searchRegionReady() && !searchData.wrap) SetWindowText(findButton, searchData.backward ? L"Find Previous" : L"Find Next" );
+                                                    else SetWindowText(findButton, searchData.backward ? L"Find Last"     : L"Find First");
         }
     }
 
@@ -343,7 +335,6 @@ public:
 };
 
 
-//
 // RectangularSelection presents as a container of RectangularSelection_Row
 // instances, which in turn contain RectangularSelection_Cell instances.
 //
@@ -356,7 +347,7 @@ public:
 // within each line selection, since many commands need to do this.
 // 
 // Constructors and member functions that are not inline are in Rectangular.cpp.
-//
+
 
 class RectangularSelection_Row;
 class RectangularSelection_Row_Iterator;
@@ -402,9 +393,6 @@ public:
 
     RectangularSelection& extend(bool allowMultipleSelections = false);
     RectangularSelection& refit(bool addLine = false);
-
-    RectangularBounds getBounds() const;
-    bool loadBounds(const RectangularBounds& rb);
 
     const Corner& anchor() { return _anchor; }
     const Corner& caret () { return _caret;  }

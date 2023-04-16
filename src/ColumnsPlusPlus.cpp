@@ -250,7 +250,7 @@ void ColumnsPlusPlusData::scnModified(const Scintilla::NotificationData* scnp) {
 void ColumnsPlusPlusData::scnUpdateUI(const Scintilla::NotificationData* scnp) {
     DocumentData* ddp = getDocument(scnp);
     if (!ddp) return;
-    if (Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) syncFindButton(*ddp);
+    if (Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) syncFindButton();
     if (!ddp->settings.elasticEnabled) return;
     ddp->deleteWithoutLayoutChange = false;
     if (ddp->elasticAnalysisRequired || sci.Zoom() != ddp->tabZoom) analyzeTabstops(*ddp);

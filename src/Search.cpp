@@ -189,7 +189,7 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
             SendDlgItemMessage(hwndDlg, IDC_FIND_WHAT, CB_INSERTSTRING, 0, reinterpret_cast<LPARAM>(s.data()));
         for (const auto& s : searchData.replaceHistory)
             SendDlgItemMessage(hwndDlg, IDC_REPLACE_WITH, CB_INSERTSTRING, 0, reinterpret_cast<LPARAM>(s.data()));
-        syncFindButton(*getDocument());
+        syncFindButton();
         SendMessage(nppData._nppHandle, NPPM_MODELESSDIALOG, MODELESSDIALOGADD, reinterpret_cast<LPARAM>(hwndDlg));
         return TRUE;
     
@@ -199,6 +199,10 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
             updateSearchSettings(searchData);
             GetWindowRect(searchData.dialog, &searchData.dialogLastPosition);
             searchData.dialog = 0;
+            if (searchIndicator) {
+                sci.SetIndicatorCurrent(searchIndicator);
+                sci.IndicatorClearRange(0, sci.Length());
+            }
             SendMessage(nppData._nppHandle, NPPM_MODELESSDIALOG, MODELESSDIALOGREMOVE, reinterpret_cast<LPARAM>(hwndDlg));
             DestroyWindow(hwndDlg);
             return TRUE;
@@ -206,27 +210,27 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
             updateSearchSettings(searchData);
             updateFindHistory(searchData);
             searchFind();
-            syncFindButton(*getDocument());
+            syncFindButton();
             return TRUE;
         case IDC_SEARCH_COUNT:
             updateSearchSettings(searchData);
             updateFindHistory(searchData);
             searchCount();
-            syncFindButton(*getDocument());
+            syncFindButton();
             return TRUE;
         case IDC_SEARCH_REPLACE:
             updateSearchSettings(searchData);
             updateFindHistory(searchData);
             updateReplaceHistory(searchData);
             searchReplace();
-            syncFindButton(*getDocument());
+            syncFindButton();
             return TRUE;
         case IDC_SEARCH_REPLACE_ALL:
             updateSearchSettings(searchData);
             updateFindHistory(searchData);
             updateReplaceHistory(searchData);
             searchReplaceAll();
-            syncFindButton(*getDocument());
+            syncFindButton();
             return TRUE;
         case IDC_SEARCH_NORMAL:
         case IDC_SEARCH_EXTENDED:
@@ -236,7 +240,7 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
             break;
         case IDC_SEARCH_BACKWARD:
             updateSearchSettings(searchData);
-            syncFindButton(*getDocument());
+            syncFindButton();
             break;
         }
         break;
@@ -272,6 +276,10 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
         return TRUE;
     }
 
+    case WM_ACTIVATE:
+        if (LOWORD(wParam) == WA_INACTIVE) searchData.wrap = false;
+        break;
+
     default:
         break;
     
@@ -305,33 +313,23 @@ bool searchPrepare(ColumnsPlusPlusData& data, std::string* sciFind, std::string*
     return true;
 }
 
-RectangularSelection getSearchSelection(ColumnsPlusPlusData& data, DocumentData& dd) {
+bool convertSelectionToSearchRegion(ColumnsPlusPlusData& data) {
     RectangularSelection rs(data);
-    if (dd.search.selectionValid && rs.anchor().cp == rs.caret().cp && rs.anchor().vs == rs.caret().vs) {
-        dd.search.lastMatch = dd.search.None;
-        dd.search.lastAnchor = dd.search.lastCaret = rs.anchor().cp;
-        rs.loadBounds(dd.search.selection);
+    rs.extend(true);
+    if (!rs.size()) {
+        setSearchMessage(data, L"No selection in which to search.");
+        return false;
     }
-    else if (dd.search.selectionValid && dd.search.lastMatch != dd.search.None
-             && rs.anchor().cp == dd.search.lastAnchor && rs.caret().cp == dd.search.lastCaret
-             && rs.anchor().vs == 0 && rs.caret().vs == 0) {
-        rs.loadBounds(dd.search.selection);
-    }
-    else {
-        rs.extend();
-        if (rs.size()) {
-            dd.search.selection = rs.getBounds();
-            dd.search.selectionValid = true;
-            dd.search.lastMatch = dd.search.None;
-            dd.search.lastAnchor = dd.search.lastCaret = data.searchData.backward ? std::numeric_limits<Scintilla::Position>::max() : 0;
-        }
-        else {
-            dd.search.selectionValid = false;
-            dd.search.lastMatch = dd.search.None;
-            setSearchMessage(data, L"No rectangular selection in which to search.");
-        }
-    }
-    return rs;
+    data.sci.IndicSetStyle(data.searchIndicator, Scintilla::IndicatorStyle::FullBox);
+    data.sci.IndicSetFore(data.searchIndicator, 0x007799);
+    data.sci.IndicSetAlpha(data.searchIndicator, static_cast<Scintilla::Alpha>(48));
+    data.sci.IndicSetOutlineAlpha(data.searchIndicator, static_cast<Scintilla::Alpha>(48));
+    data.sci.IndicSetUnder(data.searchIndicator, true);
+    data.sci.SetIndicatorCurrent(data.searchIndicator);
+    data.sci.SetIndicatorValue(1);
+    data.sci.IndicatorClearRange(0, data.sci.Length());
+    for (const auto& row : rs) data.sci.IndicatorFillRange(row.cpMin(), row.cpMax() - row.cpMin());
+    return true;
 }
 
 void showRange(ColumnsPlusPlusData& data, Scintilla::Position foundStart, Scintilla::Position foundEnd) {
@@ -361,32 +359,34 @@ void showRange(ColumnsPlusPlusData& data, Scintilla::Position foundStart, Scinti
 }
 
 void ColumnsPlusPlusData::searchCount() {
-    DocumentData& dd = *getDocument();
     std::string sciFind;
     if (!searchPrepare(*this, &sciFind)) return;
-    RectangularSelection rs = getSearchSelection(*this, dd);
-    if (!dd.search.selectionValid) return;
+    if (!searchRegionReady()) {
+        if (!convertSelectionToSearchRegion(*this)) return;
+        searchData.wrap = false;
+    }
+    Scintilla::Position documentLength = sci.Length();
     int count = 0;
-    for (auto row : rs) {
-        Scintilla::Position cpMin = row.cpMin();
-        Scintilla::Position cpMax = row.cpMax();
-        for (;;) {
-            sci.SetTargetRange(cpMin, cpMax);
-            Scintilla::Position found = sci.SearchInTarget(sciFind);
-            if (found == -1) break;
-            if (found < -1) {
-                if (found == -2) {
-                    setSearchMessage(*this, L"Invalid regular expression.");
-                    SetFocus(GetDlgItem(searchData.dialog, IDC_FIND_WHAT));
+    for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < documentLength; cpFrom = cpTo) {
+        cpTo = sci.IndicatorEnd(searchIndicator, cpFrom);
+        if (sci.IndicatorValueAt(searchIndicator, cpFrom)) {
+            while (cpFrom < cpTo) {
+                sci.SetTargetRange(cpFrom, cpTo);
+                Scintilla::Position found = sci.SearchInTarget(sciFind);
+                if (found == -1) break;
+                if (found < -1) {
+                    if (found == -2) {
+                        setSearchMessage(*this, L"Invalid regular expression.");
+                        SetFocus(GetDlgItem(searchData.dialog, IDC_FIND_WHAT));
+                    }
+                    else setSearchMessage(*this, L"An unidentified error occurred (SEARCHINTARGET returned "
+                                                 + std::to_wstring(found) + L").");
+                    return;
                 }
-                else setSearchMessage(*this, L"An unidentified error occurred (SEARCHINTARGET returned "
-                                             + std::to_wstring(found) + L").");
-                return;
+                ++count;
+                Scintilla::Position targetEnd = sci.TargetEnd();
+                cpFrom = cpFrom == targetEnd ? cpFrom + 1 : targetEnd;
             }
-            ++count;
-            Scintilla::Position targetEnd = sci.TargetEnd();
-            cpMin = cpMin == targetEnd ? cpMin + 1 : targetEnd;
-            if (cpMin >= cpMax) break;
         }
     }
     setSearchMessage(*this, count == 0 ? L"No matches found in selection."
@@ -395,69 +395,64 @@ void ColumnsPlusPlusData::searchCount() {
 }
 
 void ColumnsPlusPlusData::searchFind() {
-    DocumentData& dd = *getDocument();
     std::string sciFind;
     if (!searchPrepare(*this, &sciFind)) return;
-    RectangularSelection rs = getSearchSelection(*this, dd);
-    if (!dd.search.selectionValid) return;
-    Scintilla::Position searchFrom = searchData.backward && searchData.mode != SearchData::Regex ? dd.search.lastAnchor : dd.search.lastCaret;
-    rs.reverse(searchData.backward);
-    for (auto row : rs) {
-        Scintilla::Position cpMin = row.cpMin();
-        Scintilla::Position cpMax = row.cpMax();
-        if (!searchData.backward) {
-            if (cpMax <= searchFrom) continue;
-            sci.SetTargetRange(std::max(searchFrom, cpMin), cpMax);
-        }
-        else if (searchData.mode == SearchData::Regex) {
-            if (cpMin > searchFrom || cpMax == searchFrom) continue;
-            sci.SetTargetRange(cpMax < searchFrom ? cpMin : std::max(searchFrom, cpMin), cpMax);
-        }
-        else {
-            if (cpMin >= searchFrom) continue;
-            sci.SetTargetRange(std::min(searchFrom, cpMax), cpMin);
-        }
-        Scintilla::Position found = sci.SearchInTarget(sciFind);
-        if (found >= 0) {
-            dd.search.lastAnchor = sci.TargetStart();
-            dd.search.lastCaret  = sci.TargetEnd();
-            dd.search.lastMatch  = dd.search.Find;
-            showRange(*this, dd.search.lastAnchor, dd.search.lastCaret);
-            setSearchMessage(*this, L"");
-            return;
-        }
-        if (found < -1) {
-            if (found == -2) {
-                setSearchMessage(*this, L"Invalid regular expression.");
-                SetFocus(GetDlgItem(searchData.dialog, IDC_FIND_WHAT));
-            }
-            else setSearchMessage(*this, L"An unidentified error occurred (SEARCHINTARGET returned "
-                                         + std::to_wstring(found) + L").");
-            return;
-        }
+    bool fullSearch = searchData.wrap;
+    Scintilla::Position documentLength = sci.Length();
+    if (!searchRegionReady()) {
+        if (!convertSelectionToSearchRegion(*this)) return;
+        fullSearch = true;
     }
-    dd.search.lastMatch = dd.search.None;
-    setSearchMessage(*this, searchFrom == 0 || searchFrom == std::numeric_limits<Scintilla::Position>::max()
-                            ? L"No matches found in selection." : L"No more matches found in selection.");
+    searchData.wrap = false;
+    Scintilla::Position cpFrom = fullSearch ? (searchData.backward ? documentLength : 0) 
+                               : searchData.backward ? std::min(sci.Anchor(), sci.CurrentPos())
+                               : std::max(sci.Anchor(), sci.CurrentPos());
+    Scintilla::Position cpTo;
+    for (;;) {
+        cpTo = searchData.backward ? sci.IndicatorStart(searchIndicator, cpFrom - 1) : sci.IndicatorEnd(searchIndicator, cpFrom);
+        if (sci.IndicatorValueAt(searchIndicator, searchData.backward ? cpTo : cpFrom)) {
+            sci.SetTargetRange(cpFrom, cpTo);
+            Scintilla::Position found = sci.SearchInTarget(sciFind);
+            if (found >= 0) {
+                showRange(*this, sci.TargetStart(), sci.TargetEnd());
+                setSearchMessage(*this, L"");
+                return;
+            }
+            if (found < -1) {
+                if (found == -2) {
+                    setSearchMessage(*this, L"Invalid regular expression.");
+                    SetFocus(GetDlgItem(searchData.dialog, IDC_FIND_WHAT));
+                }
+                else setSearchMessage(*this, L"An unidentified error occurred (SEARCHINTARGET returned "
+                    + std::to_wstring(found) + L").");
+                return;
+            }
+        }
+        if (searchData.backward ? cpTo == 0 : cpTo == documentLength) break;
+        cpFrom = cpTo;
+    }
+    setSearchMessage(*this, fullSearch ? L"No matches found in selection." : L"No more matches found in selection.");
+    searchData.wrap = true;
 }
 
 void ColumnsPlusPlusData::searchReplace() {
-    DocumentData& dd = *getDocument();
-    if (!dd.search.selectionValid || dd.search.lastMatch != dd.search.Find) return searchFind();
-    RectangularSelection rs(*this);
-    if (rs.anchor().cp != dd.search.lastAnchor || rs.caret().cp != dd.search.lastCaret
-        || rs.anchor().vs != 0 || rs.caret().vs != 0) return searchFind();
+    if (!searchRegionReady()) return searchFind();
     std::string sciFind, sciRepl;
     if (!searchPrepare(*this, &sciFind, &sciRepl)) return;
-    sci.SetTargetRange(dd.search.lastAnchor, dd.search.lastCaret);
+    Scintilla::Position anchor = sci.Anchor();
+    Scintilla::Position caret = sci.CurrentPos();
+    sci.SetTargetRange(anchor, caret);
     Scintilla::Position found = sci.SearchInTarget(sciFind);
-    if (found == dd.search.lastAnchor && sci.TargetEnd() == dd.search.lastCaret) {
-        dd.search.lastCaret = ( searchData.mode == SearchData::Regex ? sci.ReplaceTargetRE(sciRepl)
-                                                                     : sci.ReplaceTarget(sciRepl) )
-                            + dd.search.lastAnchor;
-        dd.search.lastMatch = dd.search.Replace;
-        showRange(*this, dd.search.lastAnchor, dd.search.lastCaret);
+    if (found == anchor && sci.TargetEnd() == caret) {
+        Scintilla::Position replacementLength = searchData.mode == SearchData::Regex ? sci.ReplaceTargetRE(sciRepl)
+                                                                                     : sci.ReplaceTarget(sciRepl);
+        sci.SetIndicatorCurrent(searchIndicator);
+        sci.SetIndicatorValue(1);
+        sci.IndicatorFillRange(anchor, replacementLength);
+        caret = anchor + replacementLength;
+        showRange(*this, anchor, caret);
         setSearchMessage(*this, L"Match replaced.");
+        searchData.wrap = false;
         return;
     }
     if (found >= -1) return searchFind();
@@ -471,45 +466,49 @@ void ColumnsPlusPlusData::searchReplace() {
 }
 
 void ColumnsPlusPlusData::searchReplaceAll() {
-    DocumentData& dd = *getDocument();
     std::string sciFind, sciRepl;
     if (!searchPrepare(*this, &sciFind, &sciRepl)) return;
-    auto rs = getSearchSelection(*this, dd);
-    if (!dd.search.selectionValid) return;
+    if (!searchRegionReady()) {
+        if (!convertSelectionToSearchRegion(*this)) return;
+        searchData.wrap = false;
+    }
     int count = 0;
     sci.BeginUndoAction();
-    for (auto row : rs) {
-        Scintilla::Position cpMin = row.cpMin();
-        Scintilla::Position cpMax = row.cpMax();
-        for (;;) {
-            sci.SetTargetRange(cpMin, cpMax);
-            Scintilla::Position found = sci.SearchInTarget(sciFind);
-            if (found == -1) break;
-            if (found < -1) {
-                if (found == -2) {
-                    setSearchMessage(*this, L"Invalid regular expression.");
-                    SetFocus(GetDlgItem(searchData.dialog, IDC_FIND_WHAT));
+    for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < sci.Length(); cpFrom = cpTo) {
+        cpTo = sci.IndicatorEnd(searchIndicator, cpFrom);
+        if (sci.IndicatorValueAt(searchIndicator, cpFrom)) {
+            while (cpFrom < cpTo) {
+                sci.SetTargetRange(cpFrom, cpTo);
+                Scintilla::Position found = sci.SearchInTarget(sciFind);
+                if (found == -1) break;
+                if (found < -1) {
+                    if (found == -2) {
+                        setSearchMessage(*this, L"Invalid regular expression.");
+                        SetFocus(GetDlgItem(searchData.dialog, IDC_FIND_WHAT));
+                    }
+                    else setSearchMessage(*this, L"An unidentified error occurred (SEARCHINTARGET returned "
+                        + std::to_wstring(found) + L").");
+                    return;
                 }
-                else setSearchMessage(*this, L"An unidentified error occurred (SEARCHINTARGET returned "
-                                             + std::to_wstring(found) + L").");
-                return;
+                ++count;
+                Scintilla::Position oldLength = sci.TargetEnd() - found;
+                Scintilla::Position newLength = searchData.mode == SearchData::Regex ? sci.ReplaceTargetRE(sciRepl)
+                                                                                     : sci.ReplaceTarget(sciRepl);
+                cpFrom = found + newLength;
+                cpTo += newLength - oldLength;
+                sci.SetIndicatorCurrent(searchIndicator);
+                sci.SetIndicatorValue(1);
+                sci.IndicatorFillRange(found, newLength);
             }
-            Scintilla::Position oldLength = sci.TargetEnd() - found;
-            Scintilla::Position newLength = searchData.mode == SearchData::Regex ? sci.ReplaceTargetRE(sciRepl)
-                                                                                 : sci.ReplaceTarget(sciRepl);
-            ++count;
-            cpMin = found + newLength;
-            cpMax = cpMax + newLength - oldLength;
-            if (cpMin >= cpMax) break;
         }
     }
     sci.EndUndoAction();
     if (count > 0) {
         if (settings.elasticEnabled) {
+            DocumentData& dd = *getDocument();
             analyzeTabstops(dd);
             setTabstops(dd);
         }
-        rs.loadBounds(dd.search.selection);
     }
     setSearchMessage(*this, count == 0 ? L"No matches found in selection."
                           : count == 1 ? L"One replacement made in selection."
