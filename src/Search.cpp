@@ -314,11 +314,13 @@ bool searchPrepare(ColumnsPlusPlusData& data, std::string* sciFind, std::string*
 }
 
 bool convertSelectionToSearchRegion(ColumnsPlusPlusData& data) {
-    RectangularSelection rs(data);
-    rs.extend(true);
-    if (!rs.size()) {
-        setSearchMessage(data, L"No selection in which to search.");
-        return false;
+    if (data.sci.Selections() < 2 || data.sci.SelectionMode() != Scintilla::SelectionMode::Stream) {
+        RectangularSelection rs(data);
+        rs.extend();
+        if (!rs.size()) {
+            setSearchMessage(data, L"No rectangular or multiple selection in which to search.");
+            return false;
+        }
     }
     data.sci.IndicSetStyle(data.searchIndicator, Scintilla::IndicatorStyle::FullBox);
     data.sci.IndicSetFore(data.searchIndicator, 0x007799);
@@ -328,7 +330,8 @@ bool convertSelectionToSearchRegion(ColumnsPlusPlusData& data) {
     data.sci.SetIndicatorCurrent(data.searchIndicator);
     data.sci.SetIndicatorValue(1);
     data.sci.IndicatorClearRange(0, data.sci.Length());
-    for (const auto& row : rs) data.sci.IndicatorFillRange(row.cpMin(), row.cpMax() - row.cpMin());
+    int n = data.sci.Selections();
+    for (int i = 0; i < n; ++i) data.sci.IndicatorFillRange(data.sci.SelectionNStart(i), data.sci.SelectionNEnd(i) - data.sci.SelectionNStart(i));
     return true;
 }
 

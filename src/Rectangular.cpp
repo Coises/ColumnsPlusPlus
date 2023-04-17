@@ -260,7 +260,7 @@ RectangularSelection::RectangularSelection(ColumnsPlusPlusData& data)
 }
 
 
-RectangularSelection& RectangularSelection::extend(bool allowMultipleSelections) {
+RectangularSelection& RectangularSelection::extend() {
 
     if (_mode == Scintilla::SelectionMode::Rectangle || _mode == Scintilla::SelectionMode::Thin) {
 
@@ -344,7 +344,6 @@ RectangularSelection& RectangularSelection::extend(bool allowMultipleSelections)
     }
 
     if (data.sci.Selections() != 1) { 
-        if (allowMultipleSelections) return *this;
         MessageBox(data.nppData._nppHandle, L"This command requires a rectangular selection.", L"Columns++ rectangular selection", MB_OK);
         _size = 0;
         return *this;

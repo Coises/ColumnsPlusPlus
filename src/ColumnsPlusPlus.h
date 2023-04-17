@@ -248,7 +248,7 @@ public:
     bool searchRegionReady() {
         if (sci.SelectionMode() != Scintilla::SelectionMode::Stream) return false;
         if (sci.IndicatorValueAt(searchIndicator, 0)) return true;
-        return sci.IndicatorEnd(searchIndicator, 0) != sci.Length();
+        return sci.IndicatorEnd(searchIndicator, 0) != 0 && sci.IndicatorEnd(searchIndicator, 0) != sci.Length();
     }
 
     void syncFindButton() {
@@ -391,7 +391,7 @@ public:
     RectangularSelection& reverse()         { _reverse = !_reverse;            return *this;}
     RectangularSelection& reverse(bool yes) { _reverse = yes == topToBottom(); return *this;}
 
-    RectangularSelection& extend(bool allowMultipleSelections = false);
+    RectangularSelection& extend();
     RectangularSelection& refit(bool addLine = false);
 
     const Corner& anchor() { return _anchor; }
