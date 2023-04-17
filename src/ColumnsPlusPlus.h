@@ -98,18 +98,23 @@ class SearchSettings {
 public:
     std::wstring findWhat, replaceWith;
     enum {Normal = 0, Extended = 1, Regex = 2} mode = Normal;
-    bool backward   = false;
-    bool wholeWord  = false;
-    bool matchCase  = false;
+    bool backward        = false;
+    bool wholeWord       = false;
+    bool matchCase       = false;
+    bool autoClear       = true;
+    int  indicator       = 18;
+    int  customAlpha     = 48;
+    int  customColor     = 0x007898;
+    int  customIndicator = 18;
 };
 
 class SearchData : public SearchSettings {
 public:
     HWND dialog = 0;
-    int dialogHeight;
-    int dialogMinWidth;
-    int dialogButtonLeft;
-    int dialogComboWidth;
+    int  dialogHeight;
+    int  dialogMinWidth;
+    int  dialogButtonLeft;
+    int  dialogComboWidth;
     bool wrap = false;
     RECT dialogLastPosition = { 0, 0, 0, 0 };
     std::vector<std::wstring> findHistory;
@@ -177,7 +182,6 @@ public:
     SearchData            searchData;  // status and settings remembered for the Find/Replace dialog
     int disableOverSize   = 1000;      // active if greater than zero; if negative, inactive and is negative of last used setting   
     int disableOverLines  = 5000;      // active if greater than zero; if negative, inactive and is negative of last used setting
-    int searchIndicator   = 18;        // indicator number used for search indicator
     bool showOnMenuBar    = false;     // Show the Columns++ menu on the menu bar instead of the Plugins menu
     bool extendSingleLine = false;     // Extend single line selections to the last line
     bool extendFullLines  = false;     // Extend selections of full lines to the enclosing rectangle
@@ -247,8 +251,8 @@ public:
 
     bool searchRegionReady() {
         if (sci.SelectionMode() != Scintilla::SelectionMode::Stream) return false;
-        if (sci.IndicatorValueAt(searchIndicator, 0)) return true;
-        return sci.IndicatorEnd(searchIndicator, 0) != 0 && sci.IndicatorEnd(searchIndicator, 0) != sci.Length();
+        if (sci.IndicatorValueAt(searchData.indicator, 0)) return true;
+        return sci.IndicatorEnd(searchData.indicator, 0) != 0 && sci.IndicatorEnd(searchData.indicator, 0) != sci.Length();
     }
 
     void syncFindButton() {

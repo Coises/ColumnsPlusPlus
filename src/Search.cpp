@@ -34,6 +34,12 @@ INT_PTR CALLBACK searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM
 }
 
 void ColumnsPlusPlusData::showSearchDialog() {
+    if (searchData.customIndicator > 0) {
+        sci.IndicSetStyle(searchData.customIndicator, Scintilla::IndicatorStyle::FullBox);
+        sci.IndicSetFore (searchData.customIndicator, searchData.customColor);
+        sci.IndicSetAlpha(searchData.customIndicator, static_cast<Scintilla::Alpha>(searchData.customAlpha));
+        sci.IndicSetUnder(searchData.customIndicator, true);
+    }
     if (searchData.dialog) if (SetFocus(searchData.dialog)) return;
     CreateDialogParam(dllInstance, MAKEINTRESOURCE(IDD_SEARCH), nppData._nppHandle,
                       ::searchDialogProc, reinterpret_cast<LPARAM>(this));
@@ -106,9 +112,10 @@ void updateSearchSettings(SearchData& searchData) {
         SendDlgItemMessage(searchData.dialog, IDC_SEARCH_NORMAL  , BM_GETCHECK, 0, 0) == BST_CHECKED ? SearchData::Normal
       : SendDlgItemMessage(searchData.dialog, IDC_SEARCH_EXTENDED, BM_GETCHECK, 0, 0) == BST_CHECKED ? SearchData::Extended
                                                                                                      : SearchData::Regex;
-    searchData.backward  = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_BACKWARD   , BM_GETCHECK, 0, 0) == BST_CHECKED;
-    searchData.wholeWord = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_WHOLE_WORD , BM_GETCHECK, 0, 0) == BST_CHECKED;
-    searchData.matchCase = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_MATCH_CASE , BM_GETCHECK, 0, 0) == BST_CHECKED;
+    searchData.backward  = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_BACKWARD           , BM_GETCHECK, 0, 0) == BST_CHECKED;
+    searchData.wholeWord = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_WHOLE_WORD         , BM_GETCHECK, 0, 0) == BST_CHECKED;
+    searchData.matchCase = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_MATCH_CASE         , BM_GETCHECK, 0, 0) == BST_CHECKED;
+    searchData.autoClear = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_INDICATOR_AUTOCLEAR, BM_GETCHECK, 0, 0) == BST_CHECKED;
 }
 
 void updateSearchHistory(HWND dialog, int control, const std::wstring& string, std::vector<std::wstring>& history) {
@@ -155,14 +162,10 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
             searchData.dialogButtonLeft = rcDlg.right - rcFindButton.left;
             searchData.dialogComboWidth = searchData.dialogMinWidth - (rcFindWhat.right - rcFindWhat.left);
             if (searchData.dialogLastPosition.top == searchData.dialogLastPosition.bottom) /* Center dialog on parent window */ {
-                RECT rc, rcOwner;
-                HWND owner = GetParent(hwndDlg);
-                GetWindowRect(owner ? owner : GetDesktopWindow(), &rcOwner);
-                CopyRect(&rc, &rcOwner);
-                OffsetRect(&rcDlg, -rcDlg.left, -rcDlg.top);
-                OffsetRect(&rc, -rc.left, -rc.top);
-                OffsetRect(&rc, -rcDlg.right, -rcDlg.bottom);
-                SetWindowPos(hwndDlg, HWND_TOP, rcOwner.left + rc.right / 2, rcOwner.top + rc.bottom / 2, 0, 0, SWP_NOSIZE);
+                RECT rcNpp;
+                GetWindowRect(nppData._nppHandle, &rcNpp);
+                SetWindowPos(hwndDlg, HWND_TOP, (rcNpp.left + rcNpp.right + rcDlg.left - rcDlg.right) / 2,
+                    (rcNpp.top + rcNpp.bottom + rcDlg.top - rcDlg.bottom) / 2, 0, 0, SWP_NOSIZE);
             }
             else /* restore last position */
                 SetWindowPos(hwndDlg, HWND_TOP, searchData.dialogLastPosition.left, searchData.dialogLastPosition.top,
@@ -189,6 +192,24 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
             SendDlgItemMessage(hwndDlg, IDC_FIND_WHAT, CB_INSERTSTRING, 0, reinterpret_cast<LPARAM>(s.data()));
         for (const auto& s : searchData.replaceHistory)
             SendDlgItemMessage(hwndDlg, IDC_REPLACE_WITH, CB_INSERTSTRING, 0, reinterpret_cast<LPARAM>(s.data()));
+        SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Find Mark Style"));
+        SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Mark Style 1"));
+        SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Mark Style 2"));
+        SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Mark Style 3"));
+        SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Mark Style 4"));
+        SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Mark Style 5"));
+        if (searchData.customIndicator > 0)
+            SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Custom Style"));
+        switch (searchData.indicator) {
+        case 31: SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_SETCURSEL, 0, 0); break;
+        case 25: SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_SETCURSEL, 1, 0); break;
+        case 24: SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_SETCURSEL, 2, 0); break;
+        case 23: SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_SETCURSEL, 3, 0); break;
+        case 22: SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_SETCURSEL, 4, 0); break;
+        case 21: SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_SETCURSEL, 5, 0); break;
+        default: SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_SETCURSEL, 6, 0);
+        }
+        SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR_AUTOCLEAR, BM_SETCHECK, searchData.autoClear ? BST_CHECKED : BST_UNCHECKED, 0);
         syncFindButton();
         SendMessage(nppData._nppHandle, NPPM_MODELESSDIALOG, MODELESSDIALOGADD, reinterpret_cast<LPARAM>(hwndDlg));
         return TRUE;
@@ -199,8 +220,8 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
             updateSearchSettings(searchData);
             GetWindowRect(searchData.dialog, &searchData.dialogLastPosition);
             searchData.dialog = 0;
-            if (searchIndicator) {
-                sci.SetIndicatorCurrent(searchIndicator);
+            if (searchData.autoClear) {
+                sci.SetIndicatorCurrent(searchData.indicator);
                 sci.IndicatorClearRange(0, sci.Length());
             }
             SendMessage(nppData._nppHandle, NPPM_MODELESSDIALOG, MODELESSDIALOGREMOVE, reinterpret_cast<LPARAM>(hwndDlg));
@@ -242,6 +263,63 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
             updateSearchSettings(searchData);
             syncFindButton();
             break;
+        case IDC_SEARCH_INDICATOR_CLEARNOW:
+            sci.SetIndicatorCurrent(searchData.indicator);
+            sci.IndicatorClearRange(0, sci.Length());
+            break;
+        case IDC_SEARCH_INDICATOR:
+            if (HIWORD(wParam) == CBN_SELCHANGE) {
+                auto i = SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_GETCURSEL, 0, 0);
+                switch (i) {
+                case 0 : searchData.indicator = 31; searchData.autoClear = false; break;
+                case 1 : searchData.indicator = 25; searchData.autoClear = false; break;
+                case 2 : searchData.indicator = 24; searchData.autoClear = false; break;
+                case 3 : searchData.indicator = 23; searchData.autoClear = false; break;
+                case 4 : searchData.indicator = 22; searchData.autoClear = false; break;
+                case 5 : searchData.indicator = 21; searchData.autoClear = false; break;
+                default: searchData.indicator = searchData.customIndicator; searchData.autoClear = true;
+                }
+                SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR_AUTOCLEAR, BM_SETCHECK, searchData.autoClear ? BST_CHECKED : BST_UNCHECKED, 0);
+            }
+            break;
+        }
+        break;
+
+    case WM_DRAWITEM:
+        if (wParam == IDC_SEARCH_INDICATOR) {
+            const DRAWITEMSTRUCT& dis = *reinterpret_cast<DRAWITEMSTRUCT*>(lParam);
+            int indicator;
+            switch (dis.itemID) {
+            case 0 : indicator = 31; break;
+            case 1 : indicator = 25; break;
+            case 2 : indicator = 24; break;
+            case 3 : indicator = 23; break;
+            case 4 : indicator = 22; break;
+            case 5 : indicator = 21; break;
+            default: indicator = searchData.customIndicator;
+            }
+            RECT rect = dis.rcItem;
+            int margin = (rect.bottom - rect.top) / 8;
+            int side = rect.bottom - rect.top - 2 * margin;
+            RECT square = {rect.left + margin,  rect.top + margin, rect.left + margin + side, rect.bottom - margin };
+            Scintilla::Colour pageColor = sci.StyleGetBack(0);
+            Scintilla::Colour indicatorColor = sci.IndicGetFore(indicator);
+            int indicatorAlpha = static_cast<int>(sci.IndicGetAlpha(indicator));
+            unsigned int ir = indicatorColor & 255;
+            unsigned int ig = (indicatorColor >> 8) & 255;
+            unsigned int ib = (indicatorColor >> 16) & 255;
+            unsigned int pr = pageColor & 255;
+            unsigned int pg = (pageColor >> 8) & 255;
+            unsigned int pb = (pageColor >> 16) & 255;
+            ir = (indicatorAlpha * ir + (255 - indicatorAlpha) * pr) / 255;
+            ig = (indicatorAlpha * ig + (255 - indicatorAlpha) * pg) / 255;
+            ib = (indicatorAlpha * ib + (255 - indicatorAlpha) * pb) / 255;
+            unsigned int iColor = ir + (ig << 8) + (ib << 16);
+            HBRUSH brush = CreateSolidBrush(iColor);
+            FillRect(dis.hDC, &square, brush);
+            DeleteObject(brush);
+            rect.left += side + 3 * margin;
+            DrawText(dis.hDC, reinterpret_cast<LPCTSTR>(dis.itemData), -1, &rect, DT_LEFT | DT_SINGLELINE | DT_VCENTER);
         }
         break;
 
@@ -322,14 +400,9 @@ bool convertSelectionToSearchRegion(ColumnsPlusPlusData& data) {
             return false;
         }
     }
-    data.sci.IndicSetStyle(data.searchIndicator, Scintilla::IndicatorStyle::FullBox);
-    data.sci.IndicSetFore(data.searchIndicator, 0x007799);
-    data.sci.IndicSetAlpha(data.searchIndicator, static_cast<Scintilla::Alpha>(48));
-    data.sci.IndicSetOutlineAlpha(data.searchIndicator, static_cast<Scintilla::Alpha>(48));
-    data.sci.IndicSetUnder(data.searchIndicator, true);
-    data.sci.SetIndicatorCurrent(data.searchIndicator);
+    data.sci.SetIndicatorCurrent(data.searchData.indicator);
+    if (data.searchData.autoClear) data.sci.IndicatorClearRange(0, data.sci.Length());
     data.sci.SetIndicatorValue(1);
-    data.sci.IndicatorClearRange(0, data.sci.Length());
     int n = data.sci.Selections();
     for (int i = 0; i < n; ++i) data.sci.IndicatorFillRange(data.sci.SelectionNStart(i), data.sci.SelectionNEnd(i) - data.sci.SelectionNStart(i));
     return true;
@@ -371,8 +444,8 @@ void ColumnsPlusPlusData::searchCount() {
     Scintilla::Position documentLength = sci.Length();
     int count = 0;
     for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < documentLength; cpFrom = cpTo) {
-        cpTo = sci.IndicatorEnd(searchIndicator, cpFrom);
-        if (sci.IndicatorValueAt(searchIndicator, cpFrom)) {
+        cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
+        if (sci.IndicatorValueAt(searchData.indicator, cpFrom)) {
             while (cpFrom < cpTo) {
                 sci.SetTargetRange(cpFrom, cpTo);
                 Scintilla::Position found = sci.SearchInTarget(sciFind);
@@ -412,8 +485,8 @@ void ColumnsPlusPlusData::searchFind() {
                                : std::max(sci.Anchor(), sci.CurrentPos());
     Scintilla::Position cpTo;
     for (;;) {
-        cpTo = searchData.backward ? sci.IndicatorStart(searchIndicator, cpFrom - 1) : sci.IndicatorEnd(searchIndicator, cpFrom);
-        if (sci.IndicatorValueAt(searchIndicator, searchData.backward ? cpTo : cpFrom)) {
+        cpTo = searchData.backward ? sci.IndicatorStart(searchData.indicator, cpFrom - 1) : sci.IndicatorEnd(searchData.indicator, cpFrom);
+        if (sci.IndicatorValueAt(searchData.indicator, searchData.backward ? cpTo : cpFrom)) {
             sci.SetTargetRange(cpFrom, cpTo);
             Scintilla::Position found = sci.SearchInTarget(sciFind);
             if (found >= 0) {
@@ -449,7 +522,7 @@ void ColumnsPlusPlusData::searchReplace() {
     if (found == anchor && sci.TargetEnd() == caret) {
         Scintilla::Position replacementLength = searchData.mode == SearchData::Regex ? sci.ReplaceTargetRE(sciRepl)
                                                                                      : sci.ReplaceTarget(sciRepl);
-        sci.SetIndicatorCurrent(searchIndicator);
+        sci.SetIndicatorCurrent(searchData.indicator);
         sci.SetIndicatorValue(1);
         sci.IndicatorFillRange(anchor, replacementLength);
         caret = anchor + replacementLength;
@@ -478,8 +551,8 @@ void ColumnsPlusPlusData::searchReplaceAll() {
     int count = 0;
     sci.BeginUndoAction();
     for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < sci.Length(); cpFrom = cpTo) {
-        cpTo = sci.IndicatorEnd(searchIndicator, cpFrom);
-        if (sci.IndicatorValueAt(searchIndicator, cpFrom)) {
+        cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
+        if (sci.IndicatorValueAt(searchData.indicator, cpFrom)) {
             while (cpFrom < cpTo) {
                 sci.SetTargetRange(cpFrom, cpTo);
                 Scintilla::Position found = sci.SearchInTarget(sciFind);
@@ -499,7 +572,7 @@ void ColumnsPlusPlusData::searchReplaceAll() {
                                                                                      : sci.ReplaceTarget(sciRepl);
                 cpFrom = found + newLength;
                 cpTo += newLength - oldLength;
-                sci.SetIndicatorCurrent(searchIndicator);
+                sci.SetIndicatorCurrent(searchData.indicator);
                 sci.SetIndicatorValue(1);
                 sci.IndicatorFillRange(found, newLength);
             }

@@ -105,9 +105,10 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 std::string setting = match[1];
                 std::string value = match[2];
                 strlwr(setting.data());
-                if      (setting == "backward" ) searchData.backward  = value != "0";
-                else if (setting == "wholeword") searchData.wholeWord = value != "0";
-                else if (setting == "matchcase") searchData.matchCase = value != "0";
+                if      (setting == "backward"       ) searchData.backward  = value != "0";
+                else if (setting == "wholeword"      ) searchData.wholeWord = value != "0";
+                else if (setting == "matchcase"      ) searchData.matchCase = value != "0";
+                else if (setting == "autoClear"      ) searchData.matchCase = value != "0";
                 else if (setting == "find") {
                     if (value.length() > 2 && value.front() == '\\' && value.back() == '\\') {
                         std::wstring s = toWide(value.substr(1, value.length() - 2), CP_UTF8);
@@ -139,6 +140,10 @@ void ColumnsPlusPlusData::loadConfiguration() {
                                         : i == SearchSettings::Regex    ? SearchSettings::Regex
                                                                         : SearchSettings::Normal;
                     }
+                    else if (setting == "indicator"      ) searchData.indicator       = std::stoi(value);
+                    else if (setting == "customalpha"    ) searchData.customAlpha     = std::stoi(value);
+                    else if (setting == "customcolor"    ) searchData.customColor     = std::stoi(value);
+                    else if (setting == "customindicator") searchData.customIndicator = std::stoi(value);
                 }
             }
             else if (readingSection == sectionProfile) {
@@ -205,10 +210,15 @@ void ColumnsPlusPlusData::saveConfiguration() {
 
     file << std::endl << "Search" << std::endl << std::endl;
 
-    file << "mode\t"      << searchData.mode      << std::endl;
-    file << "backward\t"  << searchData.backward  << std::endl;
-    file << "wholeWord\t" << searchData.wholeWord << std::endl;
-    file << "matchCase\t" << searchData.matchCase << std::endl;
+    file << "mode\t"            << searchData.mode            << std::endl;
+    file << "backward\t"        << searchData.backward        << std::endl;
+    file << "wholeWord\t"       << searchData.wholeWord       << std::endl;
+    file << "matchCase\t"       << searchData.matchCase       << std::endl;
+    file << "autoClear\t"       << searchData.autoClear       << std::endl;
+    file << "indicator\t"       << searchData.indicator       << std::endl;
+    file << "customAlpha\t"     << searchData.customAlpha     << std::endl;
+    file << "customColor\t"     << searchData.customColor     << std::endl;
+    file << "customIndicator\t" << searchData.customIndicator << std::endl;
 
     for (auto it = searchData.findHistory.size() > 16 ? searchData.findHistory.end() - 16 : searchData.findHistory.begin();
         it != searchData.findHistory.end(); ++it) {

@@ -40,6 +40,22 @@ void ColumnsPlusPlusData::showOptionsDialog() {
     }
 }
 
+int validateSpin(HWND hwndDlg, int control, const wchar_t* message) {
+    int n = static_cast<int>(SendDlgItemMessage(hwndDlg, control, UDM_GETPOS, 0, 0));
+    if (HIWORD(n)) {
+        HWND edit = reinterpret_cast<HWND>(SendDlgItemMessage(hwndDlg, control, UDM_GETBUDDY, 0, 0));
+        EDITBALLOONTIP ebt;
+        ebt.cbStruct = sizeof(EDITBALLOONTIP);
+        ebt.pszTitle = L"";
+        ebt.ttiIcon = TTI_NONE;
+        ebt.pszText = message;
+        SendMessage(edit, EM_SHOWBALLOONTIP, 0, reinterpret_cast<LPARAM>(&ebt));
+        SendMessage(hwndDlg, WM_NEXTDLGCTL, reinterpret_cast<WPARAM>(edit), TRUE);
+        return -1;
+    }
+    return n;
+}
+
 BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM) {
 
     switch (uMsg) {
@@ -58,6 +74,22 @@ BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_SINGLELINE, BM_SETCHECK, extendSingleLine ? BST_CHECKED : BST_UNCHECKED, 0);
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_ROWS      , BM_SETCHECK, extendFullLines  ? BST_CHECKED : BST_UNCHECKED, 0);
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_ZEROWIDTH , BM_SETCHECK, extendZeroWidth  ? BST_CHECKED : BST_UNCHECKED, 0);
+            SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_ENABLED, BM_SETCHECK, searchData.customIndicator > 0  ? BST_CHECKED : BST_UNCHECKED, 0);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_OPTIONS_INDICATOR_NUMBER), searchData.customIndicator > 0  ? TRUE : FALSE);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_OPTIONS_INDICATOR_ALPHA ), searchData.customIndicator > 0  ? TRUE : FALSE);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_OPTIONS_INDICATOR_RED   ), searchData.customIndicator > 0  ? TRUE : FALSE);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_OPTIONS_INDICATOR_GREEN ), searchData.customIndicator > 0  ? TRUE : FALSE);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_OPTIONS_INDICATOR_BLUE  ), searchData.customIndicator > 0  ? TRUE : FALSE);
+            SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_NUMBER_SPIN, UDM_SETRANGE, 0, MAKELPARAM( 20, 8));
+            SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_ALPHA_SPIN , UDM_SETRANGE, 0, MAKELPARAM(255, 0));
+            SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_RED_SPIN   , UDM_SETRANGE, 0, MAKELPARAM(255, 0));
+            SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_GREEN_SPIN , UDM_SETRANGE, 0, MAKELPARAM(255, 0));
+            SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_BLUE_SPIN  , UDM_SETRANGE, 0, MAKELPARAM(255, 0));
+            SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_NUMBER_SPIN, UDM_SETPOS, 0, std::abs(searchData.customIndicator));
+            SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_ALPHA_SPIN , UDM_SETPOS, 0, searchData.customAlpha);
+            SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_RED_SPIN   , UDM_SETPOS, 0, 255 & searchData.customColor);
+            SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_GREEN_SPIN , UDM_SETPOS, 0, 255 & (searchData.customColor >> 8));
+            SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_BLUE_SPIN  , UDM_SETPOS, 0, 255 & (searchData.customColor >> 16));
             return TRUE;
         }
 
@@ -67,12 +99,44 @@ BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
             EndDialog(hwndDlg, 1);
             return TRUE;
         case IDOK:
+            if (SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_ENABLED, BM_GETCHECK, 0, 0) == BST_CHECKED) {
+                int indicatorNumber = validateSpin(hwndDlg, IDC_OPTIONS_INDICATOR_NUMBER_SPIN, L"Indicator number must be between 8 and 20.");
+                int indicatorAlpha  = validateSpin(hwndDlg, IDC_OPTIONS_INDICATOR_ALPHA_SPIN , L"Alpha transparency must be between 0 and 255.");
+                int indicatorRed    = validateSpin(hwndDlg, IDC_OPTIONS_INDICATOR_RED_SPIN   , L"Red amount must be between 0 and 255.");
+                int indicatorGreen  = validateSpin(hwndDlg, IDC_OPTIONS_INDICATOR_GREEN_SPIN , L"Green amount must be between 0 and 255.");
+                int indicatorBlue   = validateSpin(hwndDlg, IDC_OPTIONS_INDICATOR_BLUE_SPIN  , L"Blue amount must be between 0 and 255.");
+                if (indicatorNumber < 0 || indicatorAlpha < 0 || indicatorRed < 0 || indicatorGreen < 0 || indicatorBlue < 0) return TRUE;
+                searchData.customIndicator = indicatorNumber;
+                searchData.customAlpha = indicatorAlpha;
+                searchData.customColor = indicatorRed | (indicatorGreen << 8) | (indicatorBlue << 16);
+                if (searchData.indicator > 21 && !searchData.dialog) {
+                    searchData.indicator = searchData.customIndicator;
+                    searchData.autoClear = true;
+                }
+            }
+            else {
+                if (searchData.indicator < 21 && !searchData.dialog) {
+                    searchData.indicator = 31;
+                    searchData.autoClear = false;
+                }
+                if (searchData.customIndicator > 0) searchData.customIndicator = -searchData.customIndicator;
+            }
             showOnMenuBar    = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_MENUBAR          , BM_GETCHECK, 0, 0) == BST_CHECKED;
             extendSingleLine = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_SINGLELINE, BM_GETCHECK, 0, 0) == BST_CHECKED;
             extendFullLines  = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_ROWS      , BM_GETCHECK, 0, 0) == BST_CHECKED;
             extendZeroWidth  = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_ZEROWIDTH , BM_GETCHECK, 0, 0) == BST_CHECKED;
             EndDialog(hwndDlg, 0);
             return TRUE;
+        case IDC_OPTIONS_INDICATOR_ENABLED:
+        {
+            BOOL enabled = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_ENABLED, BM_GETCHECK, 0, 0) == BST_CHECKED ? TRUE : FALSE;
+            EnableWindow(GetDlgItem(hwndDlg, IDC_OPTIONS_INDICATOR_NUMBER), enabled);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_OPTIONS_INDICATOR_ALPHA ), enabled);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_OPTIONS_INDICATOR_RED   ), enabled);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_OPTIONS_INDICATOR_GREEN ), enabled);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_OPTIONS_INDICATOR_BLUE  ), enabled);
+        }
+            break;
         }
         break;
 
