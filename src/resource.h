@@ -57,6 +57,8 @@
 #define IDC_MENUBAR                     1049
 #define IDC_MORE_MENUBAR                1049
 #define IDC_OPTIONS_MENUBAR             1055
+#define IDC_OPTIONS_REPLACE_STAY_PUT    1056
+#define IDC_OPTIONS_REPLACE_STAYS_PUT   1056
 #define IDC_ABOUT_HELP                  1057
 #define IDC_ABOUT_MORE                  1058
 #define IDC_ABOUT_VERSION               1059
