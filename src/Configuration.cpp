@@ -105,10 +105,10 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 std::string setting = match[1];
                 std::string value = match[2];
                 strlwr(setting.data());
-                if      (setting == "backward"       ) searchData.backward  = value != "0";
-                else if (setting == "wholeword"      ) searchData.wholeWord = value != "0";
-                else if (setting == "matchcase"      ) searchData.matchCase = value != "0";
-                else if (setting == "autoClear"      ) searchData.matchCase = value != "0";
+                if      (setting == "backward" ) searchData.backward  = value != "0";
+                else if (setting == "wholeword") searchData.wholeWord = value != "0";
+                else if (setting == "matchcase") searchData.matchCase = value != "0";
+                else if (setting == "autoClear") searchData.autoClear = value != "0";
                 else if (setting == "find") {
                     if (value.length() > 2 && value.front() == '\\' && value.back() == '\\') {
                         std::wstring s = toWide(value.substr(1, value.length() - 2), CP_UTF8);

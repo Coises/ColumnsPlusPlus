@@ -395,10 +395,7 @@ bool convertSelectionToSearchRegion(ColumnsPlusPlusData& data) {
     if (data.sci.Selections() < 2 || data.sci.SelectionMode() != Scintilla::SelectionMode::Stream) {
         RectangularSelection rs(data);
         rs.extend();
-        if (!rs.size()) {
-            setSearchMessage(data, L"No rectangular or multiple selection in which to search.");
-            return false;
-        }
+        if (!rs.size()) return false;
     }
     data.sci.SetIndicatorCurrent(data.searchData.indicator);
     if (data.searchData.autoClear) data.sci.IndicatorClearRange(0, data.sci.Length());
@@ -465,9 +462,9 @@ void ColumnsPlusPlusData::searchCount() {
             }
         }
     }
-    setSearchMessage(*this, count == 0 ? L"No matches found in selection."
-                          : count == 1 ? L"One match found in selection."
-                                       : std::to_wstring(count) + L" matches found in selection.");
+    setSearchMessage(*this, count == 0 ? L"No matches found."
+                          : count == 1 ? L"One match found."
+                                       : std::to_wstring(count) + L" matches found.");
 }
 
 void ColumnsPlusPlusData::searchFind() {
@@ -507,7 +504,7 @@ void ColumnsPlusPlusData::searchFind() {
         if (searchData.backward ? cpTo == 0 : cpTo == documentLength) break;
         cpFrom = cpTo;
     }
-    setSearchMessage(*this, fullSearch ? L"No matches found in selection." : L"No more matches found in selection.");
+    setSearchMessage(*this, fullSearch ? L"No matches found." : L"No more matches found.");
     searchData.wrap = true;
 }
 
@@ -586,7 +583,7 @@ void ColumnsPlusPlusData::searchReplaceAll() {
             setTabstops(dd);
         }
     }
-    setSearchMessage(*this, count == 0 ? L"No matches found in selection."
-                          : count == 1 ? L"One replacement made in selection."
-                                       : std::to_wstring(count) + L" replacements made in selection.");
+    setSearchMessage(*this, count == 0 ? L"No matches found."
+                          : count == 1 ? L"One replacement made."
+                                       : std::to_wstring(count) + L" replacements made.");
 }
