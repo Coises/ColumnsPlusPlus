@@ -1,6 +1,6 @@
 # Columns++ for Notepad++ -- Pre-releases
 
-## Vesion 0.2.0.6-alpha -- April 18th, 2023
+## Vesion 0.2.0.6-alpha -- April 17th, 2023
 
 * Changed to search in "indicated region" instead of "rectangular selection." This is more flexible, makes it easier to see what is happening, and solves the problem of replacements causing which text is included in the selection to change (Issue #6) -- but it is a little harder to explain how it works to end users. It is possible to use the existing Notepad++ Styles (1st-5th or Find Mark Style), or to use a custom indicator just for Columns++. The indicator can be chosen on the Search dialog; settings for the custom indicator number and color are in Options.
 
