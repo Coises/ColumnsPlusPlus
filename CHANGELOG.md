@@ -1,5 +1,13 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Vesion 0.2.0.6-alpha -- April 18th, 2023
+
+* Changed to search in "indicated region" instead of "rectangular selection." This is more flexible, makes it easier to see what is happening, and solves the problem of replacements causing which text is included in the selection to change (Issue #6) -- but it is a little harder to explain how it works to end users. It is possible to use the existing Notepad++ Styles (1st-5th or Find Mark Style), or to use a custom indicator just for Columns++. The indicator can be chosen on the Search dialog; settings for the custom indicator number and color are in Options.
+
+* A known loose end is that backward regular expression searches are not disabled, but they also are not done "zig-zag" (backward by lines but forward in each line) as before, because that concept is not so straightforward when using indicators instead of rectangular selections. Whether to disable them, allow them (with whatever unexpected results it is that can happen), or re-implement the "zig-zag" approach remains to be decided.
+
+* There is no way that I know of to ensure that the indicator number used for custom selections is not also used by some other plugin. (DSpellCheck, for example, just hard-codes number 19.) For that reason, I made it configurable; but there's no easy way to explain to the end user what's going on, since we don't really know what's going on. For now, I left it default enabled using indicator number 18; if experience shows this conflicts with some other plugin, it can either be changed to another number or initially disabled.
+
 ## Version 0.1.0.5-alpha - April 14th, 2023
 
 * Added new prompts when a command needs a rectangular selection and the current selection is not rectangular or is zero-width.

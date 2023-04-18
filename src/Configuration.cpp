@@ -108,7 +108,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 if      (setting == "backward" ) searchData.backward  = value != "0";
                 else if (setting == "wholeword") searchData.wholeWord = value != "0";
                 else if (setting == "matchcase") searchData.matchCase = value != "0";
-                else if (setting == "autoClear") searchData.autoClear = value != "0";
+                else if (setting == "autoclear") searchData.autoClear = value != "0";
                 else if (setting == "find") {
                     if (value.length() > 2 && value.front() == '\\' && value.back() == '\\') {
                         std::wstring s = toWide(value.substr(1, value.length() - 2), CP_UTF8);

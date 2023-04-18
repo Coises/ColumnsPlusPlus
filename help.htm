@@ -240,13 +240,21 @@ window.addEventListener("load", doPageLoad);
 
 <section id=search><h2>Search</h2>
 
-<p><strong>Columns++</strong> offers the ability to find and replace in a rectangular selection. The <strong>Search...</strong> item on the <strong>Columns++</strong> menu opens the <strong>Search in rectangular selection</strong> dialog. Most of the options on this dialog are similar to the corresponding <strong>Notepad++</strong> search options.</p>
+<p><strong>Columns++</strong> offers the ability to find and replace within a region marked by an <em>indicator</em>. <strong>Notepad++</strong> uses several indicators, including the 1st to 5th Styles from the Search menu and the Find Mark Style used by the <strong>Mark</strong> function. <strong>Columns++</strong> lets you use any one of those six indicators, or a custom indicator, to define the region for searching.</p>
 
-<p>To allow for repeated finding and replacing, <strong>Columns++</strong> remembers your last rectangular selection even after it finds and selects text. Within reason, you can move the caret or even edit text and still resume searching, from the caret position, within the previous selection. You can tell whether the previous selection will be restored by the text on the <strong>Find</strong> button: if it says <strong>Find First</strong> or <strong>Find Last</strong> a new search will begin in a new rectangular selection; if it says <strong>Find Next</strong> or <strong>Find Previous</strong>, searching will resume within the previous rectangular selection.</p>
+<p>The <strong>Search...</strong> item on the <strong>Columns++</strong> menu opens the <strong>Search in indicated region</strong> dialog. Most of the options on this dialog are similar to the corresponding <strong>Notepad++</strong> search options.</p>
 
-<p>Lines are searched sequentially (forward or backward), one at a time. It is not possible for a single match to span multiple lines. When no more occurrences of the search string can be found, <strong>Columns++</strong> restores the rectangular selection.</p>
+<p>When you initiate a search, <strong>Columns++</strong> looks for a rectangular selection or a multiple selection from which to create a search region. If you do not have a such a selection but you do have text marked with the indicator you are using for search, the search proceeds within the indicated region. If you have neither a searchable region nor a rectangular or multiple selection, <strong>Columns++</strong> will prompt you to make a selection.</p>
 
-<p>When using regular expressions, the circumflex (<strong>^</strong>) matches only if the left end of the selection is at the beginning of the line; the dollar sign (<strong>$</strong>) matches the end of the selection on each line regardless of whether it is at the end of the line. If you select both <strong>Backward direction</strong> and <strong>Regular expression</strong> lines are searched from bottom to top, but from left to right within each line.</p>
+<p>Segments of the indicated region are searched sequentially (forward or backward), one at a time. It is not possible for a single match to span multiple segments. When no more occurrences of the search string can be found, <strong>Columns++</strong> gives a status message to that effect; if focus remains on the search dialog, the next search will resume from the beginning of the region.</p>
+
+<p>The <strong>Indicator</strong> section at the bottom of the <strong>Search in indicated region</strong> dialog lets you select which indicator will be used to identify the search region.</p>
+
+<p>The <strong>Clear automatically</strong> checkbox determines whether an existing indicated region is cleared when the dialog is closed and when initiating a search when you have a rectangular or multiple selection. This option is set to checked when you choose the <strong>Custom Style</strong> indicator and to unchecked when you choose any other indicator; however, you may change it after you select an indicator and it will stick until you change the indicator again.</p>
+
+<p>The <strong>Clear</strong> button in the <strong>Indicator</strong> section clears the current search indicator, so that there is no search region indicated.</p>
+
+<p>It is currently possible to select both <strong>Backward direction</strong> and <strong>Regular expression</strong>; however, this combination may produce unexpected results.</p>
 
 </section>
 

@@ -13,7 +13,7 @@ The integrated implementation of __Elastic tabstops__ works to line up columns w
 ## Main Features
 
 * __Elastic tabstops:__ Columns++ includes a new implementation of Nick Gravgaard's [Elastic tabstops](https://nickgravgaard.com/elastic-tabstops/). _(Please note that as of this writing I have not communicated with Mr. Gravgaard about my implementation of his proposal, and no endorsement on his part is implied.)_
-* __Find and replace in rectangular selections__
+* __Find and replace:__ Columns++ supports find and replace within regions, which can be defined by rectangular selections or multiple selections.
 * __Calculations:__ There are commands to add or average numbers in one or more columns.
 * __Alignment:__ You can left- or right-align text, or line up numbers.
 * __Sorting:__ Columns++ includes  sort commands that work correctly with rectangular selections in files that use tabs.
