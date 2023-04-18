@@ -81,6 +81,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 else if (setting == "treateolastab"             ) settings.treatEolAsTab           = value != "0";
                 else if (setting == "overridetabsize"           ) settings.overrideTabSize         = value != "0";
                 else if (setting == "showonmenubar"             ) showOnMenuBar                    = value != "0";
+                else if (setting == "replacestaysput"           ) replaceStaysPut                  = value != "0";
                 else if (setting == "calculateinsert"           ) calculateInsert                  = value != "0";
                 else if (setting == "calculateaddline"          ) calculateAddLine                 = value != "0";
                 else if (setting == "extendsingleline"          ) {if (configLevel > 1) extendSingleLine = value != "0";}
@@ -198,6 +199,7 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "disableOverSize\t"             << disableOverSize                         << std::endl;
     file << "disableOverLines\t"            << disableOverLines                        << std::endl;
     file << "showOnMenuBar\t"               << showOnMenuBar                           << std::endl;
+    file << "replaceStaysPut\t"             << replaceStaysPut                         << std::endl;
     file << "extendSingleLine\t"            << extendSingleLine                        << std::endl;
     file << "extendFullLines\t"             << extendFullLines                         << std::endl;
     file << "extendZeroWidth\t"             << extendZeroWidth                         << std::endl;

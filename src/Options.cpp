@@ -71,6 +71,7 @@ BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
             SetWindowPos(hwndDlg, HWND_TOP, (rcNpp.left + rcNpp.right + rcDlg.left - rcDlg.right) / 2,
                                             (rcNpp.top + rcNpp.bottom + rcDlg.top - rcDlg.bottom) / 2, 0, 0, SWP_NOSIZE);
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_MENUBAR          , BM_SETCHECK, showOnMenuBar    ? BST_CHECKED : BST_UNCHECKED, 0);
+            SendDlgItemMessage(hwndDlg, IDC_OPTIONS_REPLACE_STAYS_PUT, BM_SETCHECK, replaceStaysPut  ? BST_CHECKED : BST_UNCHECKED, 0);
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_SINGLELINE, BM_SETCHECK, extendSingleLine ? BST_CHECKED : BST_UNCHECKED, 0);
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_ROWS      , BM_SETCHECK, extendFullLines  ? BST_CHECKED : BST_UNCHECKED, 0);
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_ZEROWIDTH , BM_SETCHECK, extendZeroWidth  ? BST_CHECKED : BST_UNCHECKED, 0);
@@ -122,6 +123,7 @@ BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
                 if (searchData.customIndicator > 0) searchData.customIndicator = -searchData.customIndicator;
             }
             showOnMenuBar    = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_MENUBAR          , BM_GETCHECK, 0, 0) == BST_CHECKED;
+            replaceStaysPut  = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_REPLACE_STAYS_PUT, BM_GETCHECK, 0, 0) == BST_CHECKED;
             extendSingleLine = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_SINGLELINE, BM_GETCHECK, 0, 0) == BST_CHECKED;
             extendFullLines  = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_ROWS      , BM_GETCHECK, 0, 0) == BST_CHECKED;
             extendZeroWidth  = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_ZEROWIDTH , BM_GETCHECK, 0, 0) == BST_CHECKED;

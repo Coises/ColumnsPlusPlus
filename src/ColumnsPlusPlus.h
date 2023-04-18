@@ -183,6 +183,7 @@ public:
     int disableOverSize   = 1000;      // active if greater than zero; if negative, inactive and is negative of last used setting   
     int disableOverLines  = 5000;      // active if greater than zero; if negative, inactive and is negative of last used setting
     bool showOnMenuBar    = false;     // Show the Columns++ menu on the menu bar instead of the Plugins menu
+    bool replaceStaysPut  = false;     // Same as "Replace: Don't move to the following occurrence" in Notepad++
     bool extendSingleLine = false;     // Extend single line selections to the last line
     bool extendFullLines  = false;     // Extend selections of full lines to the enclosing rectangle
     bool extendZeroWidth  = false;     // Extend zero-width rectangular selections to the right
@@ -251,6 +252,7 @@ public:
 
     bool searchRegionReady() {
         if (sci.SelectionMode() != Scintilla::SelectionMode::Stream) return false;
+        if (sci.Selections() > 1) return false;
         if (sci.IndicatorValueAt(searchData.indicator, 0)) return true;
         return sci.IndicatorEnd(searchData.indicator, 0) != 0 && sci.IndicatorEnd(searchData.indicator, 0) != sci.Length();
     }
@@ -323,7 +325,7 @@ public:
     BOOL searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     void showSearchDialog();
     void searchCount();
-    void searchFind();
+    void searchFind(bool postReplace = false);
     void searchReplace();
     void searchReplaceAll();
 

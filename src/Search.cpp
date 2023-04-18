@@ -266,6 +266,7 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
         case IDC_SEARCH_INDICATOR_CLEARNOW:
             sci.SetIndicatorCurrent(searchData.indicator);
             sci.IndicatorClearRange(0, sci.Length());
+            syncFindButton();
             break;
         case IDC_SEARCH_INDICATOR:
             if (HIWORD(wParam) == CBN_SELCHANGE) {
@@ -467,7 +468,7 @@ void ColumnsPlusPlusData::searchCount() {
                                        : std::to_wstring(count) + L" matches found.");
 }
 
-void ColumnsPlusPlusData::searchFind() {
+void ColumnsPlusPlusData::searchFind(bool postReplace) {
     std::string sciFind;
     if (!searchPrepare(*this, &sciFind)) return;
     bool fullSearch = searchData.wrap;
@@ -488,7 +489,9 @@ void ColumnsPlusPlusData::searchFind() {
             Scintilla::Position found = sci.SearchInTarget(sciFind);
             if (found >= 0) {
                 showRange(*this, sci.TargetStart(), sci.TargetEnd());
-                setSearchMessage(*this, L"");
+                setSearchMessage(*this, !postReplace        ? L""
+                                      : searchData.backward ? L"Match replaced; previous match found."
+                                                            : L"Match replaced; next match found.");
                 return;
             }
             if (found < -1) {
@@ -504,7 +507,8 @@ void ColumnsPlusPlusData::searchFind() {
         if (searchData.backward ? cpTo == 0 : cpTo == documentLength) break;
         cpFrom = cpTo;
     }
-    setSearchMessage(*this, fullSearch ? L"No matches found." : L"No more matches found.");
+    setSearchMessage(*this, postReplace ? L"Match replaced; no more matches found."
+                          : fullSearch  ? L"No matches found." : L"No more matches found.");
     searchData.wrap = true;
 }
 
@@ -514,18 +518,21 @@ void ColumnsPlusPlusData::searchReplace() {
     if (!searchPrepare(*this, &sciFind, &sciRepl)) return;
     Scintilla::Position anchor = sci.Anchor();
     Scintilla::Position caret = sci.CurrentPos();
-    sci.SetTargetRange(anchor, caret);
+    Scintilla::Position start = std::min(anchor, caret);
+    Scintilla::Position end   = std::max(anchor, caret);
+    sci.SetTargetRange(start, end);
     Scintilla::Position found = sci.SearchInTarget(sciFind);
-    if (found == anchor && sci.TargetEnd() == caret) {
+    if (found == start && sci.TargetEnd() == end) {
         Scintilla::Position replacementLength = searchData.mode == SearchData::Regex ? sci.ReplaceTargetRE(sciRepl)
                                                                                      : sci.ReplaceTarget(sciRepl);
         sci.SetIndicatorCurrent(searchData.indicator);
         sci.SetIndicatorValue(1);
         sci.IndicatorFillRange(anchor, replacementLength);
-        caret = anchor + replacementLength;
-        showRange(*this, anchor, caret);
+        caret = searchData.backward ? start : start + replacementLength;
+        showRange(*this, caret, caret);
         setSearchMessage(*this, L"Match replaced.");
         searchData.wrap = false;
+        if (!replaceStaysPut) searchFind(true);
         return;
     }
     if (found >= -1) return searchFind();
