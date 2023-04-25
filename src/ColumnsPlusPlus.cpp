@@ -298,6 +298,10 @@ void ColumnsPlusPlusData::bufferActivated() {
     sci.SetTabIndents(!settings.elasticEnabled);
     if (!settings.elasticEnabled) return;
     if (settings.overrideTabSize) sci.SetTabWidth(settings.minimumOrLeadingTabSize);
+    if (isNewDocument) {
+        analyzeTabstops(dd);
+        setTabstops(dd);
+    }
     Scintilla::SelectionMode selectionMode = sci.SelectionMode();
     if (selectionMode == Scintilla::SelectionMode::Rectangle || selectionMode == Scintilla::SelectionMode::Thin) {
         Scintilla::Position anchor        = sci.RectangularSelectionAnchor            ();

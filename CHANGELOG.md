@@ -1,12 +1,16 @@
 # Columns++ for Notepad++ -- Pre-releases
 
-## Vesion 0.2.1.7-alpha -- April 18th, 2023
+## Version 0.2.2-alpha -- April 25th, 2023
+
+* Attempt to fix failure to apply elastic tabstops when first opening a file on some systems (issue #9).
+
+## Version 0.2.1.7-alpha -- April 18th, 2023
 
 * Changed search to place caret after (or before, if searching backward) the replacement text instead of selecting it. Addresses issue #7.
 
 * Added option **Replace: Don't move to the following occurrence** which has the same effect for Columns++ search as the option with the same name in Preferences|Search in Notepad++ for built-in search. Default is unchecked (like the Notepad++ option), which is a change in behavior for Columns++ search. Addresses issue #8.
 
-## Vesion 0.2.0.6-alpha -- April 17th, 2023
+## Version 0.2.0.6-alpha -- April 17th, 2023
 
 * Changed to search in "indicated region" instead of "rectangular selection." This is more flexible, makes it easier to see what is happening, and solves the problem of replacements causing which text is included in the selection to change (Issue #6) -- but it is a little harder to explain how it works to end users. It is possible to use the existing Notepad++ Styles (1st-5th or Find Mark Style), or to use a custom indicator just for Columns++. The indicator can be chosen on the Search dialog; settings for the custom indicator number and color are in Options.
 
