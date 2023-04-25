@@ -121,6 +121,22 @@ public:
     std::vector<std::wstring> replaceHistory;
 };
 
+class CsvSettings {
+public:
+    std::wstring replaceTab = L"(TAB)";
+    std::wstring replaceLF  = L"(LF)";
+    std::wstring replaceCR  = L"(CR)";
+    wchar_t separator  = L',';
+    wchar_t escapeChar = L'\\';
+    wchar_t encodeTNR  = L'\\';
+    wchar_t encodeURL  = L'%';
+    bool quote          = true;
+    bool apostrophe     = false;
+    bool escape         = false;
+    bool preserveQuotes = false;
+    enum { Replace = 0, TNR = 1, URL = 2 } encodingStyle = Replace;
+};
+
 class TabLayoutBlock {
 public:
     Scintilla::Line firstLine, lastLine;
@@ -180,6 +196,7 @@ public:
 
     DocumentDataSettings  settings;    // these are the settings for the last active document, or else initial settings
     SearchData            searchData;  // status and settings remembered for the Find/Replace dialog
+    CsvSettings           csv;
     int disableOverSize   = 1000;      // active if greater than zero; if negative, inactive and is negative of last used setting   
     int disableOverLines  = 5000;      // active if greater than zero; if negative, inactive and is negative of last used setting
     bool showOnMenuBar    = false;     // Show the Columns++ menu on the menu bar instead of the Plugins menu
@@ -278,7 +295,6 @@ public:
     void scnUpdateUI    (const Scintilla::NotificationData* scnp);
     void scnZoom        (const Scintilla::NotificationData* scnp);
 
-    void tabsToSpaces();
     void toggleDecimalSeparator();
     void toggleElasticEnabled();
 
@@ -298,6 +314,12 @@ public:
     void initializeBuiltinElasticTabstopsProfiles();
     void loadConfiguration();
     void saveConfiguration();
+
+    // Convert.cpp
+
+    void separatedValuesToTabs();
+    void tabsToSeparatedValues();
+    void tabsToSpaces();
 
     // Numeric.cpp
 

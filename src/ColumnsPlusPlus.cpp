@@ -354,53 +354,6 @@ void ColumnsPlusPlusData::toggleElasticEnabled() {
 }
 
 
-void ColumnsPlusPlusData::tabsToSpaces() {
-
-    if (!settings.elasticEnabled) {
-        SendMessage(nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_TAB2SW);
-        return;
-    }
-
-    DocumentData& dd = *getDocument();
-
-    std::vector<std::pair<Scintilla::Position, Scintilla::Position>> selections;
-    if (sci.SelectionEmpty()) selections.emplace_back(0, sci.Length());
-    else {
-        int n = sci.Selections();
-        for (int i = 0; i < n; ++i)
-            selections.emplace_back(sci.SelectionNStart(i), sci.SelectionNEnd(i));
-        std::sort(selections.begin(), selections.end(),
-                  [](const std::pair<Scintilla::Position, Scintilla::Position>& x,
-                     const std::pair<Scintilla::Position, Scintilla::Position>& y) {return x.first > y.first;} );
-    }
-
-    Scintilla::Line firstSelectedLine = sci.LineFromPosition(selections[selections.size() - 1].first);
-    Scintilla::Line lastSelectedLine  = sci.LineFromPosition(selections[0].second);
-    setTabstops(dd, firstSelectedLine, lastSelectedLine);
-
-    int blankWidth = sci.TextWidth(0, " ");
-    sci.SetSearchFlags(Scintilla::FindOption::MatchCase);
-    sci.BeginUndoAction();
-
-    for (auto& sel : selections) {
-        sci.SetTargetRange(sel.second, sel.first);
-        for (;;) {
-            Scintilla::Position tab = sci.SearchInTarget("\t");
-            if (tab < 0) break;
-            int width = sci.PointXFromPosition(tab+1) - sci.PointXFromPosition(tab);
-            int count = (2 * width + blankWidth) / (2 * blankWidth);
-            sci.ReplaceTarget(std::string(count, ' '));
-            sci.SetTargetRange(tab, sel.first);
-        }
-    }
-
-    sci.EndUndoAction();
-    analyzeTabstops(dd);
-    setTabstops(dd);
-
-}
-
-
 void ColumnsPlusPlusData::toggleDecimalSeparator() {
     DocumentData* ddp = getDocument();
     ddp->settings.decimalSeparatorIsComma = settings.decimalSeparatorIsComma ^= true;

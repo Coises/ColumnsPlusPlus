@@ -39,29 +39,31 @@ static void cmdWrap(void (ColumnsPlusPlusData::* cmdFunction)()) {
 }
 
 static struct MenuDefinition {
-    FuncItem elasticEnabled          = {TEXT("Elastic tabstops"          ), []() {cmdWrap(&ColumnsPlusPlusData::toggleElasticEnabled  );}, 0, false, 0};
-    FuncItem elasticProfile          = {TEXT("Profile..."                ), []() {cmdWrap(&ColumnsPlusPlusData::showElasticProfile    );}, 0, false, 0};
-    FuncItem separatorElastic        = {TEXT("---"                       ), 0                                                            , 0, false, 0};
-    FuncItem search                  = {TEXT("Search..."                 ), []() {cmdWrap(&ColumnsPlusPlusData::showSearchDialog      );}, 0, false, 0};
-    FuncItem addNumbers              = {TEXT("Add numbers..."            ), []() {cmdWrap(&ColumnsPlusPlusData::addNumbers            );}, 0, false, 0};
-    FuncItem averageNumbers          = {TEXT("Average numbers..."        ), []() {cmdWrap(&ColumnsPlusPlusData::averageNumbers        );}, 0, false, 0};
-    FuncItem separatorAlign          = {TEXT("---"                       ), 0                                                            , 0, false, 0};
-    FuncItem alignLeft               = {TEXT("Align left"                ), []() {cmdWrap(&ColumnsPlusPlusData::alignLeft             );}, 0, false, 0};
-    FuncItem alignRight              = {TEXT("Align right"               ), []() {cmdWrap(&ColumnsPlusPlusData::alignRight            );}, 0, false, 0};
-    FuncItem alignNumeric            = {TEXT("Align numeric"             ), []() {cmdWrap(&ColumnsPlusPlusData::alignNumeric          );}, 0, false, 0};
-    FuncItem separatorSort           = {TEXT("---"                       ), 0                                                            , 0, false, 0};
-    FuncItem sortAscendingBinary     = {TEXT("Sort ascending (binary)"   ), []() {cmdWrap(&ColumnsPlusPlusData::sortAscendingBinary   );}, 0, false, 0};
-    FuncItem sortDescendingBinary    = {TEXT("Sort descending (binary)"  ), []() {cmdWrap(&ColumnsPlusPlusData::sortDescendingBinary  );}, 0, false, 0};
-    FuncItem sortAscendingLocale     = {TEXT("Sort ascending (locale)"   ), []() {cmdWrap(&ColumnsPlusPlusData::sortAscendingLocale   );}, 0, false, 0};
-    FuncItem sortDescendingLocale    = {TEXT("Sort descending (locale)"  ), []() {cmdWrap(&ColumnsPlusPlusData::sortDescendingLocale  );}, 0, false, 0};
-    FuncItem sortAscendingNumeric    = {TEXT("Sort ascending (numeric)"  ), []() {cmdWrap(&ColumnsPlusPlusData::sortAscendingNumeric  );}, 0, false, 0};
-    FuncItem sortDescendingNumeric   = {TEXT("Sort descending (numeric)" ), []() {cmdWrap(&ColumnsPlusPlusData::sortDescendingNumeric );}, 0, false, 0};
-    FuncItem separatorConvert        = {TEXT("---"                       ), 0                                                            , 0, false, 0};
-    FuncItem convertTabsToSpaces     = {TEXT("Convert tabs to spaces"    ), []() {cmdWrap(&ColumnsPlusPlusData::tabsToSpaces          );}, 0, false, 0};
-    FuncItem separatorSettings       = {TEXT("---"                       ), 0                                                            , 0, false, 0};
-    FuncItem decimalSeparatorIsComma = {TEXT("Decimal separator is comma"), []() {cmdWrap(&ColumnsPlusPlusData::toggleDecimalSeparator);}, 0, false, 0};
-    FuncItem options                 = {TEXT("Options..."                ), []() {cmdWrap(&ColumnsPlusPlusData::showOptionsDialog     );}, 0, false, 0};
-    FuncItem about                   = {TEXT("Help/About..."             ), []() {cmdWrap(&ColumnsPlusPlusData::showAboutDialog       );}, 0, false, 0};
+    FuncItem elasticEnabled          = {TEXT("Elastic tabstops"                   ), []() {cmdWrap(&ColumnsPlusPlusData::toggleElasticEnabled  );}, 0, false, 0};
+    FuncItem elasticProfile          = {TEXT("Profile..."                         ), []() {cmdWrap(&ColumnsPlusPlusData::showElasticProfile    );}, 0, false, 0};
+    FuncItem separatorElastic        = {TEXT("---"                                ), 0                                                            , 0, false, 0};
+    FuncItem search                  = {TEXT("Search..."                          ), []() {cmdWrap(&ColumnsPlusPlusData::showSearchDialog      );}, 0, false, 0};
+    FuncItem addNumbers              = {TEXT("Add numbers..."                     ), []() {cmdWrap(&ColumnsPlusPlusData::addNumbers            );}, 0, false, 0};
+    FuncItem averageNumbers          = {TEXT("Average numbers..."                 ), []() {cmdWrap(&ColumnsPlusPlusData::averageNumbers        );}, 0, false, 0};
+    FuncItem separatorAlign          = {TEXT("---"                                ), 0                                                            , 0, false, 0};
+    FuncItem alignLeft               = {TEXT("Align left"                         ), []() {cmdWrap(&ColumnsPlusPlusData::alignLeft             );}, 0, false, 0};
+    FuncItem alignRight              = {TEXT("Align right"                        ), []() {cmdWrap(&ColumnsPlusPlusData::alignRight            );}, 0, false, 0};
+    FuncItem alignNumeric            = {TEXT("Align numeric"                      ), []() {cmdWrap(&ColumnsPlusPlusData::alignNumeric          );}, 0, false, 0};
+    FuncItem separatorSort           = {TEXT("---"                                ), 0                                                            , 0, false, 0};
+    FuncItem sortAscendingBinary     = {TEXT("Sort ascending (binary)"            ), []() {cmdWrap(&ColumnsPlusPlusData::sortAscendingBinary   );}, 0, false, 0};
+    FuncItem sortDescendingBinary    = {TEXT("Sort descending (binary)"           ), []() {cmdWrap(&ColumnsPlusPlusData::sortDescendingBinary  );}, 0, false, 0};
+    FuncItem sortAscendingLocale     = {TEXT("Sort ascending (locale)"            ), []() {cmdWrap(&ColumnsPlusPlusData::sortAscendingLocale   );}, 0, false, 0};
+    FuncItem sortDescendingLocale    = {TEXT("Sort descending (locale)"           ), []() {cmdWrap(&ColumnsPlusPlusData::sortDescendingLocale  );}, 0, false, 0};
+    FuncItem sortAscendingNumeric    = {TEXT("Sort ascending (numeric)"           ), []() {cmdWrap(&ColumnsPlusPlusData::sortAscendingNumeric  );}, 0, false, 0};
+    FuncItem sortDescendingNumeric   = {TEXT("Sort descending (numeric)"          ), []() {cmdWrap(&ColumnsPlusPlusData::sortDescendingNumeric );}, 0, false, 0};
+    FuncItem separatorConvert        = {TEXT("---"                                ), 0                                                            , 0, false, 0};
+    FuncItem convertTabsToSpaces     = {TEXT("Convert tabs to spaces"             ), []() {cmdWrap(&ColumnsPlusPlusData::tabsToSpaces          );}, 0, false, 0};
+    FuncItem separatedValuesToTabs   = {TEXT("Convert separated values to tabs..."), []() {cmdWrap(&ColumnsPlusPlusData::separatedValuesToTabs );}, 0, false, 0};
+    FuncItem sabsToSeparatedValues   = {TEXT("Convert tabs to separated values..."), []() {cmdWrap(&ColumnsPlusPlusData::tabsToSeparatedValues );}, 0, false, 0};
+    FuncItem separatorSettings       = {TEXT("---"                                ), 0                                                            , 0, false, 0};
+    FuncItem decimalSeparatorIsComma = {TEXT("Decimal separator is comma"         ), []() {cmdWrap(&ColumnsPlusPlusData::toggleDecimalSeparator);}, 0, false, 0};
+    FuncItem options                 = {TEXT("Options..."                         ), []() {cmdWrap(&ColumnsPlusPlusData::showOptionsDialog     );}, 0, false, 0};
+    FuncItem about                   = {TEXT("Help/About..."                      ), []() {cmdWrap(&ColumnsPlusPlusData::showAboutDialog       );}, 0, false, 0};
 } menuDefinition;
 
 BOOL APIENTRY DllMain(HINSTANCE instance, DWORD reasonForCall, LPVOID) {

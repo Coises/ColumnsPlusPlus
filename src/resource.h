@@ -13,6 +13,7 @@
 #define IDD_CHOOSE_RECTANGULAR_SELECTION 122
 #define IDD_CHOOSE_RECTANGULAR_SELECTION_HORIZONTAL 123
 #define IDD_CHOOSE_RECTANGULAR_SELECTION_VERTICAL 124
+#define IDD_CSV                         125
 #define IDC_LINE_UP_ALL                 1003
 #define IDC_LEADING_TABS_INDENT         1006
 #define IDC_DISABLE_FILE_SIZE           1007
@@ -74,6 +75,7 @@
 #define IDC_COMBO1                      1079
 #define IDC_DEFAULT_PROFILE             1079
 #define IDC_SEARCH_INDICATOR            1079
+#define IDC_CSV_REPLACE                 1079
 #define IDC_CALCULATION_RESULTS         1080
 #define IDC_CALCULATION_MESSAGE         1082
 #define IDC_THOUSANDS_NONE              1083
@@ -97,14 +99,35 @@
 #define IDC_OPTIONS_INDICATOR_ENABLED   1098
 #define IDC_OPTIONS_INDICATOR_RED       1100
 #define IDC_OPTIONS_INDICATOR_RED_SPIN  1101
+#define IDC_CSV_COMMA                   1102
+#define IDC_CSV_SEMICOLON               1103
+#define IDC_CSV_VERTICAL_LINE           1104
+#define IDC_CSV_OTHER_SEPARATOR_RADIO   1105
+#define IDC_CSV_OTHER_SEPARATOR_EDIT    1106
+#define IDC_CSV_QUOTE                   1107
+#define IDC_CSV_APOSTROPHE              1108
+#define IDC_CSV_PRESERVE_QUOTES_AND_ESCAPES 1109
+#define IDC_CSV_PRESERVE_QUOTES         1109
+#define IDC_CSV_TNR_EDIT                1110
+#define IDC_CSV_ESCAPE_WITH_BACKSLASH   1111
+#define IDC_CSV_ESCAPE_EDIT             1111
+#define IDC_CSV_URL_EDIT                1112
+#define IDC_CSV_BACKSLASH               1114
+#define IDC_CSV_ESCAPE_CHECK            1114
+#define IDC_CSV_TNR_RADIO               1115
+#define IDC_URL_RADIO                   1116
+#define IDC_CSV_URL_RADIO               1116
+#define IDC_CSV_REPLACE_TAB             1118
+#define IDC_CSV_REPLACE_LF              1119
+#define IDC_CSV_REPLACE_CR              1120
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        124
+#define _APS_NEXT_RESOURCE_VALUE        127
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1102
+#define _APS_NEXT_CONTROL_VALUE         1119
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

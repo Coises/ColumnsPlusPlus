@@ -1,5 +1,9 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Version 0.3-alpha -- April 30th, 2023
+
+* Implemented **Convert separated values to tabs...** and **Convert tabs to separated values...** commands and added appropriate documentation to help.htm.
+
 ## Version 0.2.2-alpha -- April 25th, 2023
 
 * Attempt to fix failure to apply elastic tabstops when first opening a file on some systems (issue #9).

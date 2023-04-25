@@ -35,6 +35,7 @@
     <ClCompile Include="..\src\Align.cpp" />
     <ClCompile Include="..\src\ColumnsPlusPlus.cpp" />
     <ClCompile Include="..\src\Configuration.cpp" />
+    <ClCompile Include="..\src\Convert.cpp" />
     <ClCompile Include="..\src\Host\ScintillaCall.cxx" />
     <ClCompile Include="..\src\Profiles.cpp" />
     <ClCompile Include="..\src\Numeric.cpp" />

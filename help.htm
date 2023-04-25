@@ -2,7 +2,7 @@
 <html><head><meta charset="utf-8">
 <title>Columns++ for Notepad++</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style type="text/css">
+<style>
 html, body                   {margin: 0; padding: 0; width: 100%; height: 100%;}
 body                         {display: flex; flex-direction: column; font: 1em Calibri, Tahoma, sans-serif;}
 
@@ -31,7 +31,8 @@ footer a[rel=license] img    {border: none;}
 
 main                         {flex: 1; overflow: auto;}
 article                      {padding: 0 1em; line-height: 1.4;}
-p                            {margin: 0 0 .5em 0; padding: 0;}
+p                            {margin: 0; padding: 0;}
+p + p                        {margin: .5em 0 0 0; padding: 0;}
 h1                           {line-height: 1.25; margin: .5em 0 0 0;}
 h1                           {font-size: 1.5rem; text-align: center; font-weight: bold; font-style: normal; padding: 0;}
 h2                           {font-size: 1.2rem; text-align: left;   font-weight: bold; font-style: normal; padding: 0; margin: 0;}
@@ -47,10 +48,12 @@ main a:hover                 {text-decoration: underline;}
     #foottext a {white-space: normal;}
 }
 
-main article section         {border-style: none; border-width: 0; padding: 0 1em 1px 1em; background: #eee;}
+main article section         {border-style: none; border-width: 0; padding: 0 1em .3em 1em; background: #eee;}
 main article section         {margin: 1.25rem 0 .4rem 0;}
 main article section h2      {border-style: none none solid none; border-width: 0 0 1px 0;}
 main article section h2      {margin: 0 0 .3em -6px; padding: .2em 0 .2em 6px;}
+main article section h3      {border-style: none none solid none; border-width: 0 0 1px 0;}
+main article section h3      {margin: .3em 0 .2em 0; padding: .2em 0 .1em 0; line-height: 1.2;}
 main article h1+section      {margin-top: .75rem;}
 main article h1+p            {margin-top: .6em;}
 main article section+p       {margin-top: .75em;}
@@ -77,9 +80,9 @@ body #centershortlines ~ article section   {max-width: 48em;}
 p.subsub            {margin-left: 1.5em;}
 
 
-table.optionsTable    {border: none; margin: 1em 0 1em 1em; border-collapse: collapse;}
-table.optionsTable th {padding: .5em .5em .5em .5em; font-weight: bold;   text-align: left; vertical-align: top; border: 1px solid black;}
-table.optionsTable td {padding: .5em .5em .5em .5em; font-weight: normal; text-align: left; vertical-align: top; border: 1px solid black;}
+table.optionsTable      {border: none; margin: 1em 0 1em 1em; border-collapse: collapse;}
+table.optionsTable th   {padding: .5em .5em .5em .5em; font-weight: bold;   text-align: left; vertical-align: top; border: 1px solid black;}
+table.optionsTable td   {padding: .5em .5em .5em .5em; font-weight: normal; text-align: left; vertical-align: top; border: 1px solid black;}
 
 ul.optionslist    {margin-top: .5em; margin-bottom: .5em;}
 ul.optionslist li {font-weight: bold;}
@@ -87,9 +90,9 @@ ul.optionslist li {font-weight: bold;}
 body                {color: #000; background: #d0d0d0; line-height: 1.4;}
 *                   {border-color: #999;}
 #centershortlines   {width: calc((100vw - (13.5em + 48em + 2em + 24px)) / 2);}
-}
+
 </style>
-<script type="text/javascript">
+<script>
 function doPageLoad() {
     if (document.getElementById("fontdown")) {
         document.getElementById("fontdown").style.display = "inline-block";
@@ -287,16 +290,66 @@ window.addEventListener("load", doPageLoad);
 <p><strong>Notepad++</strong> supports sorting lines using a rectangular selection to define the sort keys, but this does not work as expected when tabs (whether elastic or traditional fixed) are used. The sort commands in <strong>Columns++</strong> use a rectangular selection to identify the sort keys and work as expected when tabs are present. These are “stable” sorts, meaning the order of lines with equal sort keys is unchanged. There are three variants of ascending and descending sorts:</p>
 
 <table class=optionsTable>
-<th>binary</th><td>The raw byte values of the internal representations of the selected sort strings are used as sort keys. For most purposes, this matches what you would expect from a “case sensitive” sort, with the sort order dependent on the active code page. Unicode files sort by code point.</td></tr>
-<th>locale</th><td>The sort order is defined by the current Windows locale. For most purposes, this matches what you would expect from a “case insensitive” sort.</td></tr>
-<th>numeric</th><td>The selections on each line are interpreted as tab-separated numbers in the same way as described for the Calculation functions. Items which can’t be interpreted as numbers sort first (whether the sort is ascending or descending).</td></tr>
+<tr><th>binary</th><td>The raw byte values of the internal representations of the selected sort strings are used as sort keys. For most purposes, this matches what you would expect from a “case sensitive” sort, with the sort order dependent on the active code page. Unicode files sort by code point.</td></tr>
+<tr><th>locale</th><td>The sort order is defined by the current Windows locale. For most purposes, this matches what you would expect from a “case insensitive” sort.</td></tr>
+<tr><th>numeric</th><td>The selections on each line are interpreted as tab-separated numbers in the same way as described for the Calculation functions. Items which can’t be interpreted as numbers sort first (whether the sort is ascending or descending).</td></tr>
 </table>
 
 </section>
 
 <section id=conversion><h2>Conversion</h2>
 
-<p>Use <strong>Convert tabs to spaces</strong> on any selection to replace tabs in the selection with equivalent spaces, taking elastic tabstops into account if enabled. If nothing is selected, the entire file is converted.</strong>
+<h3>Convert tabs to spaces</h3>
+
+<p>Use <strong>Convert tabs to spaces</strong> on any selection to replace tabs in the selection with equivalent spaces, taking elastic tabstops into account if enabled. If nothing is selected, the entire file is converted.</p>
+
+<h3>Convert separated values to tabs...<br>Convert tabs to separated values...</h3>
+
+<p>These commands convert the selection, or the entire file if nothing is selected, between delimiter-separated values (typically *.csv, comma-separated values) and tabbed presentation (typically *.tsv or tab-separated values).</p>
+
+<p>Both delimiter-separated values and tab-separated values use a structure comprised of <em>records</em> (rows) containing <em>fields</em> (which are interpreted as being arranged in columns). In tabbed documents, each line of the file is a record, and fields within a record are separated by tabs. Fields cannot contain tabs or line-ending characters as such, but these can be encoded, typically using backslash notation (\t, \n, \r for tab, new line and return). Consistency requires that the encoding character must also be encoded (e.g., two backslashes in the file to represent a single backslash in the field’s value).</p>
+
+<p>In delimiter-separated files, records are divided by line breaks and fields are divided by a separator character, typically a comma. However, when a field contains the separator character or line-ending characters, the problematic characters are <em>escaped</em> rather than encoded, meaning that the original charater is still used in the file, but context indicates that it is not to be interpreted as a field or record separator. Typically, quote marks surround a field which contains line-ending or separator characters, and quotes within the field are doubled.</p>
+
+<p>There are many variations in the details of data representation in delimiter-separated and tab-separated values files. When you select <strong>Convert separated values to tabs...</strong> or <strong>Convert tabs to separated values...</strong>, <strong>Columns++</strong> displays a dialog in which you can adjust the conversion accordingly:</p>
+
+<table class=optionsTable>
+<tr><th>Column separator</th><td>
+
+<table class=optionsTable>
+<tr><th>Comma</th><td rowspan=3>selects the column separator for the separated values.</td></tr>
+<tr><th>Semicolon</th></tr>
+<tr><th>Vertical line</th></tr>
+<tr><th>Other</th><td>
+specifies the column separator as any single character within the Unicode Basic Multilingual Plane except for null, line feed or carriage return.</td></tr>
+</table>
+
+</td></tr>
+<tr><th>Separated values syntax</th><td>
+
+<table class=optionsTable>
+<tr><th>Quote</th><td rowspan=2>recognizes quotes and/or apostrophes at the beginning of a field as the start of a quoted field, in which line-ending and separator characters are part of the field value.</td></tr>
+<tr><th>Apostrophe</th></tr>
+<tr><th>Escape character</th><td>
+defines an escape character for separated values. The character following an escape character is used unchanged as a part of the field value, without any special meaning (that is, it doesn’t separate fields or records or begin or end a quoted field).
+</td></tr>
+<tr><th>Preserve quotes, escapes and blanks when converting to tabbed</th><td>
+<p>indicates that quotation marks, apostrophes, escape characters and leading and trailing blanks within separated values fields are copied as is to the tabbed presentation.</p>
+<p>This tends to “clutter” the appearance of the tabbed document; however, it makes it possible to “round-trip” to tabs and back to separated values without any change in fields that were not edited. If you intend to convert a separated values file to tabbed presentation for ease of editing and there are non-standard details in the way quotes, escapes or blanks are used in the separated values file which must be preserved when converting back, keep this box checked for both conversions.</p>
+<p>When this box is unchecked, <strong>Columns++</strong> quotes or escapes fields containing leading blanks or quotes anywhere in the field when converting from tabbed presentation to separated values. When checked, so long as the field will not cause a parsing failure — such as by containing an unquoted and unescaped separator character, or by beginning with a quote but not being a properly quoted field when taken in its entirety — <strong>Columns++</strong> will preserve the field as is.</p>
+</td></tr>
+</table>
+
+<tr><th>Tab, new line and return characters in tabbed documents</th><td>
+<p>Fields in tabbed presentation cannot contain tabs or line-ending characters; if there are any of these characters in separated values fields, they must be encoded or replaced when converting to tabs.
+<table class=optionsTable>
+<tr><th>Backslash-style encoding</th><td><p>The specified character (<strong>\</strong> by default) followed by <strong>t</strong>, <strong>n</strong> or <strong>r</strong> encodes a tab, new line or return; the encoding character is doubled to indicate a single occurrence in the data. Encoding is applied when converting from separated values to tabbed presentation and reversed when converting from tabbed presentation to separated values.</p><p>This encoding method, using the backslash as the encoding character, is probably the most commonly-understood way to represent tabs and line-ending characters in tabbed presentation; however, it is inconvenient for reading and editing if the data includes Windows file paths, since all backslash characters in the data are doubled.</p></td></tr>
+<tr><th>URL-style encoding</th><td>The specified character (<strong>%</strong> by default) followed by two hexadecimal digits (numeric digits or the letters A-F in either case) encodes a byte value; <strong>%09</strong>, <strong>%0A</strong> and <strong>%0D</strong> encode tab, line feed and return. When converting from separated values to tabbed presentation, these three are encoded; the per cent symbol or other specified character is encoded only if it is followed by two hexadecimal digits. When converting from tabbed presentation to separated values, any occurrence of the specified character followed by two hexadecimal digits is decoded to a byte in the code page active for the file.</td></tr>
+<tr><th>Replace when converting to tabbed</th><td>indicates that the disallowed characters are replaced with the text specified when converting to tabbed presentation; no attempt is made to restore the original characters when converting from tabs to separated values.</td></tr>
+</table>
+
+</td></tr>
+</table>
 
 </section>
 
@@ -307,9 +360,9 @@ window.addEventListener("load", doPageLoad);
 <p><strong>Options...</strong> opens a dialog that allows you to control some aspects of <strong>Columns++</strong>:
 
 <table class=optionsTable>
-<th>Show Columns++ on the main menu bar</th><td>lets you choose whether to add an entry for <strong>Columns++</strong> to the main menu bar, just to the left of the <strong>Plugins</strong> menu, or leave it as an entry on the <strong>Plugins</strong> menu.</td></tr>
-<th>Replace: Don't move to the following occurrence.</th><td>has the same effect as the option of the same name on the <strong>Searching</strong> panel of the <strong>Preferences</strong> dialog in <strong>Notepad++</strong>, but for the <strong>Search in indicated region</strong> dialog in <strong>Columns++</strong>. When checked, the <strong>Replace</strong> button in the search dialog does not immediately perform another find after replacing text; in effect, the button alternates between finding and replacing, giving you a chance to see the effect of the replace before moving to the next occurrence of the search string.</td></tr>
-<th>Automatically extend selections to form rectangles:</th><td>You can enable “implicit” selections for <strong>Columns++</strong> commands that require rectangular selections, bypassing the dialogs that ask you if you want to make a rectangular selection:
+<tr><th>Show Columns++ on the main menu bar</th><td>lets you choose whether to add an entry for <strong>Columns++</strong> to the main menu bar, just to the left of the <strong>Plugins</strong> menu, or leave it as an entry on the <strong>Plugins</strong> menu.</td></tr>
+<tr><th>Replace: Don't move to the following occurrence.</th><td>has the same effect as the option of the same name on the <strong>Searching</strong> panel of the <strong>Preferences</strong> dialog in <strong>Notepad++</strong>, but for the <strong>Search in indicated region</strong> dialog in <strong>Columns++</strong>. When checked, the <strong>Replace</strong> button in the search dialog does not immediately perform another find after replacing text; in effect, the button alternates between finding and replacing, giving you a chance to see the effect of the replace before moving to the next occurrence of the search string.</td></tr>
+<tr><th>Automatically extend selections to form rectangles:</th><td>You can enable “implicit” selections for <strong>Columns++</strong> commands that require rectangular selections, bypassing the dialogs that ask you if you want to make a rectangular selection:
 <table class=optionsTable>
 <tr><th>Selections on one line extend downward to the last line.</th>
 <td>A selection of one or more characters on a single line is “projected” downward to the last line of the file. This allows you to select full columns (skipping headers, if desired) without scrolling all the way to the end of the file. If the last line of the file is completely empty (that is, the file ends with an end-of-line sequence) that line will not be included in the selection.</td></tr>

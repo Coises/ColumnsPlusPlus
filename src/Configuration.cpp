@@ -33,6 +33,32 @@ static const std::regex integerValue("[+-]?\\d{1,10}", std::regex::optimize);
 
 static std::basic_string<TCHAR> filePath;
 
+
+std::wstring decodeDelimitedString(const std::string value) {
+    if (value.length() > 2 && value.front() == '\\' && value.back() == '\\') {
+        std::wstring s = toWide(value.substr(1, value.length() - 2), CP_UTF8);
+        for (size_t i = 0; i < s.length() - 1; ++i) if (s[i] == L'\\') switch (s[i + 1]) {
+        case L'r': s.replace(i, 2, L"\r"); break;
+        case L'n': s.replace(i, 2, L"\n"); break;
+        case L'\\': s.replace(i, 2, L"\\"); break;
+        default:;
+        }
+        return s;
+    }
+    return L"";
+}
+
+std::string encodeDelimitedString(std::wstring s) {
+    for (size_t i = 0; i < s.length(); ++i) switch (s[i]) {
+    case L'\r': s.replace(i, 1, L"\\r" ); ++i; break;
+    case L'\n': s.replace(i, 1, L"\\n" ); ++i; break;
+    case L'\\': s.replace(i, 1, L"\\\\"); ++i; break;
+    default:;
+    }
+    return "\\" + fromWide(s, CP_UTF8) + "\\";
+}
+
+
 void ColumnsPlusPlusData::loadConfiguration() {
 
     TCHAR pluginsConfigDirectory[MAX_PATH];
@@ -84,9 +110,20 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 else if (setting == "replacestaysput"           ) replaceStaysPut                  = value != "0";
                 else if (setting == "calculateinsert"           ) calculateInsert                  = value != "0";
                 else if (setting == "calculateaddline"          ) calculateAddLine                 = value != "0";
+                else if (setting == "csvquote"                  ) csv.quote                        = value != "0";
+                else if (setting == "csvapostrophe"             ) csv.apostrophe                   = value != "0";
+                else if (setting == "csvescape"                 ) csv.escape                       = value != "0";
+                else if (setting == "csvpreservequotes"         ) csv.preserveQuotes               = value != "0";
                 else if (setting == "extendsingleline"          ) {if (configLevel > 1) extendSingleLine = value != "0";}
                 else if (setting == "extendfulllines"           ) {if (configLevel > 1) extendFullLines  = value != "0";}
                 else if (setting == "extendzerowidth"           ) {if (configLevel > 1) extendZeroWidth  = value != "0";}
+                else if (setting == "csvseparator" ) { auto s = decodeDelimitedString(value); if (s.length() == 1) csv.separator  = s[0]; }
+                else if (setting == "csvescapechar") { auto s = decodeDelimitedString(value); if (s.length() == 1) csv.escapeChar = s[0]; }
+                else if (setting == "csvencodetnr" ) { auto s = decodeDelimitedString(value); if (s.length() == 1) csv.encodeTNR  = s[0]; }
+                else if (setting == "csvencodeurl" ) { auto s = decodeDelimitedString(value); if (s.length() == 1) csv.encodeURL  = s[0]; }
+                else if (setting == "csvreplacetab") csv.replaceTab = decodeDelimitedString(value);
+                else if (setting == "csvreplacelf" ) csv.replaceLF  = decodeDelimitedString(value);
+                else if (setting == "csvreplacecr" ) csv.replaceCR  = decodeDelimitedString(value);
                 else if (setting == "thousandsseparator") {
                     strlwr(value.data());
                     thousands = value == "comma"      ? Thousands::Comma
@@ -94,6 +131,12 @@ void ColumnsPlusPlusData::loadConfiguration() {
                               : value == "apostrophe" ? Thousands::Apostrophe
                               : value == "blank"      ? Thousands::Blank
                                                       : Thousands::None;
+                }
+                else if (setting == "csvencodingstyle") {
+                    strlwr(value.data());
+                    csv.encodingStyle = value == "backslash" ? CsvSettings::TNR
+                                      : value == "url"       ? CsvSettings::URL
+                                                             : CsvSettings::Replace;
                 }
                 else if (std::regex_match(value, integerValue)) {
                     if      (setting == "minimumorleadingtabsize"   ) settings.minimumOrLeadingTabSize    = std::stoi(value);
@@ -209,6 +252,20 @@ void ColumnsPlusPlusData::saveConfiguration() {
                                       : thousands == Thousands::Apostrophe ? "apostrophe" 
                                       : thousands == Thousands::Blank      ? "blank"
                                                                            : "none" ) << std::endl;
+    file << "csvQuote\t"                    << csv.quote                                             << std::endl;
+    file << "csvApostrophe\t"               << csv.apostrophe                                        << std::endl;
+    file << "csvEscape\t"                   << csv.escape                                            << std::endl;
+    file << "csvPreserveQuotes\t"           << csv.preserveQuotes                                    << std::endl;
+    file << "csvSeparator\t"                << encodeDelimitedString(std::wstring(1,csv.separator )) << std::endl;
+    file << "csvEscapeChar\t"               << encodeDelimitedString(std::wstring(1,csv.escapeChar)) << std::endl;
+    file << "csvEncodeTNR\t"                << encodeDelimitedString(std::wstring(1,csv.encodeTNR )) << std::endl;
+    file << "csvEncodeURL\t"                << encodeDelimitedString(std::wstring(1,csv.encodeURL )) << std::endl;
+    file << "csvReplaceTab\t"               << encodeDelimitedString(csv.replaceTab                ) << std::endl;
+    file << "csvReplaceLF\t"                << encodeDelimitedString(csv.replaceLF                 ) << std::endl;
+    file << "csvReplaceCR\t"                << encodeDelimitedString(csv.replaceCR                 ) << std::endl;
+    file << "csvEncodingStyle\t" << ( csv.encodingStyle == CsvSettings::TNR ? "backslash"
+                                    : csv.encodingStyle == CsvSettings::URL ? "url" 
+                                                                            : "replace" ) << std::endl;
 
     file << std::endl << "Search" << std::endl << std::endl;
 
