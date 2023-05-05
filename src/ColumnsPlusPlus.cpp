@@ -30,7 +30,7 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
     }
     if (lastNeeded < 0 || lastNeeded >= lineCount) lastNeeded = lineCount - 1;
     Scintilla::Line lastMonospaceFail = 0;
-    int tlbIndex = 0;
+    size_t tlbIndex = 0;
     for (Scintilla::Line lineNum = firstNeeded; lineNum <= lastNeeded; ++lineNum) {
         while (tlbIndex < dd.tabLayouts.size() && dd.tabLayouts[tlbIndex].lastLine < lineNum) ++tlbIndex;
         if (tlbIndex >= dd.tabLayouts.size() || dd.tabLayouts[tlbIndex].firstLine > lineNum) {
@@ -45,13 +45,13 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
         for (const TabLayoutBlock* tlb = &dd.tabLayouts[tlbIndex];;) {
             tabstop += tlb->width;
             tabs.push_back(tabstop);
-            int i = 0;
+            size_t i = 0;
             if (i < tlb->right.size() && tlb->right[i].lastLine < lineNum) ++i;
             if (i >= tlb->right.size() || tlb->right[i].firstLine > lineNum) break;
             tlb = &tlb->right[i];
         }
         bool unchanged = true;
-        for (int i = 0, position = 0; i < tabs.size(); ++i) {
+        for (int i = 0, position = 0; i < static_cast<int>(tabs.size()); ++i) {
             position = sci.GetNextTabStop(lineNum, position);
             if (position != tabs[i]) {
                 unchanged = false;
@@ -60,7 +60,7 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
         }
         if (!unchanged) {
             sci.ClearTabStops(lineNum);
-            for (int i = 0; i < tabs.size(); ++i) sci.AddTabStop(lineNum, tabs[i]);
+            for (size_t i = 0; i < tabs.size(); ++i) sci.AddTabStop(lineNum, tabs[i]);
         }
         if (dd.assumeMonospace) {
             size_t t = line.find_last_of('\t');
@@ -100,7 +100,7 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
                         }
                         width += xEnd - xLoc + tabGap;
                         if (width > tlb->width) tlb->width = width;
-                        int i = 0;
+                        size_t i = 0;
                         if (i < tlb->right.size() && tlb->right[i].lastLine < lineNum) ++i;
                         if (i >= tlb->right.size() || tlb->right[i].firstLine > lineNum) break;
                         tlb = &tlb->right[i];
