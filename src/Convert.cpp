@@ -528,7 +528,7 @@ void ColumnsPlusPlusData::tabsToSpaces() {
     Scintilla::Line lastSelectedLine = sci.LineFromPosition(selections[0].second);
     setTabstops(dd, firstSelectedLine, lastSelectedLine);
 
-    int blankWidth = sci.TextWidth(0, " ");
+    int blankWidth = sci.TextWidth(STYLE_DEFAULT, " ");
     sci.SetSearchFlags(Scintilla::FindOption::MatchCase);
     sci.BeginUndoAction();
 

@@ -424,8 +424,8 @@ void showRange(ColumnsPlusPlusData& data, Scintilla::Position foundStart, Scinti
             int available = scintillaTextWidth - pxEnd + pxStart;
             if (available <= 0) data.sci.ScrollRange(foundStart, foundEnd);
             else data.sci.SetXOffset(pxStart - pxLine - (data.searchData.backward && data.searchData.mode != SearchData::Regex
-                ? std::max(available / 2, available - 5 * data.sci.TextWidth(0, " "))
-                : std::min(available / 2, 5 * data.sci.TextWidth(0, " "))));
+                ? std::max(available / 2, available - 5 * data.sci.TextWidth(STYLE_DEFAULT, " "))
+                : std::min(available / 2, 5 * data.sci.TextWidth(STYLE_DEFAULT, " "))));
         }
     }
     data.sci.SetSel(foundStart, foundEnd);

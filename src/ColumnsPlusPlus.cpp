@@ -21,41 +21,107 @@
 #include "commctrl.h"
 
 
-void tabset(Scintilla::ScintillaCall& sci, const TabLayoutBlock& tlb, int origin, Scintilla::Line firstNeeded, Scintilla::Line lastNeeded) {
-    if (firstNeeded > tlb.lastLine || lastNeeded < tlb.firstLine) return;
-    int tabstop = origin + tlb.width;
-    Scintilla::Line first = std::max(tlb.firstLine, firstNeeded);
-    Scintilla::Line last = std::min(tlb.lastLine, lastNeeded);
-    for (Scintilla::Line i = first; i <= last; ++i) sci.AddTabStop(i, tabstop);
-    for (const TabLayoutBlock& tlbNext : tlb.right) tabset(sci, tlbNext, tabstop, firstNeeded, lastNeeded);
+bool guessMonospaced(ColumnsPlusPlusData& data) {
+    int width = data.sci.TextWidth(STYLE_DEFAULT, " ");
+    for (int style = 0; style < 256; ++style) {
+        if (data.sci.TextWidth(style, "W") != width) return false;
+        if (data.sci.TextWidth(style, " ") != width) return false;
+    }
+    return true;
 }
 
-void tabset(Scintilla::ScintillaCall& sci, const TabLayoutBlock& tlb, int origin, Scintilla::Line firstNeeded, Scintilla::Line lastNeeded, int leadingIndent) {
-    if (firstNeeded > tlb.lastLine || lastNeeded < tlb.firstLine) return;
-    int tabstop = origin + tlb.width;
-    Scintilla::Line first = std::max(tlb.firstLine, firstNeeded);
-    Scintilla::Line last = std::min(tlb.lastLine, lastNeeded);
-    for (Scintilla::Line i = first; i <= last; ++i) {
-        std::string line = sci.GetLine(i);
-        for (unsigned int j = 0; j < line.length() && line[j] == '\t'; ++j) sci.AddTabStop(i, (j + 1) * leadingIndent);
-        sci.AddTabStop(i, tabstop);
-    }
-    for (const TabLayoutBlock& tlbNext : tlb.right) tabset(sci, tlbNext, tabstop, firstNeeded, lastNeeded);
-}
 
 void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNeeded, Scintilla::Line lastNeeded) {
+    const int leadingIndent = sci.TextWidth(STYLE_DEFAULT, " ") * (dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : sci.TabWidth());
+    const Scintilla::Line lineCount = sci.LineCount();
     if (firstNeeded == -1) {
         firstNeeded = sci.FirstVisibleLine();
         lastNeeded  = firstNeeded + sci.LinesOnScreen();
     }
-    Scintilla::Line lineCount = sci.LineCount();
     if (lastNeeded < 0 || lastNeeded >= lineCount) lastNeeded = lineCount - 1;
-    for (Scintilla::Line lineNum = firstNeeded; lineNum <= lastNeeded; ++lineNum) sci.ClearTabStops(lineNum);
-    if (dd.settings.leadingTabsIndent) {
-        int leadingIndent = sci.TextWidth(0, " ") * (dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : sci.TabWidth());
-        for (const auto& tlb : dd.tabLayouts) tabset(sci, tlb, 0, firstNeeded, lastNeeded, leadingIndent);
+    Scintilla::Line lastMonospaceFail = 0;
+    int tlbIndex = 0;
+    for (Scintilla::Line lineNum = firstNeeded; lineNum <= lastNeeded; ++lineNum) {
+        while (tlbIndex < dd.tabLayouts.size() && dd.tabLayouts[tlbIndex].lastLine < lineNum) ++tlbIndex;
+        if (tlbIndex >= dd.tabLayouts.size() || dd.tabLayouts[tlbIndex].firstLine > lineNum) {
+            sci.ClearTabStops(lineNum);
+            continue;
+        }
+        const std::string line = dd.settings.leadingTabsIndent || dd.assumeMonospace ? sci.GetLine(lineNum) : std::string();
+        std::vector<int> tabs;
+        if (dd.settings.leadingTabsIndent)
+            for (unsigned int j = 0; j < line.length() && line[j] == '\t'; ++j) tabs.push_back((j + 1) * leadingIndent);
+        int tabstop = 0;
+        for (const TabLayoutBlock* tlb = &dd.tabLayouts[tlbIndex];;) {
+            tabstop += tlb->width;
+            tabs.push_back(tabstop);
+            int i = 0;
+            if (i < tlb->right.size() && tlb->right[i].lastLine < lineNum) ++i;
+            if (i >= tlb->right.size() || tlb->right[i].firstLine > lineNum) break;
+            tlb = &tlb->right[i];
+        }
+        bool unchanged = true;
+        for (int i = 0, position = 0; i < tabs.size(); ++i) {
+            position = sci.GetNextTabStop(lineNum, position);
+            if (position != tabs[i]) {
+                unchanged = false;
+                break;
+            }
+        }
+        if (!unchanged) {
+            sci.ClearTabStops(lineNum);
+            for (int i = 0; i < tabs.size(); ++i) sci.AddTabStop(lineNum, tabs[i]);
+        }
+        if (dd.assumeMonospace) {
+            size_t t = line.find_last_of('\t');
+            if (t != std::string::npos) {
+                Scintilla::Position lineStarts = sci.PositionFromLine(lineNum);
+                int px = sci.PointXFromPosition(lineStarts + t + 1) - sci.PointXFromPosition(lineStarts);
+                if (px > tabs.back()) {
+                    lastMonospaceFail = lineNum;
+                    int blankWidth = sci.TextWidth(STYLE_DEFAULT, " ");
+                    int tabGap = blankWidth * dd.settings.minimumSpaceBetweenColumns;
+                    tabs.clear();
+                    size_t tabAt = 0;
+                    if (dd.settings.leadingTabsIndent) for (; tabAt < line.length() && line[tabAt] == '\t'; ++tabAt);
+                    tabAt = line.find_first_of("\t\r\n", tabAt);
+                    size_t from = 0;
+                    for (TabLayoutBlock* tlb = &dd.tabLayouts[tlbIndex];;) {
+                        int width = 0;
+                        int xLoc = sci.PointXFromPosition(lineStarts + from);
+                        int xEnd = sci.PointXFromPosition(lineStarts + tabAt);
+                        if (sci.WrapMode() != Scintilla::Wrap::None && sci.WrapCount(lineNum) > 1) {
+                            int yLoc = sci.PointYFromPosition(lineStarts + from);
+                            int yEnd = sci.PointYFromPosition(lineStarts + tabAt);
+                            for (Scintilla::Position next = lineStarts + from + 1; yLoc != yEnd; ++next) {
+                                int yNext = sci.PointYFromPosition(next);
+                                while (yNext == yLoc) {
+                                    ++next;
+                                    yNext = sci.PointYFromPosition(next);
+                                }
+                                width += sci.PointXFromPosition(next - 1) - xLoc;
+                                char lastBeforeWrap = sci.CharacterAt(next - 1);
+                                char cStringBeforeWrap[] = " ";
+                                if (lastBeforeWrap) cStringBeforeWrap[0] = lastBeforeWrap;
+                                width += sci.TextWidth(sci.StyleIndexAt(next - 1), cStringBeforeWrap);
+                                xLoc = sci.PointXFromPosition(next);
+                                yLoc = yNext;
+                            }
+                        }
+                        width += xEnd - xLoc + tabGap;
+                        if (width > tlb->width) tlb->width = width;
+                        int i = 0;
+                        if (i < tlb->right.size() && tlb->right[i].lastLine < lineNum) ++i;
+                        if (i >= tlb->right.size() || tlb->right[i].firstLine > lineNum) break;
+                        tlb = &tlb->right[i];
+                        from = tabAt + 1;
+                        tabAt = line.find_first_of("\t\r\n", from);
+                    }
+                }
+            }
+        }
     }
-    else for (const auto& tlb : dd.tabLayouts) tabset(sci, tlb, 0, firstNeeded, lastNeeded);
+    if (lastMonospaceFail) setTabstops(dd, firstNeeded, lastMonospaceFail);
 }
 
 
@@ -63,10 +129,11 @@ void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
     dd.elasticAnalysisRequired = false;
     dd.deleteWithoutLayoutChange = false;
     dd.tabZoom = sci.Zoom();
-    int blankWidth = sci.TextWidth(0, " ");
+    int blankWidth = sci.TextWidth(STYLE_DEFAULT, " ");
     int tabGap = blankWidth * dd.settings.minimumSpaceBetweenColumns;
     int tabInd = blankWidth * (dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : sci.TabWidth());
     int tabMin = dd.settings.leadingTabsIndent ? 0 : tabInd;
+    dd.assumeMonospace = guessMonospaced(*this);
     Scintilla::Line lineCount = sci.LineCount();
     dd.tabLayouts.clear();
     for (Scintilla::Line lineNum = 0; lineNum < lineCount; ++lineNum) {
@@ -83,26 +150,32 @@ void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
             if (!layouts->size() || (!dd.settings.lineUpAll && layouts->back().lastLine < lineNum - 1)) layouts->emplace_back(lineNum, tabMin);
             TabLayoutBlock& tlb = layouts->back();
             tlb.lastLine = lineNum;
-            int xLoc = sci.PointXFromPosition(begin + from);
-            int yLoc = sci.PointYFromPosition(begin + from);
-            int xEnd = sci.PointXFromPosition(begin + tab);
-            int yEnd = sci.PointYFromPosition(begin + tab);
             int width = 0;
-            for (Scintilla::Position next = begin + from + 1; yLoc != yEnd; ++next) {
-                int yNext = sci.PointYFromPosition(next);
-                while (yNext == yLoc) {
-                    ++next;
-                    yNext = sci.PointYFromPosition(next);
+            if (dd.assumeMonospace) width += static_cast<int>(sci.CountCharacters(begin + from, begin + tab)) * blankWidth;
+            else {
+                int xLoc = sci.PointXFromPosition(begin + from);
+                int xEnd = sci.PointXFromPosition(begin + tab);
+                if (sci.WrapMode() != Scintilla::Wrap::None && sci.WrapCount(lineNum) > 1) {
+                    int yLoc = sci.PointYFromPosition(begin + from);
+                    int yEnd = sci.PointYFromPosition(begin + tab);
+                    for (Scintilla::Position next = begin + from + 1; yLoc != yEnd; ++next) {
+                        int yNext = sci.PointYFromPosition(next);
+                        while (yNext == yLoc) {
+                            ++next;
+                            yNext = sci.PointYFromPosition(next);
+                        }
+                        width += sci.PointXFromPosition(next - 1) - xLoc;
+                        char lastBeforeWrap = sci.CharacterAt(next - 1);
+                        char cStringBeforeWrap[] = " ";
+                        if (lastBeforeWrap) cStringBeforeWrap[0] = lastBeforeWrap;
+                        width += sci.TextWidth(sci.StyleIndexAt(next - 1), cStringBeforeWrap);
+                        xLoc = sci.PointXFromPosition(next);
+                        yLoc = yNext;
+                    }
                 }
-                width += sci.PointXFromPosition(next - 1) - xLoc;
-                char lastBeforeWrap = sci.CharacterAt(next - 1);
-                char cStringBeforeWrap[] = " ";
-                if (lastBeforeWrap) cStringBeforeWrap[0] = lastBeforeWrap;
-                width += sci.TextWidth(sci.StyleIndexAt(next - 1), cStringBeforeWrap);
-                xLoc = sci.PointXFromPosition(next);
-                yLoc = yNext;
+                width += xEnd - xLoc;
             }
-            width += xEnd - xLoc + tabGap + indentSize;
+            width += tabGap + indentSize;
             indentSize = 0;
             if (width > tlb.width) tlb.width = width;
             from = tab + 1;
@@ -175,7 +248,7 @@ bool ColumnsPlusPlusData::findTabLayoutBlock(DocumentData& dd, Scintilla::Positi
         indentCount = 0;
     }
     width = sci.PointXFromPosition(beginLine + (tabAfter - line)) - sci.PointXFromPosition(beginLine + (tabStopBefore - line));
-    if (indentCount) width += indentCount * sci.TextWidth(0, " ")
+    if (indentCount) width += indentCount * sci.TextWidth(STYLE_DEFAULT, " ")
                                           * (dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : dd.tabOriginal);
     std::vector<TabLayoutBlock>* layouts = &dd.tabLayouts;
     for (int n = 0; n <= tabCount; ++n) {
@@ -207,7 +280,7 @@ void ColumnsPlusPlusData::scnModified(const Scintilla::NotificationData* scnp) {
     if (!ddp) return;
     DocumentData& ctd = *ddp;
     if (!ctd.settings.elasticEnabled || ctd.elasticAnalysisRequired) return;
-    int blankWidth = sci.TextWidth(0, " ");
+    int blankWidth = sci.TextWidth(STYLE_DEFAULT, " ");
     int tabGap = blankWidth * ctd.settings.minimumSpaceBetweenColumns;
     if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::LastStepInUndoRedo)); /* fall through to full analysis */
     else if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::MultiStepUndoRedo)) return;
@@ -296,10 +369,14 @@ void ColumnsPlusPlusData::bufferActivated() {
     SendMessage(nppData._nppHandle, NPPM_SETMENUITEMCHECK, decimalSeparatorMenuItem, settings.decimalSeparatorIsComma);
     dd.tabOriginal = sci.TabWidth();
     sci.SetTabIndents(!settings.elasticEnabled);
-    if (!settings.elasticEnabled) return;
+    if (!settings.elasticEnabled) {
+        sci.SetControlCharSymbol(0);
+        return;
+    }
     if (settings.overrideTabSize) sci.SetTabWidth(settings.minimumOrLeadingTabSize);
     if (isNewDocument) {
         analyzeTabstops(dd);
+        sci.SetControlCharSymbol(dd.assumeMonospace ? '!' : 0);
         setTabstops(dd);
     }
     Scintilla::SelectionMode selectionMode = sci.SelectionMode();
@@ -344,10 +421,12 @@ void ColumnsPlusPlusData::toggleElasticEnabled() {
         }
         sci.SetTabIndents(0);
         analyzeTabstops(*ddp);
+        sci.SetControlCharSymbol(ddp->assumeMonospace ? '!' : 0);
         setTabstops(*ddp);
     } else {
         if (settings.overrideTabSize) sci.SetTabWidth(ddp->tabOriginal);
         sci.SetTabIndents(1);
+        sci.SetControlCharSymbol(0);
         Scintilla::Line lineCount = sci.LineCount();
         for (Scintilla::Line lineNum = 0; lineNum < lineCount; ++lineNum) sci.ClearTabStops(lineNum);
     }

@@ -250,7 +250,7 @@ RectangularSelection& RectangularSelection::refit(bool addLine) {
 
 
 RectangularSelection::RectangularSelection(ColumnsPlusPlusData& data)
-    : data(data), blankWidth(data.sci.TextWidth(0, " ")), tabWidth(data.sci.TabWidth()) {
+    : data(data), blankWidth(data.sci.TextWidth(STYLE_DEFAULT, " ")), tabWidth(data.sci.TabWidth()) {
     _mode   = data.sci.SelectionMode();
     _size   = data.sci.Selections();
     _anchor = corner(data.sci.SelectionNAnchor(0), data.sci.SelectionNAnchorVirtualSpace(0));

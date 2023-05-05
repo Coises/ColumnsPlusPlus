@@ -172,6 +172,7 @@ public:
     int      tabOriginal;                         // set when buffer activated, used for restore when elasticTabsEnabled or overrideTabSize turned off
     bool     elasticAnalysisRequired = false;
     bool     deleteWithoutLayoutChange = false;
+    bool     assumeMonospace = false;             // set when assuming all fonts used are monospaced
     Scintilla::Position deleteWithoutLayoutChangePosition;
     Scintilla::Position deleteWithoutLayoutChangeLength;
 };
@@ -284,8 +285,8 @@ public:
 
     // ColumnsPlusPlus.cpp
 
-    void analyzeTabstops(DocumentData& ctd);
-    bool findTabLayoutBlock(DocumentData& ctd, Scintilla::Position position, Scintilla::Position length, TabLayoutBlock*& tlb, int& width);
+    void analyzeTabstops(DocumentData& dd);
+    bool findTabLayoutBlock(DocumentData& dd, Scintilla::Position position, Scintilla::Position length, TabLayoutBlock*& tlb, int& width);
     void setTabstops(DocumentData& dd, Scintilla::Line firstNeeded = -1, Scintilla::Line lastNeeded = -1);
 
     void bufferActivated();
