@@ -106,6 +106,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 else if (setting == "lineupall"                 ) settings.lineUpAll               = value != "0";
                 else if (setting == "treateolastab"             ) settings.treatEolAsTab           = value != "0";
                 else if (setting == "overridetabsize"           ) settings.overrideTabSize         = value != "0";
+                else if (setting == "monospacenomnemonics"      ) settings.monospaceNoMnemonics    = value != "0";
                 else if (setting == "showonmenubar"             ) showOnMenuBar                    = value != "0";
                 else if (setting == "replacestaysput"           ) replaceStaysPut                  = value != "0";
                 else if (setting == "calculateinsert"           ) calculateInsert                  = value != "0";
@@ -124,6 +125,12 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 else if (setting == "csvreplacetab") csv.replaceTab = decodeDelimitedString(value);
                 else if (setting == "csvreplacelf" ) csv.replaceLF  = decodeDelimitedString(value);
                 else if (setting == "csvreplacecr" ) csv.replaceCR  = decodeDelimitedString(value);
+                else if (setting == "monospace") {
+                    strlwr(value.data());
+                    settings.monospace = value == "yes" ? ElasticTabsProfile::MonospaceAlways
+                                       : value == "no"  ? ElasticTabsProfile::MonospaceNever
+                                                        : ElasticTabsProfile::MonospaceBest;
+                }
                 else if (setting == "thousandsseparator") {
                     strlwr(value.data());
                     thousands = value == "comma"      ? Thousands::Comma
@@ -198,6 +205,13 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 else if (setting == "lineupall"                 ) profiles[profileName].lineUpAll               = value != "0";
                 else if (setting == "treateolastab"             ) profiles[profileName].treatEolAsTab           = value != "0";
                 else if (setting == "overridetabsize"           ) profiles[profileName].overrideTabSize         = value != "0";
+                else if (setting == "monospacenomnemonics"      ) profiles[profileName].monospaceNoMnemonics    = value != "0";
+                else if (setting == "monospace") {
+                    strlwr(value.data());
+                    profiles[profileName].monospace = value == "yes" ? ElasticTabsProfile::MonospaceAlways
+                                                    : value == "no"  ? ElasticTabsProfile::MonospaceNever
+                                                                     : ElasticTabsProfile::MonospaceBest;
+                }
                 else if (std::regex_match(value, integerValue)) {
                     if      (setting == "minimumorleadingtabsize"   ) profiles[profileName].minimumOrLeadingTabSize    = std::stoi(value);
                     else if (setting == "minimumspacebetweencolumns") profiles[profileName].minimumSpaceBetweenColumns = std::stoi(value);
@@ -239,6 +253,10 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "lineUpAll\t"                   << settings.lineUpAll                      << std::endl;
     file << "treatEolAsTab\t"               << settings.treatEolAsTab                  << std::endl;
     file << "overrideTabSize\t"             << settings.overrideTabSize                << std::endl;
+    file << "monospace\t" << ( settings.monospace == ElasticTabsProfile::MonospaceAlways ? "yes"
+                             : settings.monospace == ElasticTabsProfile::MonospaceNever  ? "no" 
+                                                                                         : "best" ) << std::endl;
+    file << "monospaceNoMnemonics\t"        << settings.monospaceNoMnemonics           << std::endl;
     file << "disableOverSize\t"             << disableOverSize                         << std::endl;
     file << "disableOverLines\t"            << disableOverLines                        << std::endl;
     file << "showOnMenuBar\t"               << showOnMenuBar                           << std::endl;
@@ -305,12 +323,16 @@ void ColumnsPlusPlusData::saveConfiguration() {
 
     for (const auto& p : profiles) if (p.first != L"Classic" && p.first != L"General" && p.first != L"Tabular") {
         file << std::endl << "Profile\t" << fromWide(p.first, CP_UTF8) << std::endl << std::endl;
-        file << "minimumOrLeadingTabSize\t"     << settings.minimumOrLeadingTabSize        << std::endl;
-        file << "minimumSpaceBetweenColumns\t"  << settings.minimumSpaceBetweenColumns     << std::endl;
-        file << "leadingTabsIndent\t"           << settings.leadingTabsIndent              << std::endl;
-        file << "lineUpAll\t"                   << settings.lineUpAll                      << std::endl;
-        file << "treatEolAsTab\t"               << settings.treatEolAsTab                  << std::endl;
-        file << "overrideTabSize\t"             << settings.overrideTabSize                << std::endl;
+        file << "minimumOrLeadingTabSize\t"     << p.second.minimumOrLeadingTabSize    << std::endl;
+        file << "minimumSpaceBetweenColumns\t"  << p.second.minimumSpaceBetweenColumns << std::endl;
+        file << "leadingTabsIndent\t"           << p.second.leadingTabsIndent          << std::endl;
+        file << "lineUpAll\t"                   << p.second.lineUpAll                  << std::endl;
+        file << "treatEolAsTab\t"               << p.second.treatEolAsTab              << std::endl;
+        file << "overrideTabSize\t"             << p.second.overrideTabSize            << std::endl;
+        file << "monospace\t" << ( p.second.monospace == ElasticTabsProfile::MonospaceAlways ? "yes"
+                                 : p.second.monospace == ElasticTabsProfile::MonospaceNever  ? "no" 
+                                                                                             : "best" ) << std::endl;
+        file << "monospaceNoMnemonics\t"        << settings.monospaceNoMnemonics       << std::endl;
     }
 
     if (extensionToProfile.size()) {
@@ -338,6 +360,8 @@ void ColumnsPlusPlusData::initializeBuiltinElasticTabstopsProfiles() {
     classic.overrideTabSize            = false;
     classic.minimumOrLeadingTabSize    = 4;
     classic.minimumSpaceBetweenColumns = 2;
+    classic.monospace                  = ElasticTabsProfile::MonospaceBest;
+    classic.monospaceNoMnemonics       = true;
 
     ElasticTabsProfile& general = profiles[L"General"];
     general.leadingTabsIndent          = true;
@@ -346,6 +370,8 @@ void ColumnsPlusPlusData::initializeBuiltinElasticTabstopsProfiles() {
     general.overrideTabSize            = false;
     general.minimumOrLeadingTabSize    = 4;
     general.minimumSpaceBetweenColumns = 2;
+    general.monospace                  = ElasticTabsProfile::MonospaceBest;
+    general.monospaceNoMnemonics       = true;
 
     ElasticTabsProfile& tabular = profiles[L"Tabular"];
     tabular.leadingTabsIndent          = false;
@@ -354,5 +380,7 @@ void ColumnsPlusPlusData::initializeBuiltinElasticTabstopsProfiles() {
     tabular.overrideTabSize            = true;
     tabular.minimumOrLeadingTabSize    = 1;
     tabular.minimumSpaceBetweenColumns = 2;
+    tabular.monospace                  = ElasticTabsProfile::MonospaceBest;
+    tabular.monospaceNoMnemonics       = true;
 
 }

@@ -51,26 +51,35 @@ void ColumnsPlusPlusData::showElasticProfile() {
 
 
 void profileToDialog(HWND hwndDlg, const ElasticTabsProfile& etp) {
-    SendDlgItemMessage(hwndDlg, IDC_LEADING_TABS_INDENT, BM_SETCHECK, etp.leadingTabsIndent ? BST_CHECKED : BST_UNCHECKED, 0);
-    SendDlgItemMessage(hwndDlg, IDC_LINE_UP_ALL, BM_SETCHECK, etp.lineUpAll ? BST_CHECKED : BST_UNCHECKED, 0);
-    SendDlgItemMessage(hwndDlg, IDC_TREAT_EOL_AS_TAB, BM_SETCHECK, etp.treatEolAsTab ? BST_CHECKED : BST_UNCHECKED, 0);
-    SendDlgItemMessage(hwndDlg, IDC_OVERRIDE_TAB_SIZE, BM_SETCHECK, etp.overrideTabSize ? BST_CHECKED : BST_UNCHECKED, 0);
-    SendDlgItemMessage(hwndDlg, IDC_OVERRIDE_TAB_SIZE_SPIN, UDM_SETPOS, 0, etp.minimumOrLeadingTabSize);
-    SendDlgItemMessage(hwndDlg, IDC_MINIMUM_SPACE_SPIN, UDM_SETPOS, 0, etp.minimumSpaceBetweenColumns);
-    if (!etp.overrideTabSize) EnableWindow(GetDlgItem(hwndDlg, IDC_OVERRIDE_TAB_SIZE_VALUE), 0);
+    SendDlgItemMessage(hwndDlg, IDC_LEADING_TABS_INDENT   , BM_SETCHECK, etp.leadingTabsIndent ? BST_CHECKED : BST_UNCHECKED, 0);
+    SendDlgItemMessage(hwndDlg, IDC_LINE_UP_ALL           , BM_SETCHECK, etp.lineUpAll         ? BST_CHECKED : BST_UNCHECKED, 0);
+    SendDlgItemMessage(hwndDlg, IDC_TREAT_EOL_AS_TAB      , BM_SETCHECK, etp.treatEolAsTab     ? BST_CHECKED : BST_UNCHECKED, 0);
+    SendDlgItemMessage(hwndDlg, IDC_OVERRIDE_TAB_SIZE     , BM_SETCHECK, etp.overrideTabSize   ? BST_CHECKED : BST_UNCHECKED, 0);
+    SendDlgItemMessage(hwndDlg, IDC_OVERRIDE_TAB_SIZE_SPIN, UDM_SETPOS , 0, etp.minimumOrLeadingTabSize);
+    SendDlgItemMessage(hwndDlg, IDC_MINIMUM_SPACE_SPIN    , UDM_SETPOS , 0, etp.minimumSpaceBetweenColumns);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_OVERRIDE_TAB_SIZE_VALUE), etp.overrideTabSize ? TRUE : FALSE);
+    SendDlgItemMessage(hwndDlg, IDC_MONOSPACED_YES   , BM_SETCHECK, etp.monospace == ElasticTabsProfile::MonospaceAlways ? BST_CHECKED : BST_UNCHECKED, 0);
+    SendDlgItemMessage(hwndDlg, IDC_MONOSPACED_NO    , BM_SETCHECK, etp.monospace == ElasticTabsProfile::MonospaceNever  ? BST_CHECKED : BST_UNCHECKED, 0);
+    SendDlgItemMessage(hwndDlg, IDC_MONOSPACED_BEST  , BM_SETCHECK, etp.monospace == ElasticTabsProfile::MonospaceBest   ? BST_CHECKED : BST_UNCHECKED, 0);
+    SendDlgItemMessage(hwndDlg, IDC_MONOSPACED_RENDER, BM_SETCHECK, etp.monospaceNoMnemonics                             ? BST_CHECKED : BST_UNCHECKED, 0);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_MONOSPACED_RENDER), etp.monospace == ElasticTabsProfile::MonospaceNever ? FALSE : TRUE);
 }
 
 
 ElasticTabsProfile dialogToProfile(HWND hwndDlg) {
     ElasticTabsProfile etp;
     etp.leadingTabsIndent = SendDlgItemMessage(hwndDlg, IDC_LEADING_TABS_INDENT, BM_GETCHECK, 0, 0) == BST_CHECKED;
-    etp.lineUpAll = SendDlgItemMessage(hwndDlg, IDC_LINE_UP_ALL, BM_GETCHECK, 0, 0) == BST_CHECKED;
-    etp.treatEolAsTab = SendDlgItemMessage(hwndDlg, IDC_TREAT_EOL_AS_TAB, BM_GETCHECK, 0, 0) == BST_CHECKED;
-    etp.overrideTabSize = SendDlgItemMessage(hwndDlg, IDC_OVERRIDE_TAB_SIZE, BM_GETCHECK, 0, 0) == BST_CHECKED;
+    etp.lineUpAll         = SendDlgItemMessage(hwndDlg, IDC_LINE_UP_ALL, BM_GETCHECK        , 0, 0) == BST_CHECKED;
+    etp.treatEolAsTab     = SendDlgItemMessage(hwndDlg, IDC_TREAT_EOL_AS_TAB, BM_GETCHECK   , 0, 0) == BST_CHECKED;
+    etp.overrideTabSize   = SendDlgItemMessage(hwndDlg, IDC_OVERRIDE_TAB_SIZE, BM_GETCHECK  , 0, 0) == BST_CHECKED;
     auto r = SendDlgItemMessage(hwndDlg, IDC_OVERRIDE_TAB_SIZE_SPIN, UDM_GETPOS, 0, 0);
     etp.minimumOrLeadingTabSize = HIWORD(r) ? 4 : LOWORD(r);
     r = SendDlgItemMessage(hwndDlg, IDC_MINIMUM_SPACE_SPIN, UDM_GETPOS, 0, 0);
     etp.minimumSpaceBetweenColumns = HIWORD(r) ? 2 : LOWORD(r);
+    etp.monospace = SendDlgItemMessage(hwndDlg, IDC_MONOSPACED_YES, BM_GETCHECK, 0, 0) == BST_CHECKED ? ElasticTabsProfile::MonospaceAlways
+                  : SendDlgItemMessage(hwndDlg, IDC_MONOSPACED_NO , BM_GETCHECK, 0, 0) == BST_CHECKED ? ElasticTabsProfile::MonospaceNever
+                                                                                                      : ElasticTabsProfile::MonospaceBest;
+    etp.monospaceNoMnemonics = SendDlgItemMessage(hwndDlg, IDC_MONOSPACED_RENDER, BM_GETCHECK, 0, 0) == BST_CHECKED;
     return etp;
 }
 
@@ -394,6 +403,7 @@ BOOL ColumnsPlusPlusData::profileDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
 
             SendDlgItemMessage(hwndDlg, IDC_OVERRIDE_TAB_SIZE_SPIN, UDM_SETRANGE, 0, MAKELPARAM(999, 1));
             SendDlgItemMessage(hwndDlg, IDC_MINIMUM_SPACE_SPIN, UDM_SETRANGE, 0, MAKELPARAM(999, 1));
+            SetDlgItemText(hwndDlg, IDC_MONOSPACED_BEST, guessMonospaced() ? L"&Best estimate (Yes)" : L"&Best estimate (No)");
 
             profileToDialog(hwndDlg, settings);
             
@@ -555,6 +565,14 @@ BOOL ColumnsPlusPlusData::profileDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
         case IDC_TREAT_EOL_AS_TAB:
         case IDC_OVERRIDE_TAB_SIZE_SPIN:
         case IDC_MINIMUM_SPACE_SPIN:
+        case IDC_MONOSPACED_RENDER:
+            checkIfChanged(hwndDlg, profiles);
+            break;
+        case IDC_MONOSPACED_YES:
+        case IDC_MONOSPACED_NO:
+        case IDC_MONOSPACED_BEST:
+            EnableWindow(GetDlgItem(hwndDlg, IDC_MONOSPACED_RENDER),
+                SendDlgItemMessage(hwndDlg, IDC_MONOSPACED_NO, BM_GETCHECK, 0, 0) == BST_CHECKED ? FALSE : TRUE);
             checkIfChanged(hwndDlg, profiles);
             break;
         case IDC_PROFILE_SELECT:

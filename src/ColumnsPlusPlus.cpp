@@ -21,16 +21,6 @@
 #include "commctrl.h"
 
 
-bool guessMonospaced(ColumnsPlusPlusData& data) {
-    int width = data.sci.TextWidth(STYLE_DEFAULT, " ");
-    for (int style = 0; style < 256; ++style) {
-        if (data.sci.TextWidth(style, "W") != width) return false;
-        if (data.sci.TextWidth(style, " ") != width) return false;
-    }
-    return true;
-}
-
-
 void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNeeded, Scintilla::Line lastNeeded) {
     const int leadingIndent = sci.TextWidth(STYLE_DEFAULT, " ") * (dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : sci.TabWidth());
     const Scintilla::Line lineCount = sci.LineCount();
@@ -128,12 +118,14 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
 void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
     dd.elasticAnalysisRequired = false;
     dd.deleteWithoutLayoutChange = false;
-    dd.tabZoom = sci.Zoom();
+    dd.blankWidth = sci.TextWidth(STYLE_DEFAULT, " ");
     int blankWidth = sci.TextWidth(STYLE_DEFAULT, " ");
     int tabGap = blankWidth * dd.settings.minimumSpaceBetweenColumns;
     int tabInd = blankWidth * (dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : sci.TabWidth());
     int tabMin = dd.settings.leadingTabsIndent ? 0 : tabInd;
-    dd.assumeMonospace = guessMonospaced(*this);
+    dd.assumeMonospace = dd.settings.monospace == ElasticTabsProfile::MonospaceBest ? guessMonospaced()
+                       : dd.settings.monospace == ElasticTabsProfile::MonospaceAlways;
+    sci.SetControlCharSymbol(settings.monospaceNoMnemonics && dd.assumeMonospace ? '!' : 0);
     Scintilla::Line lineCount = sci.LineCount();
     dd.tabLayouts.clear();
     for (Scintilla::Line lineNum = 0; lineNum < lineCount; ++lineNum) {
@@ -284,7 +276,7 @@ void ColumnsPlusPlusData::scnModified(const Scintilla::NotificationData* scnp) {
     int tabGap = blankWidth * ctd.settings.minimumSpaceBetweenColumns;
     if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::LastStepInUndoRedo)); /* fall through to full analysis */
     else if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::MultiStepUndoRedo)) return;
-    else if (sci.Zoom() != ddp->tabZoom); /* fall through to full analysis */
+    else if (fontSpacingChange(ctd)); /* fall through to full analysis */
     else if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::InsertText)) {
         ctd.deleteWithoutLayoutChange = false;
         if (scnp->linesAdded == 0) /* Unless the number of lines is unchanged, we need full analysis. */ {
@@ -326,7 +318,7 @@ void ColumnsPlusPlusData::scnUpdateUI(const Scintilla::NotificationData* scnp) {
     if (Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) syncFindButton();
     if (!ddp->settings.elasticEnabled) return;
     ddp->deleteWithoutLayoutChange = false;
-    if (ddp->elasticAnalysisRequired || sci.Zoom() != ddp->tabZoom) analyzeTabstops(*ddp);
+    if (ddp->elasticAnalysisRequired || fontSpacingChange(*ddp)) analyzeTabstops(*ddp);
     setTabstops(*ddp);
 }
 
@@ -376,7 +368,6 @@ void ColumnsPlusPlusData::bufferActivated() {
     if (settings.overrideTabSize) sci.SetTabWidth(settings.minimumOrLeadingTabSize);
     if (isNewDocument) {
         analyzeTabstops(dd);
-        sci.SetControlCharSymbol(dd.assumeMonospace ? '!' : 0);
         setTabstops(dd);
     }
     Scintilla::SelectionMode selectionMode = sci.SelectionMode();
@@ -421,7 +412,6 @@ void ColumnsPlusPlusData::toggleElasticEnabled() {
         }
         sci.SetTabIndents(0);
         analyzeTabstops(*ddp);
-        sci.SetControlCharSymbol(ddp->assumeMonospace ? '!' : 0);
         setTabstops(*ddp);
     } else {
         if (settings.overrideTabSize) sci.SetTabWidth(ddp->tabOriginal);

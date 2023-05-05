@@ -119,7 +119,12 @@
 #define IDC_CSV_URL_RADIO               1116
 #define IDC_CSV_REPLACE_TAB             1118
 #define IDC_CSV_REPLACE_LF              1119
+#define IDC_MONOSPACED_BEST             1119
 #define IDC_CSV_REPLACE_CR              1120
+#define IDC_MONOSPACED_YES              1120
+#define IDC_MONOSPACED_NO               1121
+#define IDC_CHECK1                      1122
+#define IDC_MONOSPACED_RENDER           1122
 
 // Next default values for new objects
 // 
@@ -127,7 +132,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        127
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1119
+#define _APS_NEXT_CONTROL_VALUE         1123
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

@@ -149,10 +149,12 @@ class ElasticTabsProfile {
 public:
     int minimumOrLeadingTabSize    = 4;
     int minimumSpaceBetweenColumns = 2;
+    enum { MonospaceNever = 0, MonospaceAlways = 1, MonospaceBest = 2 } monospace = MonospaceBest;
     bool leadingTabsIndent         = false;
     bool lineUpAll                 = false;
     bool treatEolAsTab             = false;
     bool overrideTabSize           = false;
+    bool monospaceNoMnemonics      = true;
     bool operator==(const ElasticTabsProfile&) const = default;
 };
 
@@ -168,7 +170,7 @@ public:
     DocumentDataSettings settings;
     std::vector<TabLayoutBlock> tabLayouts;
     UINT_PTR buffer;                              // identifier used by Notepad++ messages and notifications
-    int      tabZoom = 0;                         // the zoom factor at which tabLayouts were calculated; if this changes, full analysis is required
+    int      blankWidth = 0;                      // the blank width at which tabLayouts were calculated; if this changes, full analysis is required
     int      tabOriginal;                         // set when buffer activated, used for restore when elasticTabsEnabled or overrideTabSize turned off
     bool     elasticAnalysisRequired = false;
     bool     deleteWithoutLayoutChange = false;
@@ -267,6 +269,27 @@ public:
     }
 
     RectangularSelection getRectangularSelection();
+
+    bool fontSpacingChange(DocumentData& dd) {
+        if (!dd.settings.elasticEnabled) return false;
+        int width = sci.TextWidth(STYLE_DEFAULT, " ");
+        if (width != dd.blankWidth) return true;
+        if (dd.settings.monospace != ElasticTabsProfile::MonospaceBest) return false;
+        for (int style = 0; style < 256; ++style) {
+            if (sci.TextWidth(style, "W") != width) return dd.assumeMonospace;
+            if (sci.TextWidth(style, " ") != width) return dd.assumeMonospace;
+        }
+        return !dd.assumeMonospace;
+    }
+
+    bool guessMonospaced() {
+        int width = sci.TextWidth(STYLE_DEFAULT, " ");
+        for (int style = 0; style < 256; ++style) {
+            if (sci.TextWidth(style, "W") != width) return false;
+            if (sci.TextWidth(style, " ") != width) return false;
+        }
+        return true;
+    }
 
     bool searchRegionReady() {
         if (sci.SelectionMode() != Scintilla::SelectionMode::Stream) return false;
