@@ -349,23 +349,10 @@ RectangularSelection& RectangularSelection::extend() {
         return *this;
     }
 
-    if (data.settings.elasticEnabled) data.setTabstops(*data.getDocument(), 0, -1);
-
     Corner topLeft = corner(0, 0);
-
     Corner bottomLeft = corner(data.sci.PositionFromLine(data.sci.LineCount() - 1), 0);
     if (bottomLeft.st == bottomLeft.en && bottomLeft.ln > 0)
         bottomLeft = corner(data.sci.PositionFromLine(bottomLeft.ln - 1), 0);
-    int maxExtentAll = 0;
-
-    for (Scintilla::Line i = 0; i <= bottomLeft.ln; ++i) {
-        int extent = data.sci.PointXFromPosition(data.sci.LineEndPosition(i));
-        if (extent > maxExtentAll) maxExtentAll = extent;
-    }
-
-    Corner topRight = corner(topLeft.en, (2 * (maxExtentAll - data.sci.PointXFromPosition(topLeft.en)) + blankWidth) / (2 * blankWidth));
-    Corner bottomRight = corner(bottomLeft.en, (2 * (maxExtentAll - data.sci.PointXFromPosition(bottomLeft.en)) + blankWidth) / (2 * blankWidth));
-
     Corner& start  = _anchor.cp < _caret.cp ? _anchor : _caret ;
     Corner& end    = _anchor.cp < _caret.cp ? _caret  : _anchor;
     bool hasWidth  = _anchor.cp != _caret.cp || _anchor.vs != _caret.vs;
@@ -374,7 +361,7 @@ RectangularSelection& RectangularSelection::extend() {
     if (!hasWidth && !hasHeight) {
 
         intptr_t choice;
-        if ((_caret.px == 0 || _caret.px >= bottomRight.px) && (_caret.ln == 0 || _caret.ln >= bottomRight.ln)) {
+        if (_caret.px == 0 && (_caret.ln == 0 || _caret.ln >= bottomLeft.ln)) {
             if (MessageBox(data.nppData._nppHandle, L"This command requires a rectangular selection.\n\n"
                 L"Enclose the entire document in a rectangular selection?",
                 L"Columns++ rectangular selection", MB_OKCANCEL) != IDOK) {
@@ -383,13 +370,13 @@ RectangularSelection& RectangularSelection::extend() {
             }
             choice = 5;
         }
-        else if (_caret.px == 0 || _caret.px >= bottomRight.px) {
-            ChooseRectangularSelectionInfo crsi(data, false, false, _caret.px == 0 ? 4 : 6);
+        else if (_caret.px == 0) {
+            ChooseRectangularSelectionInfo crsi(data, false, false, 4);
             choice = DialogBoxParam(data.dllInstance, MAKEINTRESOURCE(IDD_CHOOSE_RECTANGULAR_SELECTION_VERTICAL), data.nppData._nppHandle,
                 chooseRectangularSelectionDialogProc, reinterpret_cast<LPARAM>(&crsi));
             if (!choice) { _size = 0; return *this; }
         }
-        else if (_caret.ln == 0 || _caret.ln >= bottomRight.ln) {
+        else if (_caret.ln == 0 || _caret.ln >= bottomLeft.ln) {
             ChooseRectangularSelectionInfo crsi(data, false, false, _caret.ln == 0 ? 8 : 2);
             choice = DialogBoxParam(data.dllInstance, MAKEINTRESOURCE(IDD_CHOOSE_RECTANGULAR_SELECTION_HORIZONTAL), data.nppData._nppHandle,
                 chooseRectangularSelectionDialogProc, reinterpret_cast<LPARAM>(&crsi));
@@ -401,6 +388,15 @@ RectangularSelection& RectangularSelection::extend() {
                 chooseRectangularSelectionDialogProc, reinterpret_cast<LPARAM>(&crsi));
             if (!choice) { _size = 0; return *this; }
         }
+
+        if (data.settings.elasticEnabled) data.setTabstops(*data.getDocument(), 0, -1);
+        int maxExtentAll = 0;
+        for (Scintilla::Line i = 0; i <= bottomLeft.ln; ++i) {
+            int extent = data.sci.PointXFromPosition(data.sci.LineEndPosition(i));
+            if (extent > maxExtentAll) maxExtentAll = extent;
+        }
+        Corner topRight = corner(topLeft.en, (2 * (maxExtentAll - data.sci.PointXFromPosition(topLeft.en)) + blankWidth) / (2 * blankWidth));
+        Corner bottomRight = corner(bottomLeft.en, (2 * (maxExtentAll - data.sci.PointXFromPosition(bottomLeft.en)) + blankWidth) / (2 * blankWidth));
 
         Corner anchor, caret;
 
@@ -488,6 +484,7 @@ RectangularSelection& RectangularSelection::extend() {
                 data.nppData._nppHandle, chooseRectangularSelectionDialogProc, reinterpret_cast<LPARAM>(&crsi));
             if (!choice) { _size = 0; return *this; }
         }
+        if (data.settings.elasticEnabled) data.setTabstops(*data.getDocument(), choice == 2 ? _caret.ln : 0, choice == 8 ? _caret.ln : -1);
         Corner top = _caret;
         Corner bottom = _caret;
         if (choice == 8) {
@@ -567,7 +564,7 @@ RectangularSelection& RectangularSelection::extend() {
     if (hasWidth && hasHeight && start.cp == start.st && (end.cp == end.st || end.cp == end.en)) {
         if (!data.extendFullLines) {
             if (MessageBox(data.nppData._nppHandle,
-                start.cp == 0 && end.ln >= bottomRight.ln
+                start.cp == 0 && end.ln >= bottomLeft.ln
                 ? L"This command requires a rectangular selection.\n\n"
                   L"Convert to a rectangular selection enclosing the entire document?"
                 : L"This command requires a rectangular selection.\n\n"
@@ -585,6 +582,8 @@ RectangularSelection& RectangularSelection::extend() {
     }
 
     if (end.cp == end.st) --end.ln;
+
+    if (data.settings.elasticEnabled) data.setTabstops(*data.getDocument(), start.ln, end.ln);
 
     Scintilla::Position size = end.ln - start.ln + 1;
     if (size > std::numeric_limits<int>::max()) { _size = 0; return *this; }
