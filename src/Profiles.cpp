@@ -435,6 +435,7 @@ BOOL ColumnsPlusPlusData::profileDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
                 if (p.first == settings.profileName) {
                     SendDlgItemMessage(hwndDlg, IDC_PROFILE_SELECT, CB_SETCURSEL, i, 0);
                     SendDlgItemMessage(hwndDlg, IDC_DEFAULT_PROFILE, CB_SETCURSEL, i, 0);
+                    checkIfChanged(hwndDlg, profiles);
                     profileFound = true;
                 }
             }
@@ -455,7 +456,7 @@ BOOL ColumnsPlusPlusData::profileDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
                 EnableWindow(GetDlgItem(hwndDlg, IDC_DEFAULT_PROFILE), FALSE);
             }
             else {
-                auto i = FindStringExact(hwndDlg, IDC_PROFILE_SELECT, defaultProfile);
+                auto i = FindStringExact(hwndDlg, IDC_DEFAULT_PROFILE, defaultProfile);
                 if (i == CB_ERR) {
                     SendDlgItemMessage(hwndDlg, IDC_DEFAULT_KEEP, BM_SETCHECK, BST_CHECKED, 0);
                     EnableWindow(GetDlgItem(hwndDlg, IDC_DEFAULT_PROFILE), FALSE);

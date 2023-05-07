@@ -17,6 +17,7 @@ The integrated implementation of __Elastic tabstops__ works to line up columns w
 * __Calculations:__ There are commands to add or average numbers in one or more columns.
 * __Alignment:__ You can left- or right-align text, or line up numbers.
 * __Sorting:__ Columns++ includes  sort commands that work correctly with rectangular selections in files that use tabs.
+* __Conversion:__ Commands to convert tabs to spaces and to convert between comma (or other delimiter) separated values and tabbed presentation are included.
 
 There is a [help file](https://coises.github.io/ColumnsPlusPlus/help.htm).
 
@@ -24,9 +25,9 @@ There is a [help file](https://coises.github.io/ColumnsPlusPlus/help.htm).
 
 Columns++ is optimized for use with Elastic tabstops. It also works with files that use traditional, fixed tabs for alignment, or no tabs at all; however, you should ordinarily select only one column at a time in files that don't use Elastic tabstops.
 
-Columns++ is generally not helpful when columns do not line up visually, such as in comma-separated values files.
+Columns++ is generally not helpful when columns do not line up visually, such as in comma-separated values files. However, Columns++ can convert between delimiter-separated values and tabbed presentation.
 
-Elastic tabstops can cause loading and editing to be slow for large files. By default, elastic tabstops is automatically turned off for files over 1000 KB or 5000 lines. You can change these limits.
+Elastic tabstops can cause loading and editing to be slow for large files. Performance can be significantly improved by avoiding proportionally-spaced fonts. By default, Elastic tabstops is automatically turned off for files over 1000 KB or 5000 lines. You can change these limits.
 
 ## Status
 

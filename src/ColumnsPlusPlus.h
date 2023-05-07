@@ -271,23 +271,19 @@ public:
     RectangularSelection getRectangularSelection();
 
     bool fontSpacingChange(DocumentData& dd) {
-        if (!dd.settings.elasticEnabled) return false;
         int width = sci.TextWidth(STYLE_DEFAULT, " ");
         if (width != dd.blankWidth) return true;
         if (dd.settings.monospace != ElasticTabsProfile::MonospaceBest) return false;
-        for (int style = 0; style < 256; ++style) {
-            if (sci.TextWidth(style, "W") != width) return dd.assumeMonospace;
-            if (sci.TextWidth(style, " ") != width) return dd.assumeMonospace;
-        }
-        return !dd.assumeMonospace;
+        return dd.assumeMonospace != guessMonospaced(width);
     }
 
-    bool guessMonospaced() {
-        int width = sci.TextWidth(STYLE_DEFAULT, " ");
-        for (int style = 0; style < 256; ++style) {
-            if (sci.TextWidth(style, "W") != width) return false;
-            if (sci.TextWidth(style, " ") != width) return false;
-        }
+    bool guessMonospaced(int width = 0) {
+        if (!width) width = sci.TextWidth(STYLE_DEFAULT, " ");
+        if (sci.TextWidth(STYLE_DEFAULT, "W") != width) return false;
+        for (int style = 0; style < STYLE_DEFAULT; ++style)
+            if (sci.TextWidth(style, "W") != width || sci.TextWidth(style, " ") != width) return false;
+        for (int style = STYLE_LASTPREDEFINED + 1; style < 256; ++style)
+            if (sci.TextWidth(style, "W") != width || sci.TextWidth(style, " ") != width) return false;
         return true;
     }
 
@@ -310,7 +306,7 @@ public:
 
     void analyzeTabstops(DocumentData& dd);
     bool findTabLayoutBlock(DocumentData& dd, Scintilla::Position position, Scintilla::Position length, TabLayoutBlock*& tlb, int& width);
-    void setTabstops(DocumentData& dd, Scintilla::Line firstNeeded = -1, Scintilla::Line lastNeeded = -1);
+    void setTabstops(DocumentData& dd, Scintilla::Line firstNeeded = -1, Scintilla::Line lastNeeded = -1, bool secondTime = false);
 
     void bufferActivated();
     void fileClosed     (const NMHDR* nmhdr);

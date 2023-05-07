@@ -87,6 +87,8 @@ table.optionsTable td   {padding: .5em .5em .5em .5em; font-weight: normal; text
 ul.optionslist    {margin-top: .5em; margin-bottom: .5em;}
 ul.optionslist li {font-weight: bold;}
 
+span.mnemonic {color: #fff; background: #000; padding: 0 .2em; border-radius: .2em; font-size: .9em; font-weight: bold; display: inline-block;}
+
 body                {color: #000; background: #d0d0d0; line-height: 1.4;}
 *                   {border-color: #999;}
 #centershortlines   {width: calc((100vw - (13.5em + 48em + 2em + 24px)) / 2);}
@@ -193,6 +195,17 @@ window.addEventListener("load", doPageLoad);
 <tr><th>Do not allow text following the last tab on a line to span columns.</th><td>Normally, text following the last tab on a line is not treated as belonging to a “column” at all. This makes sense for documents that mix text and tables. However, for documents that are entirely tabular but have omitted tabs at the end of lines where the final columns are blank, this option (along with the one above) is needed to keep things lined up properly.</td></tr>
 <tr><th>Override default/language tab size (used for indent or minimum):</th><td>Elastic tabstops uses the “tab size” in different ways depending on whether <strong>Use leading tabs for indentation only</strong> is checked: when checked, the tab size represents the number of spaces each leading tab indents, and it is otherwise ignored; when unchecked, it is the minimum space between any two tabstops (that is, the width of the intervening column plus the space between columns). When the <strong>Override tab size</strong> box is unchecked, <strong>Columns++</strong> uses the tab size set in <strong>Notepad++</strong>; when checked, the spin box to the right specifies the size (in spaces) to be used.</td></tr>
 <tr><th>Minimum space between elastic columns:</th><td>This spin box specifies the size (in spaces) occupied by the tab following the longest span of text in a column.</td></tr>
+<tr><th>Apply monospaced font optimizations:</th><td>
+
+<p>Responsiveness with elastic tabstops enabled is greatly improved if it is possible to calculate the width of text by counting characters rather than by measuring. This only works if the fonts in use are monospaced (typewriter-like fonts in which every character has the same width; also called fixed pitch fonts), and all the fonts used by the styles in the current language have the same width.</p>
+<table class=optionsTable>
+<tr><th>Yes</th><td>Monospaced font optimizations are applied unconditionally.</td></tr>
+<tr><th>No</th><td>Monospaced font optimizations are not applied.</td></tr>
+<tr><th>Best estimate</th><td>Monospaced font optimizations are applied if they appear to be appropriate. The text <strong>(yes)</strong> or <strong>(no)</strong> following <strong>Best estimate</strong> indicates whether <strong>Columns++</strong> has determined that display of the current document is monospaced.</td></tr>
+<tr><th>Don't show expanded mnemonics for non-printing characters when monospaced.</th><td><strong>Notepad++</strong> normally shows mnemonics, like <span class=mnemonic>ESC</span> or <span class=mnemonic>NBSP</span>, for control characters, invalid characters and (at user option) other non-printing characters. While this is usually helpful, it breaks the assumption of monospacing, which can dramatically slow some operations on larger files when monospaced fonts are used. This option (checked by default) displays a simple <span class=mnemonic>!</span> indicator instead of the usual multi-character mnemonics when elastic tabstops are enabled and monospaced font optimizations are in effect.</td></tr>
+</table>
+<p>Usually it’s best to let <strong>Columns++</strong> determine whether to use monospaced font optimizations, but there can be exceptional cases. <strong>Columns++</strong> checks the width of a space and a capital letter W in each font assigned to a style in the current language; if these are all the same, it uses monospace optimizations. In some cases, a language might define styles which inhibit optimization but are never applied in a particular file; for large files, the performance gain from forcing monospaced font optimizations may be considerable. Conversely, a font might use monospaced characters in the ASCII range but wider characters outside that range; in this case, monospaced font optimizations can cause processing to be much slower than necessary, since each line in which text overflows the expected width in any column forces additional measurement and layout of text. If you want to use elastic tabstops with a large file, but response is sluggish and the best estimate chosen by <strong>Columns++</strong> seems wrong, it’s worth trying the opposite setting.</p>
+</td></tr>
 </table>
 
 <p>These settings are only applied when you click the <strong>OK</strong> button near the bottom right of the dialog.</p>

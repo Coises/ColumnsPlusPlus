@@ -1,5 +1,13 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Version 0.4-alpha -- May 7th, 2023
+
+* Improved performance with **Elastic tabstops** enabled, especially when the fonts in use are monospaced.
+
+* Added settings to the Elastic tabstops profile dialog to control application of monospaced fonts optimization and whether to use a single exclamation point, instead of the standard multi-character mnemonic, to represent control, non-printing and invalid characters when in monospaced mode.
+
+* Fixed an error in saving the settings of user-created elastic tabstops profiles and an error which caused the default profile to be randomly changed.
+
 ## Version 0.3-alpha -- April 30th, 2023
 
 * Implemented **Convert separated values to tabs...** and **Convert tabs to separated values...** commands and added appropriate documentation to help.htm.
