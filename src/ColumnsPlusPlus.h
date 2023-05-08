@@ -295,6 +295,32 @@ public:
         if (sci.ControlCharSymbol() != ccsym) sci.SetControlCharSymbol(ccsym);
     }
 
+    void reselectRectangularSelectionAndControlCharSymbol(DocumentData& dd, bool setControlCharSymbol) {
+        if (!dd.settings.elasticEnabled) return;
+        Scintilla::SelectionMode selectionMode = sci.SelectionMode();
+        if (selectionMode == Scintilla::SelectionMode::Rectangle || selectionMode == Scintilla::SelectionMode::Thin) {
+            Scintilla::Position anchor        = sci.RectangularSelectionAnchor();
+            Scintilla::Position anchorVirtual = sci.RectangularSelectionAnchorVirtualSpace();
+            Scintilla::Position caret         = sci.RectangularSelectionCaret();
+            Scintilla::Position caretVirtual  = sci.RectangularSelectionCaretVirtualSpace();
+            Scintilla::Line anchorLine        = sci.LineFromPosition(anchor);
+            Scintilla::Line caretLine         = sci.LineFromPosition(caret);
+            if (setControlCharSymbol) {
+                int ccsym = settings.monospaceNoMnemonics && dd.assumeMonospace ? '!' : 0;
+                if (sci.ControlCharSymbol() != ccsym) sci.SetControlCharSymbol(ccsym);
+            }
+            setTabstops(dd, std::min(anchorLine, caretLine), std::max(anchorLine, caretLine));
+            sci.SetRectangularSelectionAnchor(anchor);
+            sci.SetRectangularSelectionAnchorVirtualSpace(anchorVirtual);
+            sci.SetRectangularSelectionCaret(caret);
+            sci.SetRectangularSelectionCaretVirtualSpace(caretVirtual);
+        }
+        else if (setControlCharSymbol) {
+            int ccsym = settings.monospaceNoMnemonics && dd.assumeMonospace ? '!' : 0;
+            if (sci.ControlCharSymbol() != ccsym) sci.SetControlCharSymbol(ccsym);
+        }
+    }
+
     bool searchRegionReady() {
         if (sci.SelectionMode() != Scintilla::SelectionMode::Stream) return false;
         if (sci.Selections() > 1) return false;

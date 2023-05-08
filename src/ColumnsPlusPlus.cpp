@@ -315,6 +315,7 @@ void ColumnsPlusPlusData::scnUpdateUI(const Scintilla::NotificationData* scnp) {
         analyzeTabstops(*ddp);
     }
     else if (ddp->elasticAnalysisRequired) analyzeTabstops(*ddp);
+    reselectRectangularSelectionAndControlCharSymbol(*ddp, false);
     setTabstops(*ddp);
 }
 
@@ -368,20 +369,7 @@ void ColumnsPlusPlusData::bufferActivated() {
         analyzeTabstops(dd);
         setTabstops(dd);
     }
-    Scintilla::SelectionMode selectionMode = sci.SelectionMode();
-    if (selectionMode == Scintilla::SelectionMode::Rectangle || selectionMode == Scintilla::SelectionMode::Thin) {
-        Scintilla::Position anchor        = sci.RectangularSelectionAnchor            ();
-        Scintilla::Position anchorVirtual = sci.RectangularSelectionAnchorVirtualSpace();
-        Scintilla::Position caret         = sci.RectangularSelectionCaret             ();
-        Scintilla::Position caretVirtual  = sci.RectangularSelectionCaretVirtualSpace ();
-        Scintilla::Line anchorLine = sci.LineFromPosition(anchor);
-        Scintilla::Line caretLine  = sci.LineFromPosition(caret );
-        setTabstops(dd, std::min(anchorLine, caretLine), std::max(anchorLine, caretLine));
-        sci.SetRectangularSelectionAnchor            (anchor       );
-        sci.SetRectangularSelectionAnchorVirtualSpace(anchorVirtual);
-        sci.SetRectangularSelectionCaret             (caret        );
-        sci.SetRectangularSelectionCaretVirtualSpace (caretVirtual );
-    }
+    else reselectRectangularSelectionAndControlCharSymbol(dd, true);
 }
 
 
