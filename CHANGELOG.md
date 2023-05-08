@@ -1,6 +1,6 @@
 # Columns++ for Notepad++ -- Pre-releases
 
-## Version 0.4-alpha -- May 7th, 2023
+## Version 0.4-alpha -- May 8th, 2023
 
 * Improved performance with **Elastic tabstops** enabled, especially when the fonts in use are monospaced.
 
