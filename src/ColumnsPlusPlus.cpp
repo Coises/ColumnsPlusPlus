@@ -137,14 +137,10 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
 void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
     dd.elasticAnalysisRequired = false;
     dd.deleteWithoutLayoutChange = false;
-    dd.blankWidth = sci.TextWidth(STYLE_DEFAULT, " ");
     int digitWidth = sci.TextWidth(STYLE_DEFAULT, "0");
     int tabGap = dd.blankWidth * dd.settings.minimumSpaceBetweenColumns;
     int tabInd = dd.blankWidth * (dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : sci.TabWidth());
     int tabMin = dd.settings.leadingTabsIndent ? 0 : tabInd;
-    dd.assumeMonospace = dd.settings.monospace == ElasticTabsProfile::MonospaceBest ? guessMonospaced(dd.blankWidth)
-                       : dd.settings.monospace == ElasticTabsProfile::MonospaceAlways;
-    sci.SetControlCharSymbol(settings.monospaceNoMnemonics && dd.assumeMonospace ? '!' : 0);
     Scintilla::Line lineCount = sci.LineCount();
     dd.tabLayouts.clear();
     for (Scintilla::Line lineNum = 0; lineNum < lineCount; ++lineNum) {
@@ -314,7 +310,11 @@ void ColumnsPlusPlusData::scnUpdateUI(const Scintilla::NotificationData* scnp) {
     if (Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) syncFindButton();
     if (!ddp->settings.elasticEnabled) return;
     ddp->deleteWithoutLayoutChange = false;
-    if (ddp->elasticAnalysisRequired || fontSpacingChange(*ddp)) analyzeTabstops(*ddp);
+    if (fontSpacingChange(*ddp)) {
+        setSpacing(*ddp);
+        analyzeTabstops(*ddp);
+    }
+    else if (ddp->elasticAnalysisRequired) analyzeTabstops(*ddp);
     setTabstops(*ddp);
 }
 
@@ -323,6 +323,7 @@ void ColumnsPlusPlusData::scnZoom(const Scintilla::NotificationData* scnp) {
     DocumentData* ddp = getDocument(scnp);
     if (!ddp || !ddp->settings.elasticEnabled) return;
     ddp->deleteWithoutLayoutChange = false;
+    setSpacing(*ddp);
     analyzeTabstops(*ddp);
     setTabstops(*ddp);
 }
@@ -363,6 +364,7 @@ void ColumnsPlusPlusData::bufferActivated() {
     }
     if (settings.overrideTabSize) sci.SetTabWidth(settings.minimumOrLeadingTabSize);
     if (isNewDocument) {
+        setSpacing(dd);
         analyzeTabstops(dd);
         setTabstops(dd);
     }
@@ -407,12 +409,13 @@ void ColumnsPlusPlusData::toggleElasticEnabled() {
             sci.SetTabWidth(settings.minimumOrLeadingTabSize);
         }
         sci.SetTabIndents(0);
+        setSpacing(*ddp);
         analyzeTabstops(*ddp);
         setTabstops(*ddp);
     } else {
         if (settings.overrideTabSize) sci.SetTabWidth(ddp->tabOriginal);
         sci.SetTabIndents(1);
-        sci.SetControlCharSymbol(0);
+        if (sci.ControlCharSymbol()) sci.SetControlCharSymbol(0);
         Scintilla::Line lineCount = sci.LineCount();
         for (Scintilla::Line lineNum = 0; lineNum < lineCount; ++lineNum) sci.ClearTabStops(lineNum);
     }

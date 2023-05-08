@@ -287,6 +287,14 @@ public:
         return true;
     }
 
+    void setSpacing(DocumentData& dd) {
+        dd.blankWidth      = sci.TextWidth(STYLE_DEFAULT, " ");
+        dd.assumeMonospace = dd.settings.monospace == ElasticTabsProfile::MonospaceBest ? guessMonospaced(dd.blankWidth)
+                           : dd.settings.monospace == ElasticTabsProfile::MonospaceAlways;
+        int ccsym = settings.monospaceNoMnemonics && dd.assumeMonospace ? '!' : 0;
+        if (sci.ControlCharSymbol() != ccsym) sci.SetControlCharSymbol(ccsym);
+    }
+
     bool searchRegionReady() {
         if (sci.SelectionMode() != Scintilla::SelectionMode::Stream) return false;
         if (sci.Selections() > 1) return false;

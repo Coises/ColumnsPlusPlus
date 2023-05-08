@@ -43,6 +43,7 @@ void ColumnsPlusPlusData::showElasticProfile() {
         ddp->settings = settings;
         if (settings.elasticEnabled) {
             sci.SetTabWidth(settings.overrideTabSize ? settings.minimumOrLeadingTabSize : ddp->tabOriginal);
+            setSpacing(*ddp);
             analyzeTabstops(*ddp);
             setTabstops(*ddp);
         }
