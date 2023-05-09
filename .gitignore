@@ -3,4 +3,6 @@ vs.proj/*
 !vs.proj/ColumnsPlusPlus.sln
 !vs.proj/ColumnsPlusPlus.vcxproj
 *.aps
+*.exe
+!Quick installer/7zr.exe
 *.zip
