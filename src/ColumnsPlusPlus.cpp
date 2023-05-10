@@ -257,19 +257,14 @@ void ColumnsPlusPlusData::scnModified(const Scintilla::NotificationData* scnp) {
     using Scintilla::FlagSet;
     if ( !FlagSet( scnp->modificationType,
                    ( Scintilla::ModificationFlags::InsertText | Scintilla::ModificationFlags::BeforeDelete
-                   | Scintilla::ModificationFlags::DeleteText | Scintilla::ModificationFlags::ChangeStyle 
-                   | Scintilla::ModificationFlags::LastStepInUndoRedo ) )
-        ) return;
+                   | Scintilla::ModificationFlags::DeleteText | Scintilla::ModificationFlags::ChangeStyle ) ) ) return;
     DocumentData* ddp = getDocument(scnp);
     if (!ddp) return;
     DocumentData& ctd = *ddp;
     if (!ctd.settings.elasticEnabled || ctd.elasticAnalysisRequired) return;
     int blankWidth = sci.TextWidth(STYLE_DEFAULT, " ");
     int tabGap = blankWidth * ctd.settings.minimumSpaceBetweenColumns;
-    if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::LastStepInUndoRedo)); /* fall through to full analysis */
-    else if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::MultiStepUndoRedo)) return;
-    else if (fontSpacingChange(ctd)); /* fall through to full analysis */
-    else if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::InsertText)) {
+    if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::InsertText)) {
         ctd.deleteWithoutLayoutChange = false;
         if (scnp->linesAdded == 0) /* Unless the number of lines is unchanged, we need full analysis. */ {
             TabLayoutBlock* tlb;

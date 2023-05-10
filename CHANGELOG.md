@@ -1,5 +1,9 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Version 0.4.1-alpha -- May 10th, 2023
+
+* Fixed a regression in performance of Undo/Redo with **Elastic tabstops** enabled.
+
 ## Version 0.4-alpha -- May 8th, 2023
 
 * Improved performance with **Elastic tabstops** enabled, especially when the fonts in use are monospaced.
