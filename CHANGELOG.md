@@ -1,6 +1,6 @@
 # Columns++ for Notepad++ -- Pre-releases
 
-## Version 0.5-alpha -- May 20th, 2023
+## Version 0.5-alpha -- May 19th, 2023
 
 * Added the **Calculate** command.
 * Updated help.htm, README.md and source.txt.
