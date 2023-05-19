@@ -15,3 +15,18 @@ This program is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
+
+===================================================================
+
+Columns++ uses the C++ Mathematical Expression Toolkit Library
+(ExprTk) by Arash Partow (https://www.partow.net/).
+
+Source code repository: https://github.com/ArashPartow/exprtk
+
+ExprTk is released under the following license:
+
+Free use of the C++ Mathematical Expression Toolkit Library is
+permitted under the guidelines and in accordance with the most
+current version of the MIT License.
+
+https://www.opensource.org/licenses/MIT

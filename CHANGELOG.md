@@ -1,5 +1,10 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Version 0.5-alpha -- May 20th, 2023
+
+* Added the **Calculate** command.
+* Updated help.htm, README.md and source.txt.
+
 ## Version 0.4.1-alpha -- May 10th, 2023
 
 * Fixed a regression in performance of Undo/Redo with **Elastic tabstops** enabled.

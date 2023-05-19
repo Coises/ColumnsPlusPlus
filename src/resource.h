@@ -14,6 +14,7 @@
 #define IDD_CHOOSE_RECTANGULAR_SELECTION_HORIZONTAL 123
 #define IDD_CHOOSE_RECTANGULAR_SELECTION_VERTICAL 124
 #define IDD_CSV                         125
+#define IDD_CALCULATE                   127
 #define IDC_LINE_UP_ALL                 1003
 #define IDC_LEADING_TABS_INDENT         1006
 #define IDC_DISABLE_FILE_SIZE           1007
@@ -76,6 +77,7 @@
 #define IDC_DEFAULT_PROFILE             1079
 #define IDC_SEARCH_INDICATOR            1079
 #define IDC_CSV_REPLACE                 1079
+#define IDC_CALCULATE_REGEX             1079
 #define IDC_CALCULATION_RESULTS         1080
 #define IDC_CALCULATION_MESSAGE         1082
 #define IDC_THOUSANDS_NONE              1083
@@ -125,14 +127,27 @@
 #define IDC_MONOSPACED_NO               1121
 #define IDC_CHECK1                      1122
 #define IDC_MONOSPACED_RENDER           1122
+#define IDC_CALCULATE_MATCH_CASE        1122
+#define IDC_CALCULATE_FORMULA           1127
+#define IDC_CALCULATE_PLACES_EDIT       1130
+#define IDC_CALCULATE_PLACES_SPIN       1131
+#define IDC_CALCULATE_TIME_MINUTES      1135
+#define IDC_CALCULATE_TIME_DAYS         1136
+#define IDC_CALCULATE_SKIP_UNMATCHED    1138
+#define IDC_CALCULATE_TIME              1143
+#define IDC_CALCULATE_TABBED            1144
+#define IDC_CALCULATE_ALIGNED           1146
+#define IDC_CALCULATE_SUPPRESS_ZEROS    1147
+#define IDC_CHECK2                      1148
+#define IDC_CALCULATE_LEFT              1148
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        127
+#define _APS_NEXT_RESOURCE_VALUE        129
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1123
+#define _APS_NEXT_CONTROL_VALUE         1149
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

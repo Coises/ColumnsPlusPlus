@@ -141,6 +141,7 @@ window.addEventListener("load", doPageLoad);
 <a href="#rectangular">Rectangular selections</a>
 <a href="#search"     >Search</a>
 <a href="#calculation">Calculation</a>
+<a href="#formulas"   >Formulas</a>
 <a href="#alignment"  >Alignment</a>
 <a href="#sorting"    >Sorting</a>
 <a href="#conversion" >Conversion</a>
@@ -152,6 +153,8 @@ window.addEventListener("load", doPageLoad);
 
 <p><strong>Columns++</strong> is a plugin for <a href="https://notepad-plus-plus.org/">Notepad++</a> offering various features for working with text and data arranged in columns. Like <strong>Notepad++</strong>, <strong>Columns++</strong> is released under the <a href="https://www.gnu.org/licenses/gpl.html">GNU General Public License</a> (either <a href="https://www.gnu.org/licenses/gpl-3.0.html">version 3</a> of the License, or, at your option, any later version). <strong>Columns++</strong> was first released by <a href="http://www.coises.com/">Randall Joseph Fellmy</a> in 2023; you can find the source code  on <a href="https://github.com/Coises/ColumnsPlusPlus">GitHub</a>.</p>
 
+<p><strong>Columns++</strong> uses the <a href="https://github.com/ArashPartow/exprtk">C++ Mathematical Expression Toolkit Library (ExprTk)</a> by <a href="https://www.partow.net/">Arash Partow</a>, which is released under the <a href="https://www.opensource.org/licenses/MIT">MIT license</a>, to implement <a href="#formulas">formulas</a>.
+
 </section>
 
 <section id=purpose><h2>Purpose and limitations</h2>
@@ -162,7 +165,7 @@ window.addEventListener("load", doPageLoad);
 
 <p><strong>Columns++</strong> is optimized for use with Elastic tabstops. It also works with files that use traditional, fixed tabs for alignment, or no tabs at all; however, you should ordinarily select only one column at a time in files that don’t use Elastic tabstops.</p>
 
-<p><strong>Columns++</strong> is generally not helpful when columns do not line up visually, such as in comma-separated values files.</p>
+<p><strong>Columns++</strong> is generally not helpful when columns do not line up visually, such as in comma-separated values files. However, Columns++ can convert between delimiter-separated values and tabbed presentation.</p>
 
 <p>Elastic tabstops can cause loading and editing to be slow for large files. By default, Elastic tabstops is automatically turned off for files over 1000 KB or 5000 lines. You can change these limits.</p>
 
@@ -250,7 +253,7 @@ window.addEventListener("load", doPageLoad);
 
 <p>When you invoke a command that requires a rectangular selection and the current selection is not a non-zero-width rectangular selection, <strong>Columns++</strong> will inform you of this and, if possible, offer reasonable options to create a rectangular selection based on the current selection or cursor position.</p>
 
-<p>You can enable specific “implicit” rectangular selections in the <a href="#options">Options</a> dialog if you would prefer that <strong>Columns++</strong> make those selections without prompting you.</p>
+<p>You can enable specific “implicit” rectangular selections in the <a href="#options-autoextend">Options</a> dialog if you would prefer that <strong>Columns++</strong> make those selections without prompting you.</p>
 
 </section>
 
@@ -276,17 +279,156 @@ window.addEventListener("load", doPageLoad);
 
 <section id=calculation><h2>Calculation</h2>
 
+<h3>Calculating in columns</h3>
+
 <p>The <strong>Add numbers...</strong> and <strong>Average numbers...</strong> items on the <strong>Columns++</strong> menu perform calculations on a rectangular selection of a column of numbers, or of multiple columns separated by elastic tabstops. (These commands can be used on selections that include traditional fixed tabs; but the results may not be as expected, since they treat tabs as logical separators, ignoring physical positioning.)</p>
 
 <p><strong>Columns++</strong> shows a dialog to present the results of the calculation. You can select a <strong>Thousands separator</strong> option (<strong>None</strong>, <strong>Comma</strong>/<strong>Period</strong>, <strong>Apostrophe</strong> or <strong>Blank</strong>) to control how the results are formatted. Use the <strong>Insert</strong>...<strong>these results</strong> checkbox to specify whether <strong>Columns++</strong> will insert the results into the document, at the end of the rectangular selection, when you close the dialog. If the last line of the rectangular selection is empty (spaces, tabs and/or virtual space), the option will be to insert the results of the calculation into that space; otherwise, it will be to insert a new line containing the results of the calculation.</p>
 
 <p>Close the dialog with the <strong>Yes</strong> button to copy the results to the clipboard, or use <strong>No</strong> to leave the clipboard unchanged.</p>
 
-<p>Numbers can include thousands separators and decimals. The <strong>Decimal separator is comma</strong> item near the bottom of the <strong>Columns++</strong> menu determines whether the comma or the period is the decimal separator; thousands separators may be a space, an apostrophe, or whichever of comma or period is not the decimal separator. Numbers can also be times, using colons to separate days, hours, minutes and seconds. When only a single colon is used, the values can be either hours and minutes or minutes and seconds, so an additional colon will not be introduced in the results; when two or three colons are used, the rightmost value is assumed to be seconds.</p>
+<h3 id="calculation-rows">Calculating across rows</h3>
+
+<p>The <strong>Calculate...</strong> command from the <strong>Columns++</strong> menu inserts the results of a calculation into each line of a rectangular selection. The command opens a dialog which lets you supply the formula for the calculation. Formulas are described in <a href="#formulas">a separate section</a>; they are mostly ordinary mathematical expressions, with special <em>variables</em> and <em>functions</em> to represent numbers found in the selection; for example, if a single column of numbers is selected, <strong>this + 20</strong> would add a column with each of the original numbers increased by 20. Here are the options on the <strong>Calculate</strong> dialog:</p>
+
+<table class=optionsTable>
+<tr><th>Formula</th><td>Enter the formula for the calculation, as described in the <a href="#formulas">Formulas</a> section.</td></tr>
+<tr><th>Regex</th><td>If you enter a regular expression, the first occurrence of the expression within the selection in each row of the rectangular selection is matched. Use the <strong>match case</strong> box to indicate whether to use case-sensitive matching. If <strong>Skip unmatched lines</strong> is checked and the regular expression box is not empty, rows in which the regular expression does not match are ignored; the formula is not evaluated, nor is a tab or any space padding added to the selection in the row to account for the new column.</td></tr>
+<tr><th>Thousands separator</th><td>Select a <strong>Thousands separator</strong> option (<strong>None</strong>, <strong>Comma</strong>/<strong>Period</strong>, <strong>Apostrophe</strong> or <strong>Blank</strong>) to control how numeric results are formatted.</td></tr>
+<tr><th>Decimal places</th><td>Choose the number of decimal places (0-16) to which to round results. If <strong>Suppress trailing zeros</strong> is checked, zeros at the end of the decimal portion of numbers are omitted; if this box is not checked, exactly the number of decimal places selected are included.</td></tr>
+<tr><th>Format as time</th><td>If you are calculating are times which you want shown as <em>days</em>:<em>hours</em>:<em>minutes</em>:<em>seconds</em>, check the <strong>Time format</strong> box. Check <strong>Unit is minutes</strong> if the times you are using do not include seconds, and check or uncheck <strong>Show days</strong> according to whether or not you want values of 24 hours or more to be shown with the number of days followed by a colon at the beginning of the result. (Note: If your times are minutes and seconds and you don't want hours shown for values of 60 minutes or more, checking both <strong>Unit is minutes</strong> and <strong>Show days</strong> will accomplish this, since calculating minutes and seconds without days or hours is identical to calculating hours and minutes without days or seconds.)</td></tr>
+<tr><th>New column</th><td>
+<table class=optionsTable>
+<tr><th>Tabbed</th><td>Check to use a tab to separate the new column from the existing selection; uncheck to pad with spaces so as to leave one space between edge of the existing selection and the new column.</td></tr>
+<tr><th>Numeric&nbsp;aligned</th><td>Check to align results as numbers; uncheck to leave results left-justified.</td></tr>
+<tr><th>Insert&nbsp;at&nbsp;left</th><td>Check to insert the new column at the left of the selection; uncheck to insert on the right.</td></tr>
+</table></td></tr>
+</table>
+
+<h3>How Columns++ recognizes numbers</h3>
+
+<p>Numbers can include thousands separators and decimals. The <strong>Decimal separator is comma</strong> item near the bottom of the <strong>Columns++</strong> menu determines whether the comma or the period is the decimal separator; thousands separators may be a space, an apostrophe, or whichever of comma or period is not the decimal separator. Numbers can also be times, using colons to separate days, hours, minutes and seconds. For <strong>Add numbers</strong> and <strong>Average numbers</strong>, when only a single colon is used, the values can be either hours and minutes or minutes and seconds, so an additional colon will not be introduced in the results; when two or three colons are used, the rightmost value is assumed to be seconds. As described above, <strong>Calculate</strong> offers more explicit options to define how times are interpreted and presented.</p>
 
 <p>There is some flexibility in what can be included along with a number in a column. Common currency signs can precede the number with or without a space, and a minus sign can precede or follow a currency sign. Non-numeric characters (such as units, like “mg” or “ft”) can follow the number. (These are not interpreted, though; <strong>Columns++</strong> will add 5 yards and 5 inches to get 10 without complaint.) Non-numeric characters can precede the number if they are separated from the number by at least one space.</p>
 
-<p><strong>Columns++</strong> will skip items that have no digits; but if an item which includes one or more digits cannot be unambiguously interpreted as a number, <strong>Columns++</strong> will select the item and will not perform the calculation.</p>
+<p><strong>Add numbers</strong> and <strong>Average numbers</strong> will skip items that have no digits; but if an item which includes one or more digits cannot be unambiguously interpreted as a number, <strong>Columns++</strong> will select the item and will not perform the calculation. In <strong>Calculate</strong> <a href="#formulas">formulas</a>, variables and functions which represent numbers in the document are set to <em>Not-a-Number</em> if the associated document text cannot be unambiguously interpreted as a number.</p>
+
+</section>
+
+<section id=formulas><h2>Formulas</h2>
+
+<p><strong>Formulas</strong> are representations of mathematical computations. <strong>Columns++</strong> uses the <a href="https://github.com/ArashPartow/exprtk">ExprTk (Expression Toolkit)</a> package to implement formulas used by the <a href="#calculation-rows">Calculate...</a> command. Following are descriptions of the variables and functions defined by <strong>Columns++</strong>, along with some general features of the syntax of ExprTk expressions.</p>
+
+<h3>Numeric values in formulas</h3>
+
+<p>Numeric values are represented internally as <a href="https://en.wikipedia.org/wiki/Double-precision_floating-point_format">double precision floating point</a> numbers. Any number up to 9,007,199,254,740,992 without a fraction or decimal, positive or negative, is represented exactly. Most fractions and decimals cannot be represented exactly, but in ordinary use, rounding to a reasonable number of decimal places (so that the total number of digits before and after the decimal is under 15) will make discrepancies irrelevant.</p>
+
+<p>Wherever a numeric value is used, it is also possible for the value to be <em>Not-a-Number</em>, an indication that something which was expected to produce a number failed to do so. This can happen because you tried to get a number from the document, but the associated text could not be unambiguously interpreted as a number. It can also be the result of an undefined mathematical operation, such as dividing by zero. In most cases, if any of the inputs to an operation or function are <em>Not-a-Number</em>, the result is also <em>Not-a-Number</em>. When the result of a formula is <em>Not-a-Number</em>, <strong>Columns++</strong> does not insert any text (aside from a tab and/or spaces needed to keep columns aligned).</p>
+
+<h3>Variables and functions implemented by <strong>Columns++</strong></h3>
+
+<p>When <strong>Calculate</strong> is applied to a rectangular selection, the formula given is evaluated once for each row of the selection (or, if a regular expression is given and <strong>Skip unmatched lines</strong> is checked, for each row in which the regular expression matches). The term <em>row</em> refers to the part of a single line in the document which is included in the rectangular selection, and the term <em>current row</em> is the row for which the formula is being evaluated, and into which the results of the formula will be inserted. Rows are processed in sequence, from top to bottom.</p>
+
+<table class=optionsTable>
+<tr><th>count</th><td>the total number of rows (lines) in the selection</td></tr>
+<tr><th>index</th><td>counting from one, the row number within the selection of the current row</td></tr>
+<tr><th>match</th><td>zero if no regular expression was given or if the regular expression did not match in the current row; otherwise, counting from one and including the current row, the number of rows on which the regular expression has matched</td></tr>
+<tr><th>line</th><td>the line number of line containing the current row (within the entire document, counting from one; that is, the same as the line number shown in the left margin if line numbers are enabled in <strong>Notepad++</strong>)</td></tr>
+<tr><th>this</th><td>if a regular expression was given, the numeric value of the text matched by the regular expression; otherwise, the numeric value of the current row</td></tr>
+<tr><th>
+col
+<br>col(<em>n</em>)
+<br>col(<em>n</em>,<em>p</em>)
+<br>col(<em>n</em>,<em>p</em>,<em>v</em>)
+<br>
+<br>tab
+<br>tab(<em>n</em>)
+<br>tab(<em>n</em>,<em>p</em>)
+<br>tab(<em>n</em>,<em>p</em>,<em>v</em>)
+<br>
+<br>reg
+<br>reg(<em>n</em>)
+<br>reg(<em>n</em>,<em>p</em>)
+<br>reg(<em>n</em>,<em>p</em>,<em>v</em>)
+</th><td>
+These functions retrieve the numeric value in the specified segment within a row (the selected part of a line). The <strong>col</strong> function divides the segments by white space (any run of blanks and/or tabs). The <strong>tab</strong> function divides by tab characters. The <strong>reg</strong> function retrieves regular expression capture groups.
+<table class=optionsTable>
+<tr><th><em>n</em></th><td>the column, tab or capture group to retrieve, numbering from one; if omitted or zero, <strong>col</strong> and <strong>tab</strong> return the entire row (the selected part of the line), while <strong>reg</strong> returns the portion of the row matched by the regular expression</td></tr>
+<tr><th><em>p</em></th><td>if given, the number of rows previous to the current one from which the value is to be retrieved; if omitted or zero, the current row is accessed. If a regular expression is specified and <strong>Skip unmatched lines</strong> is checked, unmatched lines will be ignored when counting backward to previous lines.</td></tr>
+<tr><th><em>v</em></th><td>a numeric value to use instead of <em>Not-a-Number</em> if there are not <strong><em>p</em></strong> previous rows, if there are not <strong><em>n</em></strong> columns, tabs or capture grouns in the indicated row, or if the indicated text cannot be unambiguously interpreted as a number</td></tr>
+</table>
+</td></tr>
+<tr><th>
+last
+<br>last(<em>p</em>)
+<br>last(<em>p</em>,<em>v</em>)
+</th><td>
+<p>The <strong>last</strong> function with no arguments represents the last result of a calculation that was not <em>Not-a-Number</em>; if the current row is the first row, or if no previous calculations have resulted in anything other than <em>Not-a-Number</em>, <strong>last</strong> is zero.<p>
+<p>When <strong><em>p</em></strong> or <strong><em>p</em></strong> and <strong><em>v</em></strong> are specified, they are interpreted as for <strong>col</strong>/<strong>tab</strong>/<strong>reg</strong>, except that <strong><em>p</em></strong> cannot be zero; the function retrieves the result of the calculation on the row indicated, substituting <strong><em>v</em></strong>, if specified, for <em>Not-a-Number</em>.</p>
+</td></tr>
+</table>
+
+<h3>Syntax of formulas</h3>
+
+<p>Formulas are written using most of the common conventions for writing mathematical expressions in typical programming languages: numbers are written with an optional minus sign, digits and an optional decimal point (no commas); <strong>+</strong>, <strong>-</strong>, <strong>*</strong>, <strong>/</strong>, <strong>%</strong> and <strong>^</strong> indicate addition, subtraction, multiplication, division, remainder and exponentiation; parentheses are used to indicate order of operations. You can also use logical expressions built from common operators, including <strong>=</strong> or <strong>==</strong>, <strong>!=</strong> or <strong>&lt;&gt;</strong>, <strong>&lt;</strong>, <strong>&lt;=</strong>, <strong>&gt;</strong>, <strong>&gt;=</strong>, <strong>&amp;</strong> and <strong>|</strong>, in a conditional expression:</p>
+
+<table class=optionsTable>
+<tr><th><em>test</em> ? <em>option1</em> : <em>option2</em></th><td>yields <strong><em>option1</em></strong> if <strong><em>test</em></strong> is true, <strong><em>option2</em></strong> if <strong><em>test</em></strong> is false</td></tr>
+</table>
+
+<p>so <strong>col(1)>10?col(2):col(3)</strong> gives the content of column 2 if column 1 is greater than 10, otherwise the content of column 3.</p>
+
+<p>Formulas can use the many functions built into ExprTk, including these common mathematical functions:</p>
+
+<table class=optionsTable>
+<tr><th>abs</th><td>absolute value</td></tr>
+<tr><th>avg</th><td>average of any number of values</td></tr>
+<tr><th>ceil</th><td>smallest integer greater than or equal to</td></tr>
+<tr><th>erf</th><td>error function</td></tr>
+<tr><th>erfc</th><td>complimentary error function</td></tr>
+<tr><th>exp</th><td>e to the power of the given value</td></tr>
+<tr><th>floor</th><td>largest integer less than or equal to</td></tr>
+<tr><th>frac</th><td>fractional (decimal) part</td></tr>
+<tr><th>hypot</th><td>hypotenuse of a right triangle from two sides (eg: hypot(x,y) = sqrt(x*x + y*y))</td></tr>
+<tr><th>log</th><td>natural logarithm</td></tr>
+<tr><th>log10</th><td>base 10 logarithm</td></tr>
+<tr><th>log2</th><td>base 2 logarithm</td></tr>
+<tr><th>max</th><td>largest of any number of values</td></tr>
+<tr><th>min</th><td>smallest of any number of values</td></tr>
+<tr><th>ncdf</th><td>normal cumulative distribution function</td></tr>
+<tr><th>round</th><td>round to the nearest integer</td></tr>
+<tr><th>roundn</th><td>round the first argument to the number of decimal places specified by the second argument</td></tr>
+<tr><th>sqrt</th><td>square root</td></tr>
+<tr><th>trunc</th><td>integer part (round down)</td></tr>
+</table>
+
+<p>and trigonometric functions (in all cases, angles are expressed in radians):</p>
+
+<table class=optionsTable>
+<tr><th>acos</th><td>arc cosine; interval [-1,+1]</td></tr>
+<tr><th>acosh</th><td>inverse hyperbolic cosine</td></tr>
+<tr><th>asin</th><td>arc sine; interval [-1,+1]</td></tr>
+<tr><th>asinh</th><td>inverse hyperbolic sine</td></tr>
+<tr><th>atan</th><td>arc tangent; interval [-1,+1]</td></tr>
+<tr><th>atan2</th><td>two-argument arc tangent; interval [-pi,+pi]</td></tr>
+<tr><th>atanh</th><td>inverse hyperbolic tangent</td></tr>
+<tr><th>cos</th><td>cosine</td></tr>
+<tr><th>cosh</th><td>hyperbolic cosine</td></tr>
+<tr><th>cot</th><td>cotangent</td></tr>
+<tr><th>csc</th><td>cosecant</td></tr>
+<tr><th>deg2grad</th><td>convert from degrees to gradians</td></tr>
+<tr><th>deg2rad</th><td>convert from degrees to radians</td></tr>
+<tr><th>grad2deg</th><td>convert from gradians to degrees</td></tr>
+<tr><th>rad2deg</th><td>convert from radians to degrees</td></tr>
+<tr><th>sec</th><td>secant</td></tr>
+<tr><th>sin</th><td>sine</td></tr>
+<tr><th>sinc</th><td>sine cardinal</td></tr>
+<tr><th>sinh</th><td>hyperbolic sine</td></tr>
+<tr><th>tan</th><td>tangent</td></tr>
+<tr><th>tanh</th><td>hyperbolic tangent</td></tr>
+</table>
+
+<p>ExprTk expressions have many more features which are described in Sections 8, 12, 13 and 20 of the <a href="https://github.com/ArashPartow/exprtk#readme">documentation</a> for ExprTk. <strong>Columns++</strong> supports the <strong>return</strong> call (section 20 of the ExprTk documentation). The returned strings and scalar values will be concatenated and inserted in the new column; if two or more scalar values are specified without intervening strings they will be separated by a tab character (if <strong>Tabbed</strong> is checked) or a single space. The concatenated string will be left aligned, regardless of whether <strong>Numeric aligned</strong> is checked.</p>
 
 </section>
 
@@ -373,9 +515,9 @@ defines an escape character for separated values. The character following an esc
 <p><strong>Options...</strong> opens a dialog that allows you to control some aspects of <strong>Columns++</strong>:
 
 <table class=optionsTable>
-<tr><th>Show Columns++ on the main menu bar</th><td>lets you choose whether to add an entry for <strong>Columns++</strong> to the main menu bar, just to the left of the <strong>Plugins</strong> menu, or leave it as an entry on the <strong>Plugins</strong> menu.</td></tr>
+<tr><th>Show Columns++ on the main menu bar.</th><td>lets you choose whether to add an entry for <strong>Columns++</strong> to the main menu bar, just to the left of the <strong>Plugins</strong> menu, or leave it as an entry on the <strong>Plugins</strong> menu.</td></tr>
 <tr><th>Replace: Don't move to the following occurrence.</th><td>has the same effect as the option of the same name on the <strong>Searching</strong> panel of the <strong>Preferences</strong> dialog in <strong>Notepad++</strong>, but for the <strong>Search in indicated region</strong> dialog in <strong>Columns++</strong>. When checked, the <strong>Replace</strong> button in the search dialog does not immediately perform another find after replacing text; in effect, the button alternates between finding and replacing, giving you a chance to see the effect of the replace before moving to the next occurrence of the search string.</td></tr>
-<tr><th>Automatically extend selections to form rectangles:</th><td>You can enable “implicit” selections for <strong>Columns++</strong> commands that require rectangular selections, bypassing the dialogs that ask you if you want to make a rectangular selection:
+<tr id="options-autoextend"><th>Automatically extend selections to form rectangles:</th><td>You can enable “implicit” selections for <strong>Columns++</strong> commands that require rectangular selections, bypassing the dialogs that ask you if you want to make a rectangular selection:
 <table class=optionsTable>
 <tr><th>Selections on one line extend downward to the last line.</th>
 <td>A selection of one or more characters on a single line is “projected” downward to the last line of the file. This allows you to select full columns (skipping headers, if desired) without scrolling all the way to the end of the file. If the last line of the file is completely empty (that is, the file ends with an end-of-line sequence) that line will not be included in the selection.</td></tr>

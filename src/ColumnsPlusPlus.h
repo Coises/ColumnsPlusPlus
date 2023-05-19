@@ -92,6 +92,26 @@ inline std::wstring toWide(const std::string& s, unsigned int codepage) {
 }
 
 
+inline std::wstring updateComboHistory(HWND dialog, int control, std::vector<std::wstring>& history) {
+    HWND h = GetDlgItem(dialog, control);
+    auto n = SendMessage(h, WM_GETTEXTLENGTH, 0, 0);
+    std::wstring s(n, 0);
+    SendMessage(h, WM_GETTEXT, n + 1, (LPARAM)s.data());
+    if (history.empty() || history.back() != s) {
+        if (!history.empty()) {
+            auto existing = std::find(history.begin(), history.end(), s);
+            if (existing != history.end()) {
+                SendMessage(h, CB_DELETESTRING, history.end() - existing - 1, 0);
+                history.erase(existing);
+            }
+        }
+        SendMessage(h, CB_INSERTSTRING, 0, reinterpret_cast<LPARAM>(s.data()));
+        history.push_back(s);
+    }
+    return s;
+}
+
+
 class RectangularSelection;
 
 class SearchSettings {
@@ -135,6 +155,25 @@ public:
     bool escape         = false;
     bool preserveQuotes = false;
     enum { Replace = 0, TNR = 1, URL = 2 } encodingStyle = Replace;
+};
+
+class CalculateSettings {
+public:
+    std::vector<std::wstring> formulaHistory;
+    std::vector<std::wstring> regexHistory;
+    enum { None, Comma, Apostrophe, Blank } thousands = None;  // format results with indicated thousands separator
+    int  decimalPlaces = 2;         // Calculate: decimal places to which to round result (0-16)
+    bool unitIsMinutes = false;     // Calculate: interpret and format times with minutes, not seconds, as the unit
+    bool showDays      = false;     // Calculate: format time results with days if >= 24 hours
+    bool matchCase     = false;     // Calculate: regular expression: match case
+    bool skipUnmatched = false;     // Calculate: regular expression: skip unmatched lines
+    bool decimalsFixed = false;     // Calculate: don't suppress trailing zeros after the decimal point
+    bool formatAsTime  = false;     // Calculate: format the results as a time
+    bool tabbed        = true;      // Calculate: use a tab to separate the new column
+    bool aligned       = true;      // Calculate: pad text inserted in the new column to keep numbers aligned
+    bool left          = false;     // Calculate: insert the new column at the left of the selection
+    bool insert        = true;      // Add/Average numbers: Insert results when empty space is available
+    bool addLine       = false;     // Add/Average numbers: Add a line to insert results when no empty space is available
 };
 
 class TabLayoutBlock {
@@ -200,6 +239,7 @@ public:
     DocumentDataSettings  settings;    // these are the settings for the last active document, or else initial settings
     SearchData            searchData;  // status and settings remembered for the Find/Replace dialog
     CsvSettings           csv;
+    CalculateSettings     calc;
     int disableOverSize   = 1000;      // active if greater than zero; if negative, inactive and is negative of last used setting   
     int disableOverLines  = 5000;      // active if greater than zero; if negative, inactive and is negative of last used setting
     bool showOnMenuBar    = false;     // Show the Columns++ menu on the menu bar instead of the Plugins menu
@@ -207,9 +247,6 @@ public:
     bool extendSingleLine = false;     // Extend single line selections to the last line
     bool extendFullLines  = false;     // Extend selections of full lines to the enclosing rectangle
     bool extendZeroWidth  = false;     // Extend zero-width rectangular selections to the right
-    bool calculateInsert  = true;      // Insert calculation results when empty space is available
-    bool calculateAddLine = false;     // Add a line to insert calculation results when no empty space is available
-    enum class Thousands {None, Comma, Apostrophe, Blank} thousands = Thousands::None;  // calculation dialog last selection
 
     Scintilla::Position positionFromLineAndPointX(Scintilla::Line line, int px) {
         // [Char]PositionFromPoint does not work with negative horizontal positions, but PointXFromPosition does
@@ -377,12 +414,13 @@ public:
 
     // Numeric.cpp
 
-    size_t findDecimal(const std::string& text); 
-    bool   getNumber(const std::string& text, long double& value, size_t& decimalPlaces, int& timeSegments);
+    size_t findDecimal(const std::string& text, bool timeUnitIsMinutes = false); 
+    bool   getNumber(const std::string& text, double& value, size_t& decimalPlaces, int& timeSegments, bool timeUnitIsMinutes = false);
     void   accumulate(bool isMean);
 
     void addNumbers()     { accumulate(false); }
     void averageNumbers() { accumulate(true ); }
+    void calculate();
 
     // Options.cpp
 

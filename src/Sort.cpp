@@ -21,7 +21,7 @@ enum class SortType { Binary, Locale, Numeric };
 
 struct SortSelectionLine {
     std::string key;
-    std::vector<long double> numKeys;
+    std::vector<double> numKeys;
     char* line;
     size_t lineLength;
     int selection;
@@ -34,13 +34,13 @@ struct SortSelection : std::vector<SortSelectionLine> {
     std::string text;
 };
 
-void getNumericSortKey(const RectangularSelection_Row& row, std::vector<long double>& keys) {
+void getNumericSortKey(const RectangularSelection_Row& row, std::vector<double>& keys) {
     for (const auto& cell : row) {
-        long double value;
+        double value;
         size_t decimalPlaces;
         int timeSegments;
         if (row.rs.data.getNumber(cell.trim(), value, decimalPlaces, timeSegments)) keys.push_back(value);
-        else keys.push_back(std::numeric_limits<long double>::quiet_NaN());
+        else keys.push_back(std::numeric_limits<double>::quiet_NaN());
     }
 }
 

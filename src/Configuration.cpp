@@ -16,6 +16,7 @@
 
 // Configuration level 1 - 0.0.0.1 - initial releases
 // Configuration level 2 - 0.1.0.5 - reset extendX values to new default, false, since we now offer a dialog to extend selections
+// Configuration level 3 - 0.5     - moved former calculateInsert, calculateAddLine and thousandsSeparator from LastSettings to Calculate section
 
 #include "ColumnsPlusPlus.h"
 #include <fstream>
@@ -27,6 +28,7 @@ static const std::regex configurationHeader("(?:\\xEF\\xBB\\xBF)?\\s*Notepad\\+\
 static const std::regex lastSettingsHeader("\\s*LastSettings\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex profileHeader("\\s*Profile\\s+(.*\\S)\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex extensionsHeader("\\s*Extensions\\s*", std::regex::icase | std::regex::optimize);
+static const std::regex calcHeader("\\s*Calculate\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex searchHeader("\\s*Search\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex dataLine("\\s*(\\S+)\\s+(.*\\S)\\s*", std::regex::optimize);
 static const std::regex integerValue("[+-]?\\d{1,10}", std::regex::optimize);
@@ -80,14 +82,15 @@ void ColumnsPlusPlusData::loadConfiguration() {
     if (!std::regex_match(line, match, configurationHeader)) return;
     int configLevel  = std::stoi(match[1]);
     int configCompat = std::stoi(match[2]);
-    if (configCompat > 2) return;
+    if (configCompat > 3) return;
 
-    enum {sectionNone, sectionLastSettings, sectionSearch, sectionProfile, sectionExtensions} readingSection = sectionNone;
+    enum {sectionNone, sectionLastSettings, sectionCalc, sectionSearch, sectionProfile, sectionExtensions} readingSection = sectionNone;
     std::wstring profileName;
 
     while (file) {
         std::getline(file, line);
         if      (std::regex_match(line, match, lastSettingsHeader)) readingSection = sectionLastSettings;
+        else if (std::regex_match(line, match, calcHeader        )) readingSection = sectionCalc;
         else if (std::regex_match(line, match, searchHeader      )) readingSection = sectionSearch;
         else if (std::regex_match(line, match, extensionsHeader  )) readingSection = sectionExtensions;
         else if (std::regex_match(line, match, profileHeader     )) {
@@ -109,8 +112,6 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 else if (setting == "monospacenomnemonics"      ) settings.monospaceNoMnemonics    = value != "0";
                 else if (setting == "showonmenubar"             ) showOnMenuBar                    = value != "0";
                 else if (setting == "replacestaysput"           ) replaceStaysPut                  = value != "0";
-                else if (setting == "calculateinsert"           ) calculateInsert                  = value != "0";
-                else if (setting == "calculateaddline"          ) calculateAddLine                 = value != "0";
                 else if (setting == "csvquote"                  ) csv.quote                        = value != "0";
                 else if (setting == "csvapostrophe"             ) csv.apostrophe                   = value != "0";
                 else if (setting == "csvescape"                 ) csv.escape                       = value != "0";
@@ -131,14 +132,6 @@ void ColumnsPlusPlusData::loadConfiguration() {
                                        : value == "no"  ? ElasticTabsProfile::MonospaceNever
                                                         : ElasticTabsProfile::MonospaceBest;
                 }
-                else if (setting == "thousandsseparator") {
-                    strlwr(value.data());
-                    thousands = value == "comma"      ? Thousands::Comma
-                              : value == "period"     ? Thousands::Comma
-                              : value == "apostrophe" ? Thousands::Apostrophe
-                              : value == "blank"      ? Thousands::Blank
-                                                      : Thousands::None;
-                }
                 else if (setting == "csvencodingstyle") {
                     strlwr(value.data());
                     csv.encodingStyle = value == "backslash" ? CsvSettings::TNR
@@ -150,6 +143,57 @@ void ColumnsPlusPlusData::loadConfiguration() {
                     else if (setting == "minimumspacebetweencolumns") settings.minimumSpaceBetweenColumns = std::stoi(value);
                     else if (setting == "disableoversize"           ) disableOverSize                     = std::stoi(value);
                     else if (setting == "disableoverlines"          ) disableOverLines                    = std::stoi(value);
+                }
+            }
+            else if (readingSection == sectionCalc) {
+                std::string setting = match[1];
+                std::string value = match[2];
+                strlwr(setting.data());
+                if      (setting == "insert"       ) calc.insert        = value != "0";
+                else if (setting == "addline"      ) calc.addLine       = value != "0";
+                else if (setting == "unitisminutes") calc.unitIsMinutes = value != "0";
+                else if (setting == "showdays"     ) calc.showDays      = value != "0";
+                else if (setting == "matchcase"    ) calc.matchCase     = value != "0";
+                else if (setting == "skipunmatched") calc.skipUnmatched = value != "0";
+                else if (setting == "decimalsfixed") calc.decimalsFixed = value != "0";
+                else if (setting == "formatastime" ) calc.formatAsTime  = value != "0";
+                else if (setting == "tabbed"       ) calc.tabbed        = value != "0";
+                else if (setting == "aligned"      ) calc.aligned       = value != "0";
+                else if (setting == "left"         ) calc.left          = value != "0";
+                else if (setting == "thousands") {
+                    strlwr(value.data());
+                    calc.thousands = value == "comma"      ? CalculateSettings::Comma
+                                   : value == "period"     ? CalculateSettings::Comma
+                                   : value == "apostrophe" ? CalculateSettings::Apostrophe
+                                   : value == "blank"      ? CalculateSettings::Blank
+                                                           : CalculateSettings::None;
+                }
+                else if (setting == "formula") {
+                    if (value.length() > 2 && value.front() == '\\' && value.back() == '\\') {
+                        std::wstring s = toWide(value.substr(1, value.length() - 2), CP_UTF8);
+                        for (size_t i = 0; i < s.length() - 1; ++i) if (s[i] == L'\\') switch (s[i + 1]) {
+                        case L'r': s.replace(i, 2, L"\r"); break;
+                        case L'n': s.replace(i, 2, L"\n"); break;
+                        case L'\\': s.replace(i, 2, L"\\"); break;
+                        default:;
+                        }
+                        calc.formulaHistory.push_back(s);
+                    }
+                }
+                else if (setting == "regex") {
+                    if (value.length() > 2 && value.front() == '\\' && value.back() == '\\') {
+                        std::wstring s = toWide(value.substr(1, value.length() - 2), CP_UTF8);
+                        for (size_t i = 0; i < s.length() - 1; ++i) if (s[i] == L'\\') switch (s[i + 1]) {
+                        case L'r': s.replace(i, 2, L"\r"); break;
+                        case L'n': s.replace(i, 2, L"\n"); break;
+                        case L'\\': s.replace(i, 2, L"\\"); break;
+                        default:;
+                        }
+                        calc.regexHistory.push_back(s);
+                    }
+                }
+                else if (std::regex_match(value, integerValue)) {
+                    if (setting == "decimalplaces") calc.decimalPlaces = std::stoi(value);
                 }
             }
             else if (readingSection == sectionSearch) {
@@ -240,7 +284,7 @@ void ColumnsPlusPlusData::saveConfiguration() {
     std::ofstream file(filePath);
     if (!file) return;
 
-    file << "\xEF\xBB\xBF" << "Notepad++ Columns++ Configuration 2 1" << std::endl;
+    file << "\xEF\xBB\xBF" << "Notepad++ Columns++ Configuration 3 1" << std::endl;
 
     file << std::endl << "LastSettings" << std::endl << std::endl;
 
@@ -264,12 +308,6 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "extendSingleLine\t"            << extendSingleLine                        << std::endl;
     file << "extendFullLines\t"             << extendFullLines                         << std::endl;
     file << "extendZeroWidth\t"             << extendZeroWidth                         << std::endl;
-    file << "calculateInsert\t"             << calculateInsert                         << std::endl;
-    file << "calculateAddLine\t"            << calculateAddLine                        << std::endl;
-    file << "thousandsSeparator\t" << ( thousands == Thousands::Comma      ? (settings.decimalSeparatorIsComma ? "period" : "comma" )
-                                      : thousands == Thousands::Apostrophe ? "apostrophe" 
-                                      : thousands == Thousands::Blank      ? "blank"
-                                                                           : "none" ) << std::endl;
     file << "csvQuote\t"                    << csv.quote                                             << std::endl;
     file << "csvApostrophe\t"               << csv.apostrophe                                        << std::endl;
     file << "csvEscape\t"                   << csv.escape                                            << std::endl;
@@ -284,6 +322,49 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "csvEncodingStyle\t" << ( csv.encodingStyle == CsvSettings::TNR ? "backslash"
                                     : csv.encodingStyle == CsvSettings::URL ? "url" 
                                                                             : "replace" ) << std::endl;
+
+    file << std::endl << "Calculate" << std::endl << std::endl;
+
+    file << "thousands\t" << ( calc.thousands == CalculateSettings::Comma      ? (settings.decimalSeparatorIsComma ? "period" : "comma" )
+                             : calc.thousands == CalculateSettings::Apostrophe ? "apostrophe" 
+                             : calc.thousands == CalculateSettings::Blank      ? "blank"
+                                                                               : "none" ) << std::endl;
+    file << "insert\t"        << calc.insert        << std::endl;
+    file << "addLine\t"       << calc.addLine       << std::endl;
+    file << "decimalPlaces\t" << calc.decimalPlaces << std::endl;
+    file << "unitIsMinutes\t" << calc.unitIsMinutes << std::endl;
+    file << "showDays\t"      << calc.showDays      << std::endl;
+    file << "matchCase\t"     << calc.matchCase     << std::endl;
+    file << "skipUnmatched\t" << calc.skipUnmatched << std::endl;
+    file << "decimalsFixed\t" << calc.decimalsFixed << std::endl;
+    file << "formatAsTime\t"  << calc.formatAsTime  << std::endl;
+    file << "tabbed\t"        << calc.tabbed        << std::endl;
+    file << "aligned\t"       << calc.aligned       << std::endl;
+    file << "left\t"          << calc.left          << std::endl;
+
+    for (auto it = calc.formulaHistory.size() > 16 ? calc.formulaHistory.end() - 16 : calc.formulaHistory.begin();
+        it != calc.formulaHistory.end(); ++it) {
+        std::wstring s = *it;
+        for (size_t i = 0; i < s.length(); ++i) switch (s[i]) {
+        case L'\r': s.replace(i, 1, L"\\r"); ++i; break;
+        case L'\n': s.replace(i, 1, L"\\n"); ++i; break;
+        case L'\\': s.replace(i, 1, L"\\\\"); ++i; break;
+        default:;
+        }
+        file << "formula\t\\" << fromWide(s, CP_UTF8) << "\\" << std::endl;
+    }
+
+    for (auto it = calc.regexHistory.size() > 16 ? calc.regexHistory.end() - 16 : calc.regexHistory.begin();
+        it != calc.regexHistory.end(); ++it) {
+        std::wstring s = *it;
+        for (size_t i = 0; i < s.length(); ++i) switch (s[i]) {
+        case L'\r': s.replace(i, 1, L"\\r"); ++i; break;
+        case L'\n': s.replace(i, 1, L"\\n"); ++i; break;
+        case L'\\': s.replace(i, 1, L"\\\\"); ++i; break;
+        default:;
+        }
+        file << "regex\t\\" << fromWide(s, CP_UTF8) << "\\" << std::endl;
+    }
 
     file << std::endl << "Search" << std::endl << std::endl;
 
