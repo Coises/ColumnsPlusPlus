@@ -943,6 +943,7 @@ void ColumnsPlusPlusData::calculate() {
                 if (calc.skipUnmatched) {
                     history.skip();
                     textResults.push_back("");
+                    canAlign.push_back(false);
                     continue;
                 }
                 exMatch = 0;

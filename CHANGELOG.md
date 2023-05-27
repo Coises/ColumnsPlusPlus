@@ -1,5 +1,11 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Version 0.5.1-alpha -- May 27th, 2023
+
+* Corrected an error that caused numeric alignment to be ignored when skip unmatched lines was checked in the dialog for the **Calculate** command.
+* Fixed a minor error in the help file.
+* Fixed incorrect GPL version (2 instead of 3) in the version info block.
+
 ## Version 0.5-alpha -- May 19th, 2023
 
 * Added the **Calculate** command.
