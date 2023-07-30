@@ -533,15 +533,22 @@ void ColumnsPlusPlusData::tabsToSpaces() {
     sci.BeginUndoAction();
 
     for (auto& sel : selections) {
-        sci.SetTargetRange(sel.second, sel.first);
-        for (;;) {
-            Scintilla::Position tab = sci.SearchInTarget("\t");
-            if (tab < 0) break;
-            int width = sci.PointXFromPosition(tab + 1) - sci.PointXFromPosition(tab);
+        sci.SetTargetRange(sel.first, sel.second);
+        std::string text = sci.TargetText();
+        std::string repl;
+        for (size_t i = 0;;) {
+            size_t j = text.find_first_of('\t', i);
+            if (j == std::string::npos) {
+                repl += text.substr(i);
+                break;
+            }
+            repl += text.substr(i, j - i);
+            int width = sci.PointXFromPosition(sel.first + j + 1) - sci.PointXFromPosition(sel.first + j);
             int count = (2 * width + blankWidth) / (2 * blankWidth);
-            sci.ReplaceTarget(std::string(count, ' '));
-            sci.SetTargetRange(tab, sel.first);
+            repl += std::string(count, ' ');
+            i = j + 1;
         }
+        sci.ReplaceTarget(repl);
     }
 
     sci.EndUndoAction();
