@@ -15,6 +15,7 @@
 #define IDD_CHOOSE_RECTANGULAR_SELECTION_VERTICAL 124
 #define IDD_CSV                         125
 #define IDD_CALCULATE                   127
+#define IDD_SORT                        129
 #define IDC_LINE_UP_ALL                 1003
 #define IDC_LEADING_TABS_INDENT         1006
 #define IDC_DISABLE_FILE_SIZE           1007
@@ -140,14 +141,36 @@
 #define IDC_CALCULATE_SUPPRESS_ZEROS    1147
 #define IDC_CHECK2                      1148
 #define IDC_CALCULATE_LEFT              1148
+#define IDC_SORT_WHOLE_LINES            1149
+#define IDC_SORT_WITHIN_SELECTION       1150
+#define IDC_SORT_ENTIRE_COLUMN          1151
+#define IDC_SORT_IGNORE_BLANKS          1152
+#define IDC_SORT_TABBED                 1153
+#define IDC_SORT_REGEX                  1154
+#define IDC_SORT_ASCENDING              1155
+#define IDC_SORT_DESCENDING             1156
+#define IDC_SORT_BINARY                 1157
+#define IDC_SORT_LOCALE                 1158
+#define IDC_SORT_NUMERIC                1159
+#define IDC_SORT_FIND_WHAT              1160
+#define IDC_SORT_MATCH_CASE             1161
+#define IDC_SORT_USE_KEY                1162
+#define IDC_SORT_KEY_CAPTURE            1163
+#define IDC_SORT_LOCALE_LANGUAGE        1164
+#define IDC_SORT_LOCALE_NAME            1165
+#define IDC_SORT_LOCALE_SORT            1166
+#define IDC_SORT_CASE_SENSITIVE         1167
+#define IDC_SORT_DIGITS_AS_NUMBERS      1168
+#define IDC_SORT_IGNORE_DIACRITICS      1169
+#define IDC_SORT_IGNORE_SYMBOLS         1170
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        129
+#define _APS_NEXT_RESOURCE_VALUE        131
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1149
+#define _APS_NEXT_CONTROL_VALUE         1170
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

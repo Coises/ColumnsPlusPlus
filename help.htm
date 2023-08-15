@@ -80,9 +80,10 @@ body #centershortlines ~ article section   {max-width: 48em;}
 p.subsub            {margin-left: 1.5em;}
 
 
-table.optionsTable      {border: none; margin: 1em 0 1em 1em; border-collapse: collapse;}
-table.optionsTable th   {padding: .5em .5em .5em .5em; font-weight: bold;   text-align: left; vertical-align: top; border: 1px solid black;}
-table.optionsTable td   {padding: .5em .5em .5em .5em; font-weight: normal; text-align: left; vertical-align: top; border: 1px solid black;}
+table.optionsTable        {border: none; margin: 1em 0 1em 1em; border-collapse: collapse;}
+table.optionsTable th     {padding: .5em .5em .5em .5em; font-weight: bold;   text-align: left; vertical-align: top; border: 1px solid black;}
+table.optionsTable td     {padding: .5em .5em .5em .5em; font-weight: normal; text-align: left; vertical-align: top; border: 1px solid black;}
+table.optionsTable .group {text-align: center; background: #d0d0d0; }
 
 ul.optionslist    {margin-top: .5em; margin-bottom: .5em;}
 ul.optionslist li {font-weight: bold;}
@@ -450,6 +451,50 @@ last
 <tr><th>numeric</th><td>The selections on each line are interpreted as tab-separated numbers in the same way as described for the Calculation functions. Items which can’t be interpreted as numbers sort first (whether the sort is ascending or descending).</td></tr>
 </table>
 
+<h3>Custom sorts</h3>
+
+<p>In addition to the six immediate sort commands on the <strong>Columns++</strong> menu, you can use the <strong>Sort...</strong> command to open a dialog giving you more control over the details of the sort:</p>
+
+<table class=optionsTable>
+<tr><th colspan=2 class=group>What to sort</th></tr>
+<tr><th>Whole lines</th><td>Individual lines remain intact and are sorted using the column selection to define the sort keys.</td></tr>
+<tr><th>Selected text only</th><td><p>Only the selected portions of lines are sorted; the surrounding text on each line remains in place.</p>
+<p><em>Note: This will result in blank-padding lines in the selection which do not extend to or past the right boundary of the column selection. If elastic tabstops are enabled and the number of tabs included in the column selection is different on different lines (for example, because some lines are short), results using <strong>Selected text only</strong> are unlikely to be as expected.</em></p></td></tr>
+</table>
+
+<table class=optionsTable>
+<tr><th colspan=2 class=group>Sort type</th></tr>
+<tr><th>Ascending</th><td>Smaller numbers, or characters earlier in the collating sequence, come first.</td></tr>
+<tr><th>Descending</th><td>Larger numbers, or characters later in the collating sequence, come first.</td></tr>
+<tr><th>Binary</th><td>The raw byte values of the internal representations of the selected sort strings are used as sort keys. For most purposes, this matches what you would expect from a “case sensitive” sort, with the sort order dependent on the active code page. Unicode files sort by code point.</td></tr>
+<tr><th>Locale</th><td>The sort order is defined by a Windows locale, as specified in the <strong>Locale sort details</strong> section.</td></tr>
+<tr><th>Numeric</th><td>Sort strings are interpreted as numbers in the same way as described for the Calculation functions. Strings which can’t be interpreted as numbers sort first (whether the sort is ascending or descending). When <strong>Regular expression</strong> is selected, the regular expression is used to parse the selected text on each line; in all other cases, the text is interpreted as a sequence of tab-separated values.</td></tr>
+</table>
+
+<table class=optionsTable>
+<tr><th colspan=2 class=group>Sort key</th></tr>
+<tr><th>Entire column</th><td>The selected text on each line is used as the sort key.</td></tr>
+<tr><th>Ignore surrounding blanks/tabs</th><td>For <strong>Binary</strong> and <strong>Locale</strong> sorts, leading and trailing blanks and tabs in the text selected on each line are ignored, and the remaining text is used as the sort key. For <strong>Numeric</strong> sorts, this option behaves the same as <strong>Entire column</strong> (the text is treated as tab-separated values regardless of which option is selected, which is the same as the immediate numeric sorts on the <strong>Columns++</strong> menu).</td></tr>
+<tr><th>Tabbed</th><td>The selected text is tab-separated; sort keys must be specified in the <strong>Keys</strong> box.</td></tr>
+<tr><th>Regular expression</th><td>A regular expression is used to parse the selected text on each line.</td></tr>
+<tr><th>Find what</th><td>Specifies a regular expression. The first match of the expression within the selected text in each line will be used to determine the sort key.</td></tr>
+<tr><th>Match case</th><td>When checked, the regular expression match is case sensitive; otherwise, the case of the text is ignored.</td></tr>
+<tr><th>Specify keys using capture groups</th><td>When checked, the <strong>Keys</strong> box specifies the sort sequence in terms of capture groups. When unchecked, the text matched by the regular expression is used as the sort key.</td></tr>
+<tr><th>Keys</th><td><p>A list of keys, separated by spaces, commas and/or semicolons, to be used for sorting. The major sort key is listed first, with subsequent keys having lower precedence. Each key is designated with a number. If <strong>Tabbed</strong> is selected, the number indicates a tab-separated field, numbered left to right counting from 1; 0 represents the entire selected text in the line. If <strong>Regular expression</strong> is selected, the number is the number of a capture group; 0 represents the entire match.</p>
+<p>Each sort key number may be followed (without intervening spaces) by one of the letters <strong>a</strong> or <strong>d</strong>, and/or one of the letters <strong>b</strong>, <strong>l</strong> or <strong>n</strong>. These specify <strong>a</strong>scending, <strong>d</strong>escending, <strong>b</strong>inary, <strong>l</strong>ocale and <strong>n</strong>umeric, overriding the selection in the <strong>Sort type</strong> box for the capture group or tab field to which they are appended.</p></td></tr>
+</table>
+
+<table class=optionsTable>
+<tr><th colspan=2 class=group>Locale sort details</th></tr>
+<tr><td colspan=2><em>Locale sorting makes use of the Windows API function <a href="https://learn.microsoft.com/en-us/windows/win32/api/winnls/nf-winnls-lcmapstringex">LCMapStringEx</a>. The exact behavior of the sort is dependent on the exact behavior of this function; the following attempts to describe the most important points.</em></td></tr>
+<tr><th>Language</th><td>Selects the language for which a selection of locales will be offered.</td></tr>
+<tr><th>Locale</th><td>Selects a Windows locale from those available for the selected language.</td></tr>
+<tr><th>Case sensitive</th><td>Case sensitivity in a linguistic sort is not applied character by character; instead, when and only when two strings match completely except for case, case is applied to further sort them. Consequently, when this box is checked, the result will still not resemble what most users expect of a “case sensitive” sort. When this box is unchecked, the LINGUISTIC_IGNORECASE flag is passed to LCMapStringEx.</td></tr>
+<tr><th>Sort digits as numbers</th><td>This causes the sort to attempt to recognize strings including digits — like “data5” and “data10” — in such a way that “data5” will sort before “data10” in an ascending sort instead of after. The same algorithm is used to sort file names in Windows File Explorer. When this box is checked, the SORT_DIGITSASNUMBERS flag is passed to LCMapStringEx.</td></tr>
+<tr><th>Ignore diacritics</th><td>Windows API documentation says: <em>Ignore nonspacing characters, as linguistically appropriate. Note: This flag does not always produce predictable results when used with decomposed characters, that is, characters in which a base character and one or more nonspacing characters each have distinct code point values.</em> When this box is checked, the LINGUISTIC_IGNOREDIACRITIC flag is passed to LCMapStringEx.</td></tr>
+<tr><th>Ignore symbols and punctuation</th><td>This causes spaces, punctuation and “symbols” (the documentation is not more specific) to be ignored. Strings are sorted as if all the letters and numbers were run together, ignoring spaces, hyphens, periods and so on. When this box is checked, the NORM_IGNORESYMBOLS flag is passed to LCMapStringEx.</td></tr>
+</table>
+
 </section>
 
 <section id=conversion><h2>Conversion</h2>
@@ -464,7 +509,7 @@ last
 
 <p>Both delimiter-separated values and tab-separated values use a structure comprised of <em>records</em> (rows) containing <em>fields</em> (which are interpreted as being arranged in columns). In tabbed documents, each line of the file is a record, and fields within a record are separated by tabs. Fields cannot contain tabs or line-ending characters as such, but these can be encoded, typically using backslash notation (\t, \n, \r for tab, new line and return). Consistency requires that the encoding character must also be encoded (e.g., two backslashes in the file to represent a single backslash in the field’s value).</p>
 
-<p>In delimiter-separated files, records are divided by line breaks and fields are divided by a separator character, typically a comma. However, when a field contains the separator character or line-ending characters, the problematic characters are <em>escaped</em> rather than encoded, meaning that the original charater is still used in the file, but context indicates that it is not to be interpreted as a field or record separator. Typically, quote marks surround a field which contains line-ending or separator characters, and quotes within the field are doubled.</p>
+<p>In delimiter-separated files, records are divided by line breaks and fields are divided by a separator character, typically a comma. However, when a field contains the separator character or line-ending characters, the problematic characters are <em>escaped</em> rather than encoded, meaning that the original character is still used in the file, but context indicates that it is not to be interpreted as a field or record separator. Typically, quote marks surround a field which contains line-ending or separator characters, and quotes within the field are doubled.</p>
 
 <p>There are many variations in the details of data representation in delimiter-separated and tab-separated values files. When you select <strong>Convert separated values to tabs...</strong> or <strong>Convert tabs to separated values...</strong>, <strong>Columns++</strong> displays a dialog in which you can adjust the conversion accordingly:</p>
 

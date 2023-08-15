@@ -1,5 +1,11 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Version 0.6-alpha -- August 14th, 2023
+
+* Added **Sort...** command and dialog supporting custom sorts, including selection of locale for locale sorts, sorting within the column selection only (leaving data surrounding the selection in place), and sort keys derived from a regular expression match.
+
+* Made **Convert Tabs to Spaces** significantly faster for large files.
+
 ## Version 0.5.1-alpha -- May 27th, 2023
 
 * Corrected an error that caused numeric alignment to be ignored when skip unmatched lines was checked in the dialog for the **Calculate** command.

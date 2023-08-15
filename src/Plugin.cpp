@@ -57,6 +57,7 @@ static struct MenuDefinition {
     FuncItem sortDescendingLocale    = {TEXT("Sort descending (locale)"           ), []() {cmdWrap(&ColumnsPlusPlusData::sortDescendingLocale  );}, 0, false, 0};
     FuncItem sortAscendingNumeric    = {TEXT("Sort ascending (numeric)"           ), []() {cmdWrap(&ColumnsPlusPlusData::sortAscendingNumeric  );}, 0, false, 0};
     FuncItem sortDescendingNumeric   = {TEXT("Sort descending (numeric)"          ), []() {cmdWrap(&ColumnsPlusPlusData::sortDescendingNumeric );}, 0, false, 0};
+    FuncItem sortCustom              = {TEXT("Sort..."                            ), []() {cmdWrap(&ColumnsPlusPlusData::sortCustom            );}, 0, false, 0};
     FuncItem separatorConvert        = {TEXT("---"                                ), 0                                                            , 0, false, 0};
     FuncItem convertTabsToSpaces     = {TEXT("Convert tabs to spaces"             ), []() {cmdWrap(&ColumnsPlusPlusData::tabsToSpaces          );}, 0, false, 0};
     FuncItem separatedValuesToTabs   = {TEXT("Convert separated values to tabs..."), []() {cmdWrap(&ColumnsPlusPlusData::separatedValuesToTabs );}, 0, false, 0};

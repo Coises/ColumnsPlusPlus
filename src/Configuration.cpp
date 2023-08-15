@@ -30,6 +30,7 @@ static const std::regex profileHeader("\\s*Profile\\s+(.*\\S)\\s*", std::regex::
 static const std::regex extensionsHeader("\\s*Extensions\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex calcHeader("\\s*Calculate\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex searchHeader("\\s*Search\\s*", std::regex::icase | std::regex::optimize);
+static const std::regex sortHeader("\\s*Sort\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex dataLine("\\s*(\\S+)\\s+(.*\\S)\\s*", std::regex::optimize);
 static const std::regex integerValue("[+-]?\\d{1,10}", std::regex::optimize);
 
@@ -60,6 +61,11 @@ std::string encodeDelimitedString(std::wstring s) {
     return "\\" + fromWide(s, CP_UTF8) + "\\";
 }
 
+void writeDelimitedStringHistory(std::ofstream& file, std::string key, std::vector<std::wstring> history) {
+    for (auto it = history.size() > 16 ? history.end() - 16 : history.begin(); it != history.end(); ++it)
+        file << key << "\t" << encodeDelimitedString(*it) << std::endl;
+}
+
 
 void ColumnsPlusPlusData::loadConfiguration() {
 
@@ -84,7 +90,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
     int configCompat = std::stoi(match[2]);
     if (configCompat > 3) return;
 
-    enum {sectionNone, sectionLastSettings, sectionCalc, sectionSearch, sectionProfile, sectionExtensions} readingSection = sectionNone;
+    enum {sectionNone, sectionLastSettings, sectionCalc, sectionSearch, sectionSort, sectionProfile, sectionExtensions} readingSection = sectionNone;
     std::wstring profileName;
 
     while (file) {
@@ -92,6 +98,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
         if      (std::regex_match(line, match, lastSettingsHeader)) readingSection = sectionLastSettings;
         else if (std::regex_match(line, match, calcHeader        )) readingSection = sectionCalc;
         else if (std::regex_match(line, match, searchHeader      )) readingSection = sectionSearch;
+        else if (std::regex_match(line, match, sortHeader        )) readingSection = sectionSort;
         else if (std::regex_match(line, match, extensionsHeader  )) readingSection = sectionExtensions;
         else if (std::regex_match(line, match, profileHeader     )) {
             readingSection = sectionProfile;
@@ -239,6 +246,35 @@ void ColumnsPlusPlusData::loadConfiguration() {
                     else if (setting == "customalpha"    ) searchData.customAlpha     = std::stoi(value);
                     else if (setting == "customcolor"    ) searchData.customColor     = std::stoi(value);
                     else if (setting == "customindicator") searchData.customIndicator = std::stoi(value);
+                }
+            }
+            else if (readingSection == sectionSort) {
+                std::string setting = match[1];
+                std::string value = match[2];
+                strlwr(setting.data());
+                if      (setting == "columnselectiononly"   ) sort.sortColumnSelectionOnly = value != "0";
+                else if (setting == "descending"            ) sort.sortDescending          = value != "0";
+                else if (setting == "regexmatchcase"        ) sort.regexMatchCase          = value != "0";
+                else if (setting == "regexusekey"           ) sort.regexUseKey             = value != "0";
+                else if (setting == "localecasesensitive"   ) sort.localeCaseSensitive     = value != "0";
+                else if (setting == "localedigitsasnumbers" ) sort.localeDigitsAsNumbers   = value != "0";
+                else if (setting == "localeignorediacritics") sort.localeIgnoreDiacritics  = value != "0";
+                else if (setting == "localeignoresymbols"   ) sort.localeIgnoreSymbols     = value != "0";
+                else if (setting == "localename"            ) sort.localeName              = toWide(value, CP_UTF8);
+                else if (setting == "regex"                 ) sort.regexHistory   .push_back(decodeDelimitedString(value));
+                else if (setting == "keys"                  ) sort.keygroupHistory.push_back(decodeDelimitedString(value));
+                else if (setting == "sorttype") {
+                    strlwr(value.data());
+                    sort.sortType = value == "locale"  ? SortSettings::Locale
+                                  : value == "numeric" ? SortSettings::Numeric
+                                                       : SortSettings::Binary;
+                }
+                else if (setting == "keytype") {
+                    strlwr(value.data());
+                    sort.keyType = value == "ignoreblanks" ? SortSettings::IgnoreBlanks
+                                 : value == "tabbed"       ? SortSettings::Tabbed
+                                 : value == "regex"        ? SortSettings::Regex
+                                                           : SortSettings::EntireColumn;
                 }
             }
             else if (readingSection == sectionProfile) {
@@ -401,6 +437,27 @@ void ColumnsPlusPlusData::saveConfiguration() {
             }
         file << "replace\t\\" << fromWide(s, CP_UTF8) << "\\" << std::endl;
     }
+
+    file << std::endl << "Sort" << std::endl << std::endl;
+
+    file << "columnSelectionOnly\t"    << sort.sortColumnSelectionOnly       << std::endl;
+    file << "descending\t"             << sort.sortDescending                << std::endl;
+    file << "regexMatchCase\t"         << sort.regexMatchCase                << std::endl;
+    file << "regexUseKey\t"            << sort.regexUseKey                   << std::endl;
+    file << "localeName\t"             << fromWide(sort.localeName, CP_UTF8) << std::endl;
+    file << "localeCaseSensitive\t"    << sort.localeCaseSensitive           << std::endl;
+    file << "localeDigitsAsNumbers\t"  << sort.localeDigitsAsNumbers         << std::endl;
+    file << "localeIgnoreDiacritics\t" << sort.localeIgnoreDiacritics        << std::endl;
+    file << "localeIgnoreSymbols\t"    << sort.localeIgnoreSymbols           << std::endl;
+    file << "sortType\t" << ( sort.sortType == SortSettings::Locale      ? "Locale"
+                            : sort.sortType == SortSettings::Numeric     ? "Numeric" 
+                                                                         : "Binary"      ) << std::endl;
+    file << "keyType\t"  << ( sort.keyType == SortSettings::IgnoreBlanks ? "IgnoreBlanks"
+                            : sort.keyType == SortSettings::Tabbed       ? "Tabbed"
+                            : sort.keyType == SortSettings::Regex        ? "Regex"
+                                                                         : "EntireColumn") << std::endl;
+    writeDelimitedStringHistory(file, "regex", sort.regexHistory);
+    writeDelimitedStringHistory(file, "keys" , sort.keygroupHistory);
 
     for (const auto& p : profiles) if (p.first != L"Classic" && p.first != L"General" && p.first != L"Tabular") {
         file << std::endl << "Profile\t" << fromWide(p.first, CP_UTF8) << std::endl << std::endl;

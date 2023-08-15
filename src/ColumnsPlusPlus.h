@@ -176,6 +176,23 @@ public:
     bool addLine       = false;     // Add/Average numbers: Add a line to insert results when no empty space is available
 };
 
+class SortSettings {
+public:
+    std::vector<std::wstring> regexHistory;
+    std::vector<std::wstring> keygroupHistory;
+    std::wstring localeName;
+    enum SortType {Binary, Locale, Numeric                  } sortType = Binary;
+    enum KeyType  {EntireColumn, IgnoreBlanks, Tabbed, Regex} keyType  = EntireColumn;
+    bool sortColumnSelectionOnly = false;
+    bool sortDescending          = false;
+    bool regexMatchCase          = false;
+    bool regexUseKey             = false;
+    bool localeCaseSensitive     = false;
+    bool localeDigitsAsNumbers   = true;
+    bool localeIgnoreDiacritics  = false;
+    bool localeIgnoreSymbols     = false;
+};
+
 class TabLayoutBlock {
 public:
     Scintilla::Line firstLine, lastLine;
@@ -240,6 +257,7 @@ public:
     SearchData            searchData;  // status and settings remembered for the Find/Replace dialog
     CsvSettings           csv;
     CalculateSettings     calc;
+    SortSettings          sort;
     int disableOverSize   = 1000;      // active if greater than zero; if negative, inactive and is negative of last used setting   
     int disableOverLines  = 5000;      // active if greater than zero; if negative, inactive and is negative of last used setting
     bool showOnMenuBar    = false;     // Show the Columns++ menu on the menu bar instead of the Plugins menu
@@ -451,6 +469,7 @@ public:
     void sortDescendingLocale();
     void sortAscendingNumeric();
     void sortDescendingNumeric();
+    void sortCustom();
 
 };
 
@@ -514,12 +533,12 @@ public:
     RectangularSelection& extend();
     RectangularSelection& refit(bool addLine = false);
 
-    const Corner& anchor() { return _anchor; }
-    const Corner& caret () { return _caret;  }
-    const Corner& top   () { return topToBottom() ? _anchor : _caret; }
-    const Corner& bottom() { return topToBottom() ? _caret : _anchor; }
-    const Corner& left  () { return leftToRight() ? _anchor : _caret; }
-    const Corner& right () { return leftToRight() ? _caret : _anchor; }
+    const Corner& anchor() const { return _anchor; }
+    const Corner& caret () const { return _caret;  }
+    const Corner& top   () const { return topToBottom() ? _anchor : _caret; }
+    const Corner& bottom() const { return topToBottom() ? _caret : _anchor; }
+    const Corner& left  () const { return leftToRight() ? _anchor : _caret; }
+    const Corner& right () const { return leftToRight() ? _caret : _anchor; }
 
     RectangularSelection_Row_Iterator begin() const;
     RectangularSelection_Row_Iterator end  () const;
