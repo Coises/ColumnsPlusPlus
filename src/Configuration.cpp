@@ -17,6 +17,7 @@
 // Configuration level 1 - 0.0.0.1 - initial releases
 // Configuration level 2 - 0.1.0.5 - reset extendX values to new default, false, since we now offer a dialog to extend selections
 // Configuration level 3 - 0.5     - moved former calculateInsert, calculateAddLine and thousandsSeparator from LastSettings to Calculate section
+// Configuration level 4 - 0.6.1   - Search section now uses enableCustomIndicator and forceUserIndicator instead of negative custom(user)Indicator
 
 #include "ColumnsPlusPlus.h"
 #include <fstream>
@@ -88,7 +89,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
     if (!std::regex_match(line, match, configurationHeader)) return;
     int configLevel  = std::stoi(match[1]);
     int configCompat = std::stoi(match[2]);
-    if (configCompat > 3) return;
+    if (configCompat > 4) return;
 
     enum {sectionNone, sectionLastSettings, sectionCalc, sectionSearch, sectionSort, sectionProfile, sectionExtensions} readingSection = sectionNone;
     std::wstring profileName;
@@ -207,10 +208,12 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 std::string setting = match[1];
                 std::string value = match[2];
                 strlwr(setting.data());
-                if      (setting == "backward" ) searchData.backward  = value != "0";
-                else if (setting == "wholeword") searchData.wholeWord = value != "0";
-                else if (setting == "matchcase") searchData.matchCase = value != "0";
-                else if (setting == "autoclear") searchData.autoClear = value != "0";
+                if      (setting == "backward"             ) searchData.backward              = value != "0";
+                else if (setting == "wholeword"            ) searchData.wholeWord             = value != "0";
+                else if (setting == "matchcase"            ) searchData.matchCase             = value != "0";
+                else if (setting == "autoclear"            ) searchData.autoClear             = value != "0";
+                else if (setting == "enablecustomindicator") searchData.enableCustomIndicator = value != "0";
+                else if (setting == "forceuserindicator"   ) searchData.forceUserIndicator    = value != "0";
                 else if (setting == "find") {
                     if (value.length() > 2 && value.front() == '\\' && value.back() == '\\') {
                         std::wstring s = toWide(value.substr(1, value.length() - 2), CP_UTF8);
@@ -242,10 +245,16 @@ void ColumnsPlusPlusData::loadConfiguration() {
                                         : i == SearchSettings::Regex    ? SearchSettings::Regex
                                                                         : SearchSettings::Normal;
                     }
-                    else if (setting == "indicator"      ) searchData.indicator       = std::stoi(value);
-                    else if (setting == "customalpha"    ) searchData.customAlpha     = std::stoi(value);
-                    else if (setting == "customcolor"    ) searchData.customColor     = std::stoi(value);
-                    else if (setting == "customindicator") searchData.customIndicator = std::stoi(value);
+                    else if (setting == "indicator"      ) searchData.indicator     = std::stoi(value);
+                    else if (setting == "customalpha"    ) searchData.customAlpha   = std::stoi(value);
+                    else if (setting == "customcolor"    ) searchData.customColor   = std::stoi(value);
+                    else if (setting == "customindicator") {
+                        searchData.userIndicator = std::stoi(value);
+                        if (searchData.userIndicator < 0) /* legacy format from before version 4 */ {
+                            searchData.userIndicator         = -searchData.userIndicator;
+                            searchData.enableCustomIndicator = false;
+                        }
+                    }
                 }
             }
             else if (readingSection == sectionSort) {
@@ -320,7 +329,7 @@ void ColumnsPlusPlusData::saveConfiguration() {
     std::ofstream file(filePath);
     if (!file) return;
 
-    file << "\xEF\xBB\xBF" << "Notepad++ Columns++ Configuration 3 1" << std::endl;
+    file << "\xEF\xBB\xBF" << "Notepad++ Columns++ Configuration 4 1" << std::endl;
 
     file << std::endl << "LastSettings" << std::endl << std::endl;
 
@@ -404,15 +413,17 @@ void ColumnsPlusPlusData::saveConfiguration() {
 
     file << std::endl << "Search" << std::endl << std::endl;
 
-    file << "mode\t"            << searchData.mode            << std::endl;
-    file << "backward\t"        << searchData.backward        << std::endl;
-    file << "wholeWord\t"       << searchData.wholeWord       << std::endl;
-    file << "matchCase\t"       << searchData.matchCase       << std::endl;
-    file << "autoClear\t"       << searchData.autoClear       << std::endl;
-    file << "indicator\t"       << searchData.indicator       << std::endl;
-    file << "customAlpha\t"     << searchData.customAlpha     << std::endl;
-    file << "customColor\t"     << searchData.customColor     << std::endl;
-    file << "customIndicator\t" << searchData.customIndicator << std::endl;
+    file << "mode\t"                  << searchData.mode                  << std::endl;
+    file << "backward\t"              << searchData.backward              << std::endl;
+    file << "wholeWord\t"             << searchData.wholeWord             << std::endl;
+    file << "matchCase\t"             << searchData.matchCase             << std::endl;
+    file << "autoClear\t"             << searchData.autoClear             << std::endl;
+    file << "enableCustomIndicator\t" << searchData.enableCustomIndicator << std::endl;
+    file << "forceUserIndicator\t"    << searchData.forceUserIndicator    << std::endl;
+    file << "indicator\t"             << searchData.indicator             << std::endl;
+    file << "customAlpha\t"           << searchData.customAlpha           << std::endl;
+    file << "customColor\t"           << searchData.customColor           << std::endl;
+    file << "customIndicator\t"       << searchData.userIndicator         << std::endl;
 
     for (auto it = searchData.findHistory.size() > 16 ? searchData.findHistory.end() - 16 : searchData.findHistory.begin();
         it != searchData.findHistory.end(); ++it) {

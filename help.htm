@@ -356,7 +356,7 @@ These functions retrieve the numeric value in the specified segment within a row
 <table class=optionsTable>
 <tr><th><em>n</em></th><td>the column, tab or capture group to retrieve, numbering from one; if omitted or zero, <strong>col</strong> and <strong>tab</strong> return the entire row (the selected part of the line), while <strong>reg</strong> returns the portion of the row matched by the regular expression</td></tr>
 <tr><th><em>p</em></th><td>if given, the number of rows previous to the current one from which the value is to be retrieved; if omitted or zero, the current row is accessed. If a regular expression is specified and <strong>Skip unmatched lines</strong> is checked, unmatched lines will be ignored when counting backward to previous lines.</td></tr>
-<tr><th><em>v</em></th><td>a numeric value to use instead of <em>Not-a-Number</em> if there are not <strong><em>p</em></strong> previous rows, if there are not <strong><em>n</em></strong> columns, tabs or capture grouns in the indicated row, or if the indicated text cannot be unambiguously interpreted as a number</td></tr>
+<tr><th><em>v</em></th><td>a numeric value to use instead of <em>Not-a-Number</em> if there are not <strong><em>p</em></strong> previous rows, if there are not <strong><em>n</em></strong> columns, tabs or capture groups in the indicated row, or if the indicated text cannot be unambiguously interpreted as a number</td></tr>
 </table>
 </td></tr>
 <tr><th>
@@ -562,16 +562,29 @@ defines an escape character for separated values. The character following an esc
 <table class=optionsTable>
 <tr><th>Show Columns++ on the main menu bar.</th><td>lets you choose whether to add an entry for <strong>Columns++</strong> to the main menu bar, just to the left of the <strong>Plugins</strong> menu, or leave it as an entry on the <strong>Plugins</strong> menu.</td></tr>
 <tr><th>Replace: Don't move to the following occurrence.</th><td>has the same effect as the option of the same name on the <strong>Searching</strong> panel of the <strong>Preferences</strong> dialog in <strong>Notepad++</strong>, but for the <strong>Search in indicated region</strong> dialog in <strong>Columns++</strong>. When checked, the <strong>Replace</strong> button in the search dialog does not immediately perform another find after replacing text; in effect, the button alternates between finding and replacing, giving you a chance to see the effect of the replace before moving to the next occurrence of the search string.</td></tr>
-<tr id="options-autoextend"><th>Automatically extend selections to form rectangles:</th><td>You can enable “implicit” selections for <strong>Columns++</strong> commands that require rectangular selections, bypassing the dialogs that ask you if you want to make a rectangular selection:
-<table class=optionsTable>
+</table>
+
+<table class=optionsTable id="options-autoextend">
+<tr><th colspan=2 class=group>Automatically extend selections to form rectangles</th></tr>
+<tr><td colspan=2>You can enable “implicit” selections for <strong>Columns++</strong> commands that require rectangular selections, bypassing the dialogs that ask you if you want to make a rectangular selection.</td></tr>
 <tr><th>Selections on one line extend downward to the last line.</th>
 <td>A selection of one or more characters on a single line is “projected” downward to the last line of the file. This allows you to select full columns (skipping headers, if desired) without scrolling all the way to the end of the file. If the last line of the file is completely empty (that is, the file ends with an end-of-line sequence) that line will not be included in the selection.</td></tr>
 <tr><th>Full row selections are replaced by the enclosing rectangle.</th>
 <td>A single selection of complete lines is replaced by a rectangular selection wide enough to include all the text on all lines in the selection. Usually you get this kind of selection by dragging in the left margin. If the selection ends at the beginning of a line (as when dragging downward in the left margin), that line is not included in the rectangular selection. The selection made by <strong>Edit|Select All</strong> will be converted to a rectangular selection that encompasses the entire file (excluding the last line, if it consists of only a line ending).</td></tr>
-<tr><th>Zero-width selections extend right to the end of the longest line.</th>
+<tr><th>Zero-width selections extend to the right to the end of the longest line.</th>
 <td>A “thin” selection, or a rectangular selection containing no characters or virtual space, is extended to the right far enough to enclose the end of the longest line in the selection. When selecting a rectangular region meant to extend from some column far enough to the right include the ends of all lines, this avoids the need to scroll through and figure out how wide the selection needs to be.</td></tr>
 </table>
+
+<table class=optionsTable>
+<tr><th colspan=2 class=group>Custom style for Search in indicated region</th></tr>
+<tr><td colspan=2>
+<p>By default, <strong>Columns++</strong> defines a custom style to indicate the area to be searched by shading the background. This uses a Scintilla resource called an <em>indicator</em>; in some cases this might conflict with other plugins, so some options to control it are available here. You can also choose the color and transparency of the background.</p>
+<p><em>These options are disabled if the</em> <strong>Search in indicated region</strong> <em>dialog is open when the</em> <strong>Options</strong> <em>dialog is opened.</em></p>
 </td></tr>
+<tr><th>Enable custom style</th><td>When checked, a custom style will be available.</td></tr>
+<tr><th>Alpha, Red, Green, Blue</th><td>Specify the transparency and color of the background for the custom style.</td></tr>
+<tr><th>Override Notepad++ indicator allocation</th><td><strong>Notepad++</strong> version 8.5.6 introduced a mechanism to avoid conflicts in indicator numbers used by plugins. If this mechanism is available, <strong>Columns++</strong> will set the indicator accordingly unless this box is checked. If you have plugins installed which have not been updated to use the new mechanism, it is possible that there will still be a conflict with the indicator number <strong>Notepad++</strong> assigns; in that case, you can check this box to choose the indicator number manually. If this box is disabled, either the version of <strong>Notepad++</strong> you are running does not support the indicator allocation mechanism, or there were no available indicators remaining when this plugin was loaded.</td></tr>
+<tr><th>Indicator number</th><td>When <strong>Override Notepad++ indicator allocation</strong> is unchecked and a <strong>Notepad++</strong> indicator allocation is available, this box shows the Scintilla indicator number allocated to <strong>Columns++</strong>. Otherwise it allows you to choose the indicator number <strong>Columns++</strong> will use.</td></tr>
 </table>
 
 <p><strong>Help/About...</strong> provides access to release/version identification, this help file, and changelog, license and source information.</p>

@@ -165,6 +165,11 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             startupOrShutdown = false;
             data.elasticEnabledMenuItem = menuDefinition.elasticEnabled._cmdID;
             data.decimalSeparatorMenuItem = menuDefinition.decimalSeparatorIsComma._cmdID;
+            if (!SendMessage(data.nppData._nppHandle, NPPM_ALLOCATEINDICATOR, 1, reinterpret_cast<LPARAM>(&data.searchData.allocatedIndicator)))
+                data.searchData.allocatedIndicator = 0;
+            data.searchData.customIndicator = data.searchData.forceUserIndicator || !data.searchData.allocatedIndicator ? data.searchData.userIndicator
+                                                                                                                        : data.searchData.allocatedIndicator;
+            if (data.searchData.indicator < 21) data.searchData.indicator = data.searchData.customIndicator;
             getScintillaPointers();
             data.bufferActivated();
             break;

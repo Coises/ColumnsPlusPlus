@@ -34,7 +34,7 @@ INT_PTR CALLBACK searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM
 }
 
 void ColumnsPlusPlusData::showSearchDialog() {
-    if (searchData.customIndicator > 0) {
+    if (searchData.enableCustomIndicator) {
         sci.IndicSetStyle(searchData.customIndicator, Scintilla::IndicatorStyle::FullBox);
         sci.IndicSetFore (searchData.customIndicator, searchData.customColor);
         sci.IndicSetAlpha(searchData.customIndicator, static_cast<Scintilla::Alpha>(searchData.customAlpha));
@@ -198,7 +198,7 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
         SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Mark Style 3"));
         SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Mark Style 4"));
         SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Mark Style 5"));
-        if (searchData.customIndicator > 0)
+        if (searchData.enableCustomIndicator)
             SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Custom Style"));
         switch (searchData.indicator) {
         case 31: SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_SETCURSEL, 0, 0); break;

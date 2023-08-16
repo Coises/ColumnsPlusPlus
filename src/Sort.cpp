@@ -377,11 +377,14 @@ INT_PTR CALLBACK sortDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
         SendDlgItemMessage(hwndDlg, IDC_SORT_FIND_WHAT  , CB_SETCURSEL, 0, 0);
         SendDlgItemMessage(hwndDlg, IDC_SORT_KEY_CAPTURE, CB_SETCURSEL, 0, 0);
         SendDlgItemMessage(hwndDlg, IDC_SORT_KEY_CAPTURE, CB_SETCUEBANNER, 0, reinterpret_cast<LPARAM>(L"e.g.: 2,1d,3an -- a/d, b/l/n override sort type"));
-        EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_FIND_WHAT  ), data.sort.keyType == SortSettings::Regex);
-        EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_MATCH_CASE ), data.sort.keyType == SortSettings::Regex);
-        EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_USE_KEY    ), data.sort.keyType == SortSettings::Regex);
-        EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_KEY_CAPTURE), data.sort.keyType == SortSettings::Tabbed
-                                                                || (data.sort.keyType == SortSettings::Regex && data.sort.regexUseKey));
+        EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_FIND_WHAT        ), data.sort.keyType == SortSettings::Regex);
+        EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_FIND_WHAT_LABEL  ), data.sort.keyType == SortSettings::Regex);
+        EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_MATCH_CASE       ), data.sort.keyType == SortSettings::Regex);
+        EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_USE_KEY          ), data.sort.keyType == SortSettings::Regex);
+        EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_KEY_CAPTURE      ), data.sort.keyType == SortSettings::Tabbed
+                                                                      || (data.sort.keyType == SortSettings::Regex && data.sort.regexUseKey));
+        EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_KEY_CAPTURE_LABEL), data.sort.keyType == SortSettings::Tabbed
+                                                                      || (data.sort.keyType == SortSettings::Regex && data.sort.regexUseKey));
         for (const auto& s : si.locales)
             SendDlgItemMessage(hwndDlg, IDC_SORT_LOCALE_LANGUAGE, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s.first.data()));
         std::wstring localeName = data.sort.localeName;
@@ -502,10 +505,12 @@ INT_PTR CALLBACK sortDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
         {
             bool rx = IsDlgButtonChecked(hwndDlg, IDC_SORT_REGEX) == BST_CHECKED;
             bool uk = (rx && IsDlgButtonChecked(hwndDlg, IDC_SORT_USE_KEY) == BST_CHECKED) || IsDlgButtonChecked(hwndDlg, IDC_SORT_TABBED) == BST_CHECKED;
-            EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_FIND_WHAT  ), rx);
-            EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_MATCH_CASE ), rx);
-            EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_USE_KEY    ), rx);
-            EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_KEY_CAPTURE), uk);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_FIND_WHAT        ), rx);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_FIND_WHAT_LABEL  ), rx);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_MATCH_CASE       ), rx);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_USE_KEY          ), rx);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_KEY_CAPTURE      ), uk);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_SORT_KEY_CAPTURE_LABEL), uk);
             break;
         }
         case IDC_SORT_LOCALE_LANGUAGE:
