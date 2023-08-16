@@ -2,7 +2,9 @@
 
 ## Version 0.6.1-alpha -- August 16th, 2023
 
-* Make use of NPPM_ALLOCATEINDICATOR introduced in Notepad++ 8.5.6 while remaining compatible with older versions. Update help and changelog, fix some cosmetic errors, and update version to 0.6.1.
+* Make use of NPPM_ALLOCATEINDICATOR introduced in Notepad++ 8.5.6 while remaining compatible with older versions.
+
+* Fixed a few minor cosmetic errors.
 
 ## Version 0.6-alpha -- August 14th, 2023
 
