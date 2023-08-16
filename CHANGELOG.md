@@ -1,5 +1,9 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Version 0.6.1-alpha -- August 16th, 2023
+
+* Make use of NPPM_ALLOCATEINDICATOR introduced in Notepad++ 8.5.6 while remaining compatible with older versions. Update help and changelog, fix some cosmetic errors, and update version to 0.6.1.
+
 ## Version 0.6-alpha -- August 14th, 2023
 
 * Added **Sort...** command and dialog supporting custom sorts, including selection of locale for locale sorts, sorting within the column selection only (leaving data surrounding the selection in place), and sort keys derived from a regular expression match.

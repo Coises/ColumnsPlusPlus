@@ -118,14 +118,17 @@ class SearchSettings {
 public:
     std::wstring findWhat, replaceWith;
     enum {Normal = 0, Extended = 1, Regex = 2} mode = Normal;
-    bool backward        = false;
-    bool wholeWord       = false;
-    bool matchCase       = false;
-    bool autoClear       = true;
-    int  indicator       = 18;
-    int  customAlpha     = 48;
-    int  customColor     = 0x007898;
-    int  customIndicator = 18;
+    bool backward              = false;
+    bool wholeWord             = false;
+    bool matchCase             = false;
+    bool autoClear             = true;
+    bool enableCustomIndicator = true;      // assign a custom indicator for column searches
+    bool forceUserIndicator    = false;     // when false, allocatedIndicator is used if available; when true, userIndicator is used
+    int  indicator             = 18;        // indicator used for searches; any number between 9 and 20 is a custom indicator
+    int  customAlpha           = 48;        // transparency for custom indicator
+    int  customColor           = 0x007898;  // color for custom indicator
+    int  customIndicator       = 18;        // custom indicator number
+    int  userIndicator         = 18;        // user-specified custom indicator number
 };
 
 class SearchData : public SearchSettings {
@@ -135,6 +138,7 @@ public:
     int  dialogMinWidth;
     int  dialogButtonLeft;
     int  dialogComboWidth;
+    int  allocatedIndicator = 0;               // allocated indicator starting with Notepad++ 8.5.6; otherwise 0
     bool wrap = false;
     RECT dialogLastPosition = { 0, 0, 0, 0 };
     std::vector<std::wstring> findHistory;
