@@ -1,5 +1,5 @@
 // This file is part of Notepad++ project
-// Copyright (C)2022 Don HO <don.h@free.fr>
+// Copyright (C)2021 Don HO <don.h@free.fr>
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -170,6 +170,7 @@
     #define    IDM_EDIT_INSERT_DATETIME_CUSTOMIZED              (IDM_EDIT + 86)
     #define    IDM_EDIT_COPY_ALL_NAMES                          (IDM_EDIT + 87)
     #define    IDM_EDIT_COPY_ALL_PATHS                          (IDM_EDIT + 88)
+    #define    IDM_EDIT_BEGINENDSELECT_COLUMNMODE               (IDM_EDIT + 89)
 
     #define    IDM_EDIT_AUTOCOMPLETE                            (50000 + 0)
     #define    IDM_EDIT_AUTOCOMPLETE_CURRENTFILE                (50000 + 1)
@@ -249,6 +250,10 @@
     #define    IDM_SEARCH_MARKONEEXT3          (IDM_SEARCH + 64)
     #define    IDM_SEARCH_MARKONEEXT4          (IDM_SEARCH + 65)
     #define    IDM_SEARCH_MARKONEEXT5          (IDM_SEARCH + 66)
+
+    #define    IDM_SEARCH_CHANGED_NEXT         (IDM_SEARCH + 67)
+    #define    IDM_SEARCH_CHANGED_PREV         (IDM_SEARCH + 68)
+    #define    IDM_SEARCH_CLEAR_CHANGE_HISTORY (IDM_SEARCH + 69)
 
 #define    IDM_MISC    (IDM + 3500)
     #define    IDM_DOCLIST_FILESCLOSE             (IDM_MISC + 1)
@@ -373,6 +378,9 @@
     #define    IDM_VIEW_TAB_COLOUR_3              (IDM_VIEW + 113)
     #define    IDM_VIEW_TAB_COLOUR_4              (IDM_VIEW + 114)
     #define    IDM_VIEW_TAB_COLOUR_5              (IDM_VIEW + 115)
+
+    #define    IDM_VIEW_NPC                       (IDM_VIEW + 130)
+    #define    IDM_VIEW_NPC_CCUNIEOL              (IDM_VIEW + 131)
 
     #define    IDM_VIEW_GOTO_ANOTHER_VIEW        10001
     #define    IDM_VIEW_CLONE_TO_ANOTHER_VIEW    10002
@@ -534,7 +542,11 @@
     #define    IDM_LANG_TXT2TAGS           (IDM_LANG + 82)
     #define    IDM_LANG_VISUALPROLOG       (IDM_LANG + 83)
     #define    IDM_LANG_TYPESCRIPT         (IDM_LANG + 84)
-
+    #define    IDM_LANG_JSON5              (IDM_LANG + 85)
+    #define    IDM_LANG_MSSQL              (IDM_LANG + 86)
+    #define    IDM_LANG_GDSCRIPT           (IDM_LANG + 87)
+    #define    IDM_LANG_HOLLYWOOD          (IDM_LANG + 88)
+    
     #define    IDM_LANG_EXTERNAL           (IDM_LANG + 165)
     #define    IDM_LANG_EXTERNAL_LIMIT     (IDM_LANG + 179)
 
@@ -585,6 +597,12 @@
     #define    IDM_TOOL_SHA256_GENERATE                 (IDM_TOOL + 4)
     #define    IDM_TOOL_SHA256_GENERATEFROMFILE         (IDM_TOOL + 5)
     #define    IDM_TOOL_SHA256_GENERATEINTOCLIPBOARD    (IDM_TOOL + 6)
+    #define    IDM_TOOL_SHA1_GENERATE                   (IDM_TOOL + 7)
+    #define    IDM_TOOL_SHA1_GENERATEFROMFILE           (IDM_TOOL + 8)
+    #define    IDM_TOOL_SHA1_GENERATEINTOCLIPBOARD      (IDM_TOOL + 9)
+    #define    IDM_TOOL_SHA512_GENERATE                 (IDM_TOOL + 10)
+    #define    IDM_TOOL_SHA512_GENERATEFROMFILE         (IDM_TOOL + 11)
+    #define    IDM_TOOL_SHA512_GENERATEINTOCLIPBOARD    (IDM_TOOL + 12)
 
 #define    IDM_EXECUTE  (IDM + 9000)
 
