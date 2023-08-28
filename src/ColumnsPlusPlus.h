@@ -17,6 +17,7 @@
 #include <algorithm>
 #include <charconv>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -114,6 +115,26 @@ inline std::wstring updateComboHistory(HWND dialog, int control, std::vector<std
 
 class RectangularSelection;
 
+class RegexCalc;
+
+class NumericFormat {
+public:
+    std::string thousands = "";    // thousands separator in current codepage (could be multibyte/utf-8), or "" for no thousands separator
+    int         leftPad    = 1;    // left pad to at least this many digits before the decimal separator
+    int         minDec     = -1;   // minimum digits after decimal; -1 = do not show separator if no digits after
+    int         maxDec     = 6;    // round to this number of digits after the decimal separator
+    int         timeEnable = 1;    // bit mask for enabled formats: 8 (4 segments) + 4 (3 segments) + 2 (2 segments) + 1 (1 segment)
+};
+
+class NumericParse {
+public:
+    double value         = std::numeric_limits<double>::quiet_NaN();
+    int    decimalPlaces = 0;
+    int    timeSegments  = 0;
+    operator bool()   const { return isfinite(value); }
+    operator double() const { return value; }
+};
+
 class SearchSettings {
 public:
     std::wstring findWhat, replaceWith;
@@ -143,6 +164,9 @@ public:
     RECT dialogLastPosition = { 0, 0, 0, 0 };
     std::vector<std::wstring> findHistory;
     std::vector<std::wstring> replaceHistory;
+    std::unique_ptr<RegexCalc> regexCalc;
+    SearchData();
+    ~SearchData();
 };
 
 class CsvSettings {
@@ -166,18 +190,18 @@ public:
     std::vector<std::wstring> formulaHistory;
     std::vector<std::wstring> regexHistory;
     enum { None, Comma, Apostrophe, Blank } thousands = None;  // format results with indicated thousands separator
-    int  decimalPlaces = 2;         // Calculate: decimal places to which to round result (0-16)
-    bool unitIsMinutes = false;     // Calculate: interpret and format times with minutes, not seconds, as the unit
-    bool showDays      = false;     // Calculate: format time results with days if >= 24 hours
+    int  decimalPlaces = 2;         // Add/Average numbers, Calculate: decimal places to which to round result (0-16)
+    int  timeSegments  = 0;         // Add/Average numbers:            time segments to show (1-4), or zero for auto
+    bool decimalsFixed = false;     // Add/Average numbers, Calculate: don't suppress trailing zeros after the decimal point
+    bool autoDecimals  = true;      // Add/Average numbers:            determine number of decimal places to show based on data
+    bool insert        = true;      // Add/Average numbers:            insert results when empty space is available
+    bool addLine       = false;     // Add/Average numbers:            add a line to insert results when no empty space is available
     bool matchCase     = false;     // Calculate: regular expression: match case
     bool skipUnmatched = false;     // Calculate: regular expression: skip unmatched lines
-    bool decimalsFixed = false;     // Calculate: don't suppress trailing zeros after the decimal point
     bool formatAsTime  = false;     // Calculate: format the results as a time
     bool tabbed        = true;      // Calculate: use a tab to separate the new column
     bool aligned       = true;      // Calculate: pad text inserted in the new column to keep numbers aligned
     bool left          = false;     // Calculate: insert the new column at the left of the selection
-    bool insert        = true;      // Add/Average numbers: Insert results when empty space is available
-    bool addLine       = false;     // Add/Average numbers: Add a line to insert results when no empty space is available
 };
 
 class SortSettings {
@@ -262,8 +286,11 @@ public:
     CsvSettings           csv;
     CalculateSettings     calc;
     SortSettings          sort;
-    int disableOverSize   = 1000;      // active if greater than zero; if negative, inactive and is negative of last used setting   
-    int disableOverLines  = 5000;      // active if greater than zero; if negative, inactive and is negative of last used setting
+    int  disableOverSize  = 1000;      // active if greater than zero; if negative, inactive and is negative of last used setting   
+    int  disableOverLines = 5000;      // active if greater than zero; if negative, inactive and is negative of last used setting
+    int  timeScalarUnit   = 3;         // time segment as which to interpert a scalar (no colons): 0 = days, 1 = hours, 2 = minutes, 3 = seconds
+    int  timePartialRule  = 3;         // interpretation of 2 and 3 segment times: 0 = d:h, d:h:m; 1 = h:m, d:h:m; 2 = h:m, h:m:s; 3 = m:s, h:m:s
+    int  timeFormatEnable = 15;        // bit mask for enabled formats: 8 (4 segments) + 4 (3 segments) + 2 (2 segments) + 1 (1 segment)
     bool showOnMenuBar    = false;     // Show the Columns++ menu on the menu bar instead of the Plugins menu
     bool replaceStaysPut  = false;     // Same as "Replace: Don't move to the following occurrence" in Notepad++
     bool extendSingleLine = false;     // Extend single line selections to the last line
@@ -437,12 +464,16 @@ public:
     // Numeric.cpp
 
     size_t findDecimal(const std::string& text, bool timeUnitIsMinutes = false); 
-    bool   getNumber(const std::string& text, double& value, size_t& decimalPlaces, int& timeSegments, bool timeUnitIsMinutes = false);
     void   accumulate(bool isMean);
 
     void addNumbers()     { accumulate(false); }
     void averageNumbers() { accumulate(true ); }
     void calculate();
+
+    // NumericFormat.cpp
+
+    std::string formatNumber(double value, const NumericFormat& format) const;
+    NumericParse parseNumber(const std::string& text);
 
     // Options.cpp
 
@@ -474,6 +505,11 @@ public:
     void sortAscendingNumeric();
     void sortDescendingNumeric();
     void sortCustom();
+
+    // TimeFormats.cpp
+
+    BOOL timeFormatsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
+    void showTimeFormatsDialog();
 
 };
 

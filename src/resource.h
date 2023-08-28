@@ -16,6 +16,7 @@
 #define IDD_CSV                         125
 #define IDD_CALCULATE                   127
 #define IDD_SORT                        129
+#define IDD_TIME_FORMATS                131
 #define IDC_LINE_UP_ALL                 1003
 #define IDC_LEADING_TABS_INDENT         1006
 #define IDC_DISABLE_FILE_SIZE           1007
@@ -78,7 +79,6 @@
 #define IDC_DEFAULT_PROFILE             1079
 #define IDC_SEARCH_INDICATOR            1079
 #define IDC_CSV_REPLACE                 1079
-#define IDC_CALCULATE_REGEX             1079
 #define IDC_CALCULATION_RESULTS         1080
 #define IDC_CALCULATION_MESSAGE         1082
 #define IDC_THOUSANDS_NONE              1083
@@ -128,18 +128,19 @@
 #define IDC_MONOSPACED_NO               1121
 #define IDC_CHECK1                      1122
 #define IDC_MONOSPACED_RENDER           1122
-#define IDC_CALCULATE_MATCH_CASE        1122
 #define IDC_OPTIONS_INDICATOR_OVERRIDE  1122
-#define IDC_CALCULATE_FORMULA           1127
-#define IDC_CALCULATE_PLACES_EDIT       1130
-#define IDC_CALCULATE_PLACES_SPIN       1131
-#define IDC_CALCULATE_TIME_MINUTES      1135
-#define IDC_CALCULATE_TIME_DAYS         1136
-#define IDC_CALCULATE_SKIP_UNMATCHED    1138
-#define IDC_CALCULATE_TIME              1143
-#define IDC_CALCULATE_TABBED            1144
-#define IDC_CALCULATE_ALIGNED           1146
-#define IDC_CALCULATE_SUPPRESS_ZEROS    1147
+#define IDC_CALCULATION_DECIMAL_AUTO    1122
+#define IDC_CALCULATE_FORMULA           1125
+#define IDC_CALCULATE_REGEX             1126
+#define IDC_CALCULATE_MATCH_CASE        1127
+#define IDC_CALCULATE_SKIP_UNMATCHED    1128
+#define IDC_CALCULATE_PLACES_EDIT       1129
+#define IDC_CALCULATE_PLACES_SPIN       1130
+#define IDC_CALCULATE_TIME              1131
+#define IDC_CALCULATE_FORMATS           1132
+#define IDC_CALCULATE_TABBED            1133
+#define IDC_CALCULATE_ALIGNED           1134
+#define IDC_CALCULATE_SUPPRESS_ZEROS    1135
 #define IDC_CHECK2                      1148
 #define IDC_CALCULATE_LEFT              1148
 #define IDC_SORT_WHOLE_LINES            1149
@@ -171,14 +172,35 @@
 #define IDC_OPTIONS_INDICATOR_GREEN_LABEL 1175
 #define IDC_OPTIONS_INDICATOR_BLUE_LABEL 1176
 #define IDC_OPTIONS_INDICATOR_NUMBER_LABEL 1177
+#define IDC_TIME_FORMATS_DAYS           1178
+#define IDC_TIME_FORMATS_HOURS          1179
+#define IDC_TIME_FORMATS_MINUTES        1180
+#define IDC_TIME_FORMATS_SECONDS        1181
+#define IDC_TIME_FORMATS_PARTIAL_0      1182
+#define IDC_TIME_FORMATS_PARTIAL_1      1183
+#define IDC_TIME_FORMATS_PARTIAL_2      1184
+#define IDC_TIME_FORMATS_PARTIAL_3      1185
+#define IDC_TIME_FORMATS_ENABLE_0       1186
+#define IDC_TIME_FORMATS_ENABLE_1       1187
+#define IDC_TIME_FORMATS_ENABLE_2       1188
+#define IDC_TIME_FORMATS_ENABLE_3       1189
+#define IDC_TIME_FORMATS_LABEL_0        1190
+#define IDC_TIME_FORMATS_LABEL_1        1191
+#define IDC_TIME_FORMATS_LABEL_2        1192
+#define IDC_CALCULATION_TIME_AUTO       1194
+#define IDC_CALCULATION_TIME1           1200
+#define IDC_CALCULATION_TIME2           1201
+#define IDC_CALCULATION_TIME3           1202
+#define IDC_CALCULATION_TIME4           1203
+#define IDC_CALCULATE_PLACES_TEXT       1204
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        131
+#define _APS_NEXT_RESOURCE_VALUE        133
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1178
+#define _APS_NEXT_CONTROL_VALUE         1205
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

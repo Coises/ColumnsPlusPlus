@@ -18,6 +18,9 @@
 // Configuration level 2 - 0.1.0.5 - reset extendX values to new default, false, since we now offer a dialog to extend selections
 // Configuration level 3 - 0.5     - moved former calculateInsert, calculateAddLine and thousandsSeparator from LastSettings to Calculate section
 // Configuration level 4 - 0.6.1   - Search section now uses enableCustomIndicator and forceUserIndicator instead of negative custom(user)Indicator
+// Configuration level 5 - 0.7     - Removed Calculate: unitIsMinutes and showDays, added timeSegments and autoDecimals;
+//                                   added LastSettings: timeScalarUnit, timePartialRule, timeFormatEnable
+
 
 #include "ColumnsPlusPlus.h"
 #include <fstream>
@@ -89,7 +92,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
     if (!std::regex_match(line, match, configurationHeader)) return;
     int configLevel  = std::stoi(match[1]);
     int configCompat = std::stoi(match[2]);
-    if (configCompat > 4) return;
+    if (configCompat > 5) return;
 
     enum {sectionNone, sectionLastSettings, sectionCalc, sectionSearch, sectionSort, sectionProfile, sectionExtensions} readingSection = sectionNone;
     std::wstring profileName;
@@ -151,6 +154,9 @@ void ColumnsPlusPlusData::loadConfiguration() {
                     else if (setting == "minimumspacebetweencolumns") settings.minimumSpaceBetweenColumns = std::stoi(value);
                     else if (setting == "disableoversize"           ) disableOverSize                     = std::stoi(value);
                     else if (setting == "disableoverlines"          ) disableOverLines                    = std::stoi(value);
+                    else if (setting == "timescalarunit"            ) timeScalarUnit                      = std::stoi(value);
+                    else if (setting == "timepartialrule"           ) timePartialRule                     = std::stoi(value);
+                    else if (setting == "timeformatenable"          ) timeFormatEnable                    = std::stoi(value);
                 }
             }
             else if (readingSection == sectionCalc) {
@@ -159,8 +165,6 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 strlwr(setting.data());
                 if      (setting == "insert"       ) calc.insert        = value != "0";
                 else if (setting == "addline"      ) calc.addLine       = value != "0";
-                else if (setting == "unitisminutes") calc.unitIsMinutes = value != "0";
-                else if (setting == "showdays"     ) calc.showDays      = value != "0";
                 else if (setting == "matchcase"    ) calc.matchCase     = value != "0";
                 else if (setting == "skipunmatched") calc.skipUnmatched = value != "0";
                 else if (setting == "decimalsfixed") calc.decimalsFixed = value != "0";
@@ -168,6 +172,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 else if (setting == "tabbed"       ) calc.tabbed        = value != "0";
                 else if (setting == "aligned"      ) calc.aligned       = value != "0";
                 else if (setting == "left"         ) calc.left          = value != "0";
+                else if (setting == "autodecimals" ) calc.autoDecimals  = value != "0";
                 else if (setting == "thousands") {
                     strlwr(value.data());
                     calc.thousands = value == "comma"      ? CalculateSettings::Comma
@@ -202,6 +207,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 }
                 else if (std::regex_match(value, integerValue)) {
                     if (setting == "decimalplaces") calc.decimalPlaces = std::stoi(value);
+                    if (setting == "timesegments" ) calc.timeSegments  = std::stoi(value);
                 }
             }
             else if (readingSection == sectionSearch) {
@@ -329,7 +335,7 @@ void ColumnsPlusPlusData::saveConfiguration() {
     std::ofstream file(filePath);
     if (!file) return;
 
-    file << "\xEF\xBB\xBF" << "Notepad++ Columns++ Configuration 4 1" << std::endl;
+    file << "\xEF\xBB\xBF" << "Notepad++ Columns++ Configuration 5 1" << std::endl;
 
     file << std::endl << "LastSettings" << std::endl << std::endl;
 
@@ -348,6 +354,9 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "monospaceNoMnemonics\t"        << settings.monospaceNoMnemonics           << std::endl;
     file << "disableOverSize\t"             << disableOverSize                         << std::endl;
     file << "disableOverLines\t"            << disableOverLines                        << std::endl;
+    file << "timeScalarUnit\t"              << timeScalarUnit                          << std::endl;
+    file << "timePartialRule\t"             << timePartialRule                         << std::endl;
+    file << "timeFormatEnable\t"            << timeFormatEnable                        << std::endl;
     file << "showOnMenuBar\t"               << showOnMenuBar                           << std::endl;
     file << "replaceStaysPut\t"             << replaceStaysPut                         << std::endl;
     file << "extendSingleLine\t"            << extendSingleLine                        << std::endl;
@@ -377,8 +386,6 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "insert\t"        << calc.insert        << std::endl;
     file << "addLine\t"       << calc.addLine       << std::endl;
     file << "decimalPlaces\t" << calc.decimalPlaces << std::endl;
-    file << "unitIsMinutes\t" << calc.unitIsMinutes << std::endl;
-    file << "showDays\t"      << calc.showDays      << std::endl;
     file << "matchCase\t"     << calc.matchCase     << std::endl;
     file << "skipUnmatched\t" << calc.skipUnmatched << std::endl;
     file << "decimalsFixed\t" << calc.decimalsFixed << std::endl;
@@ -386,6 +393,8 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "tabbed\t"        << calc.tabbed        << std::endl;
     file << "aligned\t"       << calc.aligned       << std::endl;
     file << "left\t"          << calc.left          << std::endl;
+    file << "timeSegments\t"  << calc.timeSegments  << std::endl;
+    file << "autoDecimals\t"  << calc.autoDecimals  << std::endl;
 
     for (auto it = calc.formulaHistory.size() > 16 ? calc.formulaHistory.end() - 16 : calc.formulaHistory.begin();
         it != calc.formulaHistory.end(); ++it) {
