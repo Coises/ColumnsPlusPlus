@@ -64,6 +64,7 @@ static struct MenuDefinition {
     FuncItem sabsToSeparatedValues   = {TEXT("Convert tabs to separated values..."), []() {cmdWrap(&ColumnsPlusPlusData::tabsToSeparatedValues );}, 0, false, 0};
     FuncItem separatorSettings       = {TEXT("---"                                ), 0                                                            , 0, false, 0};
     FuncItem decimalSeparatorIsComma = {TEXT("Decimal separator is comma"         ), []() {cmdWrap(&ColumnsPlusPlusData::toggleDecimalSeparator);}, 0, false, 0};
+    FuncItem timeFormats             = {TEXT("Time formats..."                    ), []() {cmdWrap(&ColumnsPlusPlusData::showTimeFormatsDialog );}, 0, false, 0};
     FuncItem options                 = {TEXT("Options..."                         ), []() {cmdWrap(&ColumnsPlusPlusData::showOptionsDialog     );}, 0, false, 0};
     FuncItem about                   = {TEXT("Help/About..."                      ), []() {cmdWrap(&ColumnsPlusPlusData::showAboutDialog       );}, 0, false, 0};
 } menuDefinition;

@@ -18,16 +18,44 @@
 
 
 struct CalculationResultsInfo {
+
     ColumnsPlusPlusData& data;
-    std::vector<std::string> results;
-    std::wstring showResults;
-    std::string copyResults;
-    int columns = 0;
-    int numbers = 0;
-    bool isMean = false;
-    bool hasSpace = false;
     HFONT font;
+    std::vector<double       > result_values;
+    std::vector<NumericFormat> result_auto_formats;
+    std::wstring showResults;
+    std::string  copyResults;
+    int  columns      = 0;
+    int  numbers      = 0;
+    bool isMean       = false;
+    bool hasSpace     = false;
+
     CalculationResultsInfo(ColumnsPlusPlusData& data) : data(data) {}
+
+    void renderCalculationResults(HWND dialog) {
+        showResults.clear();
+        copyResults.clear();
+        const std::string separator = data.calc.thousands == CalculateSettings::None ? ""
+                                    : data.calc.thousands == CalculateSettings::Apostrophe ? "\'"
+                                    : data.calc.thousands == CalculateSettings::Blank ? " "
+                                    : data.settings.decimalSeparatorIsComma ? "." : ",";
+        for (size_t i = 0; i < result_values.size(); ++i) {
+            NumericFormat format = result_auto_formats[i];
+            format.thousands = separator;
+            if (!data.calc.autoDecimals) {
+                format.maxDec = data.calc.decimalPlaces;
+                format.minDec = data.calc.decimalsFixed ? format.maxDec : -1;
+            }
+            if (data.calc.timeSegments) format.timeEnable = 1 << (data.calc.timeSegments - 1);
+            std::string s = data.formatNumber(result_values[i], format);
+            if (!showResults.empty() && !s.empty()) showResults += L" | ";
+            showResults += toWide(s, CP_UTF8);
+            if (i > 0) copyResults += '\t';
+            copyResults += s;
+        }
+        SetDlgItemText(dialog, IDC_CALCULATION_RESULTS, showResults.data());
+    }
+
 };
 
 
@@ -40,48 +68,17 @@ struct CalculateInfo {
 };
 
 
-std::string applyThousandsSeparator(std::string s, const char decimalSeparator, const char thousandsSeparator) {
-    if (thousandsSeparator && !s.empty()) {
-        bool negative = false;
-        if (s[0] == '-') {
-            s = s.substr(1);
-            negative = true;
-        }
-        size_t j = s.find_first_not_of("0123456789");
-        if (j == std::string::npos) j = s.length();
-        else {
-            size_t k = s.find_last_not_of("0123456789");
-            if (s[k] == decimalSeparator) {
-                size_t p = s.length() - k - 1;
-                if (p > 3) {
-                    for (size_t q = s.length() - (p - 1) % 3 - 1; q > k + 1; q -= 3)
-                        s = s.substr(0, q) + thousandsSeparator + s.substr(q);
-                }
-            }
-        }
-        if (j > 3) for (ptrdiff_t q = j - 3; q > 0; q -= 3)
-            s = s.substr(0, q) + thousandsSeparator + s.substr(q);
-        if (negative) s = '-' + s;
+void setupThousandsAndDecimals (HWND hwndDlg, ColumnsPlusPlusData& data) {
+    SetDlgItemText(hwndDlg, IDC_THOUSANDS_COMMA, data.settings.decimalSeparatorIsComma ? L"&Period" : L"&Comma");
+    switch (data.calc.thousands) {
+    case CalculateSettings::None      : CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_NONE      ); break;
+    case CalculateSettings::Comma     : CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_COMMA     ); break;
+    case CalculateSettings::Apostrophe: CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_APOSTROPHE); break;
+    case CalculateSettings::Blank     : CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_BLANK     ); break;
     }
-    return s;
-}
-
-
-void applyThousandsSeparator(CalculationResultsInfo& cri) {
-    cri.showResults.clear();
-    cri.copyResults.clear();
-    const char decimal = cri.data.settings.decimalSeparatorIsComma ? ',' : '.';
-    const char separator = cri.data.calc.thousands == CalculateSettings::None       ? 0
-                         : cri.data.calc.thousands == CalculateSettings::Apostrophe ? '\''
-                         : cri.data.calc.thousands == CalculateSettings::Blank      ? ' '
-                         : cri.data.settings.decimalSeparatorIsComma                ? '.' : ',';
-    for (size_t i = 0; i < cri.results.size(); ++i) {
-        std::string s = applyThousandsSeparator(cri.results[i], decimal, separator);
-        if (!cri.showResults.empty() && !s.empty()) cri.showResults += L" | ";
-        cri.showResults += toWide(s, CP_UTF8);
-        if (i > 0) cri.copyResults += '\t';
-        cri.copyResults += s;
-    }
+    SendDlgItemMessage(hwndDlg, IDC_CALCULATE_PLACES_SPIN, UDM_SETRANGE, 0, MAKELPARAM(16, 0));
+    SendDlgItemMessage(hwndDlg, IDC_CALCULATE_PLACES_SPIN, UDM_SETPOS, 0, data.calc.decimalPlaces);
+    SendDlgItemMessage(hwndDlg, IDC_CALCULATE_SUPPRESS_ZEROS, BM_SETCHECK, data.calc.decimalsFixed ? BST_UNCHECKED : BST_CHECKED, 0);
 }
 
 
@@ -116,8 +113,6 @@ INT_PTR CALLBACK calculationResultsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wP
         message = cri.hasSpace ? L"&Insert these results in the last line of the selection."
                                : L"&Insert a line containing these results following the last line of the selection.";
         SetDlgItemText(hwndDlg, IDC_CALCULATION_INSERT, message.data());
-        SetDlgItemText(hwndDlg, IDC_THOUSANDS_COMMA, data.settings.decimalSeparatorIsComma ? L"&Period" : L"&Comma");
-        applyThousandsSeparator(cri);
         HDC sciDC = GetDC(data.activeScintilla);
         int logpixelsy = GetDeviceCaps(sciDC, LOGPIXELSY);
         ReleaseDC(data.activeScintilla, sciDC);
@@ -142,14 +137,25 @@ INT_PTR CALLBACK calculationResultsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wP
         wcsncpy(lf.lfFaceName, fontName.data(), LF_FACESIZE);
         cri.font = CreateFontIndirect(&lf);
         SendDlgItemMessage(hwndDlg, IDC_CALCULATION_RESULTS, WM_SETFONT, reinterpret_cast<WPARAM>(cri.font), 0);
-        SetDlgItemText(hwndDlg, IDC_CALCULATION_RESULTS, cri.showResults.data());
+        cri.renderCalculationResults(hwndDlg);
         CheckDlgButton(hwndDlg, IDC_CALCULATION_INSERT, cri.hasSpace ? data.calc.insert : data.calc.addLine);
-        switch (data.calc.thousands) {
-        case CalculateSettings::None      : CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_NONE      ); break;
-        case CalculateSettings::Comma     : CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_COMMA     ); break;
-        case CalculateSettings::Apostrophe: CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_APOSTROPHE); break;
-        case CalculateSettings::Blank     : CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_BLANK     ); break;
-        }
+        setupThousandsAndDecimals(hwndDlg, data);
+        SetDlgItemText(hwndDlg, IDC_CALCULATION_TIME1, data.timeScalarUnit == 0 ? L"&1 (d)"
+                                                     : data.timeScalarUnit == 1 ? L"&1 (h)"
+                                                     : data.timeScalarUnit == 2 ? L"&1 (m)"
+                                                                                : L"&1 (s)");
+        SetDlgItemText(hwndDlg, IDC_CALCULATION_TIME2, data.timePartialRule == 0 ? L"&2 (d:m)" : data.timePartialRule == 3 ? L"&2 (m:s)" : L"&2 (h:m)");
+        SetDlgItemText(hwndDlg, IDC_CALCULATION_TIME3, data.timePartialRule < 2 ? L"&3 (d:h:m)" : L"&3 (h:m:s)");
+        CheckDlgButton(hwndDlg, IDC_CALCULATION_DECIMAL_AUTO, data.calc.autoDecimals);
+        EnableWindow(GetDlgItem(hwndDlg, IDC_CALCULATE_PLACES_TEXT   ), !data.calc.autoDecimals);
+        EnableWindow(GetDlgItem(hwndDlg, IDC_CALCULATE_PLACES_EDIT   ), !data.calc.autoDecimals);
+        EnableWindow(GetDlgItem(hwndDlg, IDC_CALCULATE_PLACES_SPIN   ), !data.calc.autoDecimals);
+        EnableWindow(GetDlgItem(hwndDlg, IDC_CALCULATE_SUPPRESS_ZEROS), !data.calc.autoDecimals);
+        CheckRadioButton(hwndDlg, IDC_CALCULATION_TIME_AUTO, IDC_CALCULATION_TIME4,
+              data.calc.timeSegments == 1 ? IDC_CALCULATION_TIME1
+            : data.calc.timeSegments == 2 ? IDC_CALCULATION_TIME2
+            : data.calc.timeSegments == 3 ? IDC_CALCULATION_TIME3
+            : data.calc.timeSegments == 4 ? IDC_CALCULATION_TIME4 : IDC_CALCULATION_TIME_AUTO);
         return TRUE;
     }
 
@@ -168,23 +174,57 @@ INT_PTR CALLBACK calculationResultsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wP
         case IDC_THOUSANDS_COMMA:
         case IDC_THOUSANDS_APOSTROPHE:
         case IDC_THOUSANDS_BLANK:
-            data.calc.thousands = IsDlgButtonChecked(hwndDlg, IDC_THOUSANDS_COMMA     ) == BST_CHECKED ? CalculateSettings::Comma     
+            data.calc.thousands = IsDlgButtonChecked(hwndDlg, IDC_THOUSANDS_COMMA     ) == BST_CHECKED ? CalculateSettings::Comma
                                 : IsDlgButtonChecked(hwndDlg, IDC_THOUSANDS_APOSTROPHE) == BST_CHECKED ? CalculateSettings::Apostrophe
                                 : IsDlgButtonChecked(hwndDlg, IDC_THOUSANDS_BLANK     ) == BST_CHECKED ? CalculateSettings::Blank
                                                                                                        : CalculateSettings::None;
-            applyThousandsSeparator(cri);
-            SetDlgItemText(hwndDlg, IDC_CALCULATION_RESULTS, cri.showResults.data());
+            cri.renderCalculationResults(hwndDlg);
             break;
         case IDC_CALCULATION_INSERT:
             (cri.hasSpace ? data.calc.insert : data.calc.addLine) = IsDlgButtonChecked(hwndDlg, IDC_CALCULATION_INSERT) == BST_CHECKED;
             break;
-        default:;
+        case IDC_CALCULATION_DECIMAL_AUTO:
+        {
+            data.calc.autoDecimals = IsDlgButtonChecked(hwndDlg, IDC_CALCULATION_DECIMAL_AUTO) == BST_CHECKED;
+            EnableWindow(GetDlgItem(hwndDlg, IDC_CALCULATE_PLACES_TEXT   ), !data.calc.autoDecimals);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_CALCULATE_PLACES_EDIT   ), !data.calc.autoDecimals);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_CALCULATE_PLACES_SPIN   ), !data.calc.autoDecimals);
+            EnableWindow(GetDlgItem(hwndDlg, IDC_CALCULATE_SUPPRESS_ZEROS), !data.calc.autoDecimals);
+            [[fallthrough]];
+        }
+        case IDC_CALCULATE_PLACES_TEXT:
+        case IDC_CALCULATE_PLACES_EDIT:
+        case IDC_CALCULATE_PLACES_SPIN:
+        case IDC_CALCULATE_SUPPRESS_ZEROS:
+            if (!data.calc.autoDecimals) {
+                auto r = SendDlgItemMessage(hwndDlg, IDC_CALCULATE_PLACES_SPIN, UDM_GETPOS, 0, 0);
+                data.calc.decimalPlaces = HIWORD(r) ? 2 : LOWORD(r);
+                data.calc.decimalsFixed = IsDlgButtonChecked(hwndDlg, IDC_CALCULATE_SUPPRESS_ZEROS) == BST_UNCHECKED;
+            }
+            cri.renderCalculationResults(hwndDlg);
+            break;
+        case IDC_CALCULATION_TIME_AUTO: data.calc.timeSegments = 0; cri.renderCalculationResults(hwndDlg); break;
+        case IDC_CALCULATION_TIME1:     data.calc.timeSegments = 1; cri.renderCalculationResults(hwndDlg); break;
+        case IDC_CALCULATION_TIME2:     data.calc.timeSegments = 2; cri.renderCalculationResults(hwndDlg); break;
+        case IDC_CALCULATION_TIME3:     data.calc.timeSegments = 3; cri.renderCalculationResults(hwndDlg); break;
+        case IDC_CALCULATION_TIME4:     data.calc.timeSegments = 4; cri.renderCalculationResults(hwndDlg); break;
         }
         break;
 
-    default:;
     }
     return FALSE;
+}
+
+
+std::wstring enabledTimeString(int unit, int rule, int mask) {
+    if (!(mask & 15)) mask = 1;
+    std::wstring s = L"&Enabled (";
+    if (mask & 1) s += (unit == 0 ? L"d, " : unit == 1 ? L"h, " : unit == 2 ? L"m, " : L"s, ");
+    if (mask & 2) s += (rule == 0 ? L"d:m, " : rule == 3 ? L"m:s, " : L"h:m, ");
+    if (mask & 4) s += (rule < 2 ? L"d:h:m, " : L"h:m:s, ");
+    if (mask & 8) s += L"d:h:m:s)";
+             else s = s.substr(0, s.length() - 2) + L')';
+    return s;
 }
 
 
@@ -220,19 +260,9 @@ INT_PTR CALLBACK calculateDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
         SendDlgItemMessage(hwndDlg, IDC_CALCULATE_REGEX, CB_SETCURSEL, 0, 0);
         SendDlgItemMessage(hwndDlg, IDC_CALCULATE_MATCH_CASE    , BM_SETCHECK, data.calc.matchCase     ? BST_CHECKED : BST_UNCHECKED, 0);
         SendDlgItemMessage(hwndDlg, IDC_CALCULATE_SKIP_UNMATCHED, BM_SETCHECK, data.calc.skipUnmatched ? BST_CHECKED : BST_UNCHECKED, 0);
-        SetDlgItemText(hwndDlg, IDC_THOUSANDS_COMMA, data.settings.decimalSeparatorIsComma ? L"&Period" : L"&Comma");
-        switch (data.calc.thousands) {
-        case CalculateSettings::None      : CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_NONE      ); break;
-        case CalculateSettings::Comma     : CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_COMMA     ); break;
-        case CalculateSettings::Apostrophe: CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_APOSTROPHE); break;
-        case CalculateSettings::Blank     : CheckRadioButton(hwndDlg, IDC_THOUSANDS_NONE, IDC_THOUSANDS_BLANK, IDC_THOUSANDS_BLANK     ); break;
-        }
-        SendDlgItemMessage(hwndDlg, IDC_CALCULATE_PLACES_SPIN, UDM_SETRANGE, 0, MAKELPARAM(16, 0));
-        SendDlgItemMessage(hwndDlg, IDC_CALCULATE_PLACES_SPIN, UDM_SETPOS, 0, data.calc.decimalPlaces);
-        SendDlgItemMessage(hwndDlg, IDC_CALCULATE_SUPPRESS_ZEROS, BM_SETCHECK, data.calc.decimalsFixed ? BST_UNCHECKED : BST_CHECKED, 0);
-        SendDlgItemMessage(hwndDlg, IDC_CALCULATE_TIME          , BM_SETCHECK, data.calc.formatAsTime  ? BST_CHECKED : BST_UNCHECKED, 0);
-        SendDlgItemMessage(hwndDlg, IDC_CALCULATE_TIME_MINUTES  , BM_SETCHECK, data.calc.unitIsMinutes ? BST_CHECKED : BST_UNCHECKED, 0);
-        SendDlgItemMessage(hwndDlg, IDC_CALCULATE_TIME_DAYS     , BM_SETCHECK, data.calc.showDays      ? BST_CHECKED : BST_UNCHECKED, 0);
+        setupThousandsAndDecimals(hwndDlg, data);
+        SetDlgItemText(hwndDlg, IDC_CALCULATE_TIME, enabledTimeString(data.timeScalarUnit, data.timePartialRule, data.timeFormatEnable).data());
+        SendDlgItemMessage(hwndDlg, IDC_CALCULATE_TIME, BM_SETCHECK, data.calc.formatAsTime ? BST_CHECKED : BST_UNCHECKED, 0);
         SendDlgItemMessage(hwndDlg, IDC_CALCULATE_TABBED        , BM_SETCHECK, data.calc.tabbed        ? BST_CHECKED : BST_UNCHECKED, 0);
         SendDlgItemMessage(hwndDlg, IDC_CALCULATE_ALIGNED       , BM_SETCHECK, data.calc.aligned       ? BST_CHECKED : BST_UNCHECKED, 0);
         SendDlgItemMessage(hwndDlg, IDC_CALCULATE_LEFT          , BM_SETCHECK, data.calc.left          ? BST_CHECKED : BST_UNCHECKED, 0);
@@ -277,191 +307,21 @@ INT_PTR CALLBACK calculateDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
             data.calc.decimalPlaces = HIWORD(r) ? 2 : LOWORD(r);
             data.calc.decimalsFixed = SendDlgItemMessage(hwndDlg, IDC_CALCULATE_SUPPRESS_ZEROS, BM_GETCHECK, 0, 0) == BST_UNCHECKED;
             data.calc.formatAsTime  = SendDlgItemMessage(hwndDlg, IDC_CALCULATE_TIME          , BM_GETCHECK, 0, 0) == BST_CHECKED;
-            data.calc.unitIsMinutes = SendDlgItemMessage(hwndDlg, IDC_CALCULATE_TIME_MINUTES  , BM_GETCHECK, 0, 0) == BST_CHECKED;
-            data.calc.showDays      = SendDlgItemMessage(hwndDlg, IDC_CALCULATE_TIME_DAYS     , BM_GETCHECK, 0, 0) == BST_CHECKED;
             data.calc.tabbed        = SendDlgItemMessage(hwndDlg, IDC_CALCULATE_TABBED        , BM_GETCHECK, 0, 0) == BST_CHECKED;
             data.calc.aligned       = SendDlgItemMessage(hwndDlg, IDC_CALCULATE_ALIGNED       , BM_GETCHECK, 0, 0) == BST_CHECKED;
             data.calc.left          = SendDlgItemMessage(hwndDlg, IDC_CALCULATE_LEFT          , BM_GETCHECK, 0, 0) == BST_CHECKED;
             EndDialog(hwndDlg, 0);
             return TRUE;
         }
-        default:;
+        case IDC_CALCULATE_FORMATS:
+            data.showTimeFormatsDialog();
+            SetDlgItemText(hwndDlg, IDC_CALCULATE_TIME, enabledTimeString(data.timeScalarUnit, data.timePartialRule, data.timeFormatEnable).data());
+            InvalidateRect(hwndDlg, 0, TRUE);
+            break;
         }
-        break;
 
-    default:;
     }
     return FALSE;
-}
-
-
-bool parseNumber2(ColumnsPlusPlusData& data, const std::string& text, double* value, size_t* decimalPlaces, int* timeSegments,
-                  size_t* decimalIndex, bool timeUnitIsMinutes = false) {
-
-    static const std::wstring currency =
-        L"$\u00A2\u00A3\u00A4\u00A5\u058F\u060B\u07FE\u07FF\u09F2\u09F3\u09FB\u0AF1\u0BF9\u0E3F\u17DB"
-        L"\u20A0\u20A1\u20A2\u20A3\u20A4\u20A5\u20A6\u20A7\u20A8\u20A9\u20AA\u20AB\u20AC\u20AD\u20AE\u20AF"
-        L"\u20B0\u20B1\u20B2\u20B3\u20B4\u20B5\u20B6\u20B7\u20B8\u20B9\u20BA\u20BB\u20BC\u20BD\u20BE\u20BF"
-        L"\uA838\uFDFC\uFE69\uFF04\uFFE0\uFFE1\uFFE5\uFFE6";
-    static const std::wstring plus   = L"+\uff0b";
-    static const std::wstring minus  = L"-\u2012\u2013\uff0d";
-    static const std::wstring spaces = L" \u00A0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F";
-    static const std::wstring inside = L".,:'0123456789" + spaces;
-
-    const wchar_t decimal = data.settings.decimalSeparatorIsComma ? L',' : L'.';
-
-    const std::wstring s = toWide(text, data.sci.CodePage());
-
-    size_t left = s.find_first_of(L"0123456789");
-    if (left == std::string::npos) return false;
-    size_t right = s.find_last_of(L"0123456789");
-
-    size_t decimalPosition;
-    if (left > 0 && s[left - 1] == decimal) {
-        --left;
-        decimalPosition = left;
-    }
-    else decimalPosition = s.find_first_of(decimal, left);
-    if (decimalPosition == std::string::npos) decimalPosition = right + 1;
-    else {
-        if (decimalPosition > right + 1) decimalPosition = right + 1;
-        else if (decimalPosition == right + 1) ++right;
-        else if (std::count(std::next(s.begin(), left), std::next(s.begin(), right), decimal) > 1) return false;
-    }
-    size_t colonPosition = s.find_last_of(L':', right);
-    if (colonPosition < left) colonPosition = std::wstring::npos;
-    if (colonPosition != std::wstring::npos) {
-        if (colonPosition > decimalPosition) return false;
-        if (std::count(std::next(s.begin(), left), std::next(s.begin(), right), ':') > (timeUnitIsMinutes ? 2 : 3)) return false;
-    }
-    if (s.find_first_not_of(inside, left) < right) return false;
-
-    if (decimalIndex) *decimalIndex = decimalPosition;
-    if (!value) return true;
-
-    const std::wstring_view prefix = std::wstring_view(s).substr(0, left);
-    const std::wstring_view suffix = std::wstring_view(s).substr(right + 1);
-    const std::wstring_view number = std::wstring_view(s).substr(left, right - left + 1);
-
-    // prefix can be:
-    // - empty or all space characters
-    // - a sign and/or a currency symbol, with optional space characters before, after or between them
-    // - any characters, followed by a space, followed by a sign and/or a currency symbol
-    // - any mix of characters ending in a space
-
-    // suffix can be:
-    // - empty or all space characters
-    // - a sign and/or a currency symbol, with optional space characters before, after or between them
-    // - a sign and/or a currency symbol, followed by a space, followed by any characters
-    // - any mix of characters that does not begin with a sign or with a currency symbol followed by a sign
-
-    // additionally, a sign cannot appear in both the prefix and the suffix
-
-    bool negative  = false;
-    bool foundSign = false;
-
-    if (prefix.find_first_not_of(spaces) != std::wstring::npos) /* not empty or all space characters */ {
-        const size_t lastArbitrary = prefix.find_last_not_of(spaces + currency + plus + minus);
-        if (size_t signAt = 0, cncyAt = 0;
-              lastArbitrary == std::wstring::npos
-           && (signAt = prefix.find_first_of(plus + minus), signAt == std::wstring::npos || signAt == prefix.find_last_of(plus + minus))
-           && (cncyAt = prefix.find_first_of(currency)    , cncyAt == std::wstring::npos || cncyAt == prefix.find_last_of(currency    )) ) {
-            // at most one sign, at most one currency symbol, and the rest space characters
-            if (signAt != std::wstring::npos) {
-                foundSign = true;
-                if (minus.find_first_of(prefix[signAt]) != std::string::npos) negative = true;
-            }
-        }
-        else {
-            const size_t lastSpace = prefix.find_last_of(spaces);
-            if (lastSpace == std::wstring::npos) return false;
-            switch (prefix.length() - lastSpace) {
-            case 1 /* space is last, OK */:
-                break;
-            case 2 /* one character, OK if sign or currency */:
-                if (currency.find_first_of(prefix[lastSpace + 1]) != std::wstring::npos) break;
-                foundSign = true;
-                if (plus.find_first_of(prefix[lastSpace + 1]) != std::wstring::npos) break;
-                negative = true;
-                if (minus.find_first_of(prefix[lastSpace + 1]) != std::wstring::npos) break;
-                return false;
-            case 3 /* two characters, OK if one is sign and one is currency */:
-                if      (plus    .find_first_of(prefix[lastSpace + 2]) != std::wstring::npos)   foundSign = true;
-                else if (minus   .find_first_of(prefix[lastSpace + 2]) != std::wstring::npos) { foundSign = true; negative = true; }
-                else if (currency.find_first_of(prefix[lastSpace + 2]) == std::wstring::npos) return false;
-                if (currency.find_first_of(prefix[lastSpace + 1]) != std::wstring::npos)
-                    if (foundSign) break;
-                    else return false;
-                foundSign = true;
-                if (plus.find_first_of(prefix[lastSpace + 1]) != std::wstring::npos) break;
-                negative = true;
-                if (minus.find_first_of(prefix[lastSpace + 1]) != std::wstring::npos) break;
-                return false;
-            default:
-                return false;
-            }
-        }
-    }
-
-    if (suffix.find_first_not_of(spaces) != std::wstring::npos) /* not empty or all space characters */ {
-        const size_t firstArbitrary = suffix.find_first_not_of(spaces + currency + plus + minus);
-        if (size_t signAt = 0, cncyAt = 0;
-              firstArbitrary == std::wstring::npos
-           && (signAt = suffix.find_first_of(plus + minus), signAt == std::wstring::npos || signAt == suffix.find_last_of(plus + minus))
-           && (cncyAt = suffix.find_first_of(currency)    , cncyAt == std::wstring::npos || cncyAt == suffix.find_last_of(currency    )) ) {
-            // at most one sign, at most one currency symbol, and the rest space characters
-            if (signAt != std::wstring::npos) {
-                if (foundSign) return false;
-                foundSign = true;
-                if (minus.find_first_of(suffix[signAt]) != std::string::npos) negative = true;
-            }
-        }
-        else if (firstArbitrary != 0) {
-            // There will always be at least two characters here; any single character would have been handled already
-            size_t firstSpace = suffix.find_first_of(spaces);
-            if (firstSpace != 0) {
-                cncyAt = suffix.find_first_of(currency);
-                if (cncyAt == 0) /* first character in suffix is a currency symbol -- only matters if followed by a sign */ {
-                    bool isMinus = minus.find_first_of(suffix[1]);
-                    bool isPlus  = !isMinus && plus.find_first_of(suffix[1]);
-                    if (isPlus || isMinus) {
-                        if (foundSign || firstSpace != 2) return false;
-                        foundSign = true;
-                        if (isMinus) negative = true;
-                    }
-                }
-                else /* first character in suffix is a sign */ {
-                    if (foundSign || !(firstSpace == 1 || (cncyAt == 1 && firstSpace == 2))) return false;
-                    foundSign = true;
-                    negative = minus.find_first_of(suffix[0]) != std::wstring::npos;
-                }
-            }
-        }
-    }
-
-    std::wstring n[4];
-    int nLevel = 0;
-    bool separatorOK = true;
-    for (size_t i = 0; i < number.length(); ++i) {
-        if (number[i] >= L'0' && number[i] <= L'9') {
-            n[nLevel] += number[i];
-            separatorOK = true;
-            continue;
-        }
-        else if (!separatorOK) return false;
-        separatorOK = false;
-        if (number[i] == decimal) n[nLevel] += L'.';
-        else if (number[i] == L':') ++nLevel;
-    }
-    double v = std::stod(n[nLevel]);
-    if (nLevel > 0) v += 60 * std::stod(n[nLevel - 1]);
-    if (nLevel > 1 && !timeUnitIsMinutes) v += 60 * std::stod(n[nLevel - 2]);
-    if (nLevel > 2 || (timeUnitIsMinutes && nLevel > 1)) v += 24 * std::stod(n[0]);
-    *value = negative ? -v : v;
-    if (decimalPlaces) *decimalPlaces = right > decimalPosition ? right - decimalPosition : 0;
-    if (timeSegments) *timeSegments = nLevel;
-    return true;
-
 }
 
 
@@ -496,257 +356,16 @@ size_t ColumnsPlusPlusData::findDecimal(const std::string& text, bool timeUnitIs
 }
 
 
-bool ColumnsPlusPlusData::getNumber(const std::string& text, double& value, size_t& decimalPlaces, int& timeSegments, bool timeUnitIsMinutes) {
-
-    static const std::wstring currency =
-        L"$\u00A2\u00A3\u00A4\u00A5\u058F\u060B\u07FE\u07FF\u09F2\u09F3\u09FB\u0AF1\u0BF9\u0E3F\u17DB"
-        L"\u20A0\u20A1\u20A2\u20A3\u20A4\u20A5\u20A6\u20A7\u20A8\u20A9\u20AA\u20AB\u20AC\u20AD\u20AE\u20AF"
-        L"\u20B0\u20B1\u20B2\u20B3\u20B4\u20B5\u20B6\u20B7\u20B8\u20B9\u20BA\u20BB\u20BC\u20BD\u20BE\u20BF"
-        L"\uA838\uFDFC\uFE69\uFF04\uFFE0\uFFE1\uFFE5\uFFE6";
-    static const std::wstring plus = L"+\uff0b";
-    static const std::wstring minus = L"-\u2012\u2013\uff0d";
-    static const std::wstring spaces = L" \u00A0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F";
-    static const std::wstring inside = L".,:'0123456789" + spaces;
-
-    const wchar_t decimal = settings.decimalSeparatorIsComma ? L',' : L'.';
-    const std::wstring s = toWide(text, sci.CodePage());
-
-    size_t left = s.find_first_of(L"0123456789");
-    if (left == std::string::npos) return false;
-    size_t right = s.find_last_of(L"0123456789");
-
-    size_t decimalPosition = (left > 0 && s[left - 1] == decimal) ? --left : s.find_first_of(decimal, left);
-    if (decimalPosition == right + 1) ++right;
-    else if (decimalPosition > right) decimalPosition = right + 1;
-    else if (decimalPosition != s.find_last_of(decimal, right)) return false;
-
-    size_t colonPosition = s.find_last_of(L':', right);
-    if (colonPosition < left) colonPosition = std::wstring::npos;
-    if (colonPosition != std::wstring::npos) {
-        if (colonPosition > decimalPosition) return false;
-        if (std::count(std::next(s.begin(), left), std::next(s.begin(), right), ':') > (timeUnitIsMinutes ? 2 : 3)) return false;
-    }
-
-    const std::wstring_view prefix = std::wstring_view(s).substr(0, left);
-    const std::wstring_view number = std::wstring_view(s).substr(left, right - left + 1);
-    const std::wstring_view suffix = std::wstring_view(s).substr(right + 1);
-
-    if (number.find_first_not_of(inside) != std::wstring::npos) return false;
-
-    // prefix can be:
-    // - empty or all space characters
-    // - a sign and/or a currency symbol, with optional space characters before, after or between them
-    // - any characters, followed by a space, followed by a sign and/or a currency symbol
-    // - any mix of characters ending in a space
-
-    // suffix can be:
-    // - empty or all space characters
-    // - a sign and/or a currency symbol, with optional space characters before, after or between them
-    // - a sign and/or a currency symbol, followed by a space, followed by any characters
-    // - any mix of characters that does not begin with a sign or with a currency symbol followed by a sign
-
-    // a sign cannot appear in both the prefix and the suffix
-
-    bool negative = false;
-    bool foundSign = false;
-
-    if (prefix.find_first_not_of(spaces) != std::wstring::npos) /* not empty or all space characters */ {
-        const size_t lastArbitrary = prefix.find_last_not_of(spaces + currency + plus + minus);
-        const size_t signAt = prefix.find_first_of(plus + minus);
-        const size_t cncyAt = prefix.find_first_of(currency);
-        if (lastArbitrary == std::wstring::npos
-            && (signAt == std::wstring::npos || signAt == prefix.find_last_of(plus + minus))
-            && (cncyAt == std::wstring::npos || cncyAt == prefix.find_last_of(currency))) {
-            // at most one sign, at most one currency symbol, and the rest space characters
-            if (signAt != std::wstring::npos) {
-                foundSign = true;
-                negative = minus.find_first_of(prefix[signAt]) != std::wstring::npos;
-            }
-        }
-        else {
-            const size_t lastSpace = prefix.find_last_of(spaces);
-            if (lastSpace == std::wstring::npos) return false;
-            switch (prefix.length() - lastSpace) {
-            case 1 /* space is last, OK */:
-                break;
-            case 2 /* one character, OK if sign or currency */:
-                if (currency.find_first_of(prefix[lastSpace + 1]) != std::wstring::npos) break;
-                foundSign = true;
-                if (plus.find_first_of(prefix[lastSpace + 1]) != std::wstring::npos) break;
-                negative = true;
-                if (minus.find_first_of(prefix[lastSpace + 1]) != std::wstring::npos) break;
-                return false;
-            case 3 /* two characters, OK if one is sign and one is currency */:
-                if (plus.find_first_of(prefix[lastSpace + 2]) != std::wstring::npos)   foundSign = true;
-                else if (minus.find_first_of(prefix[lastSpace + 2]) != std::wstring::npos) { foundSign = true; negative = true; }
-                else if (currency.find_first_of(prefix[lastSpace + 2]) == std::wstring::npos) return false;
-                if (currency.find_first_of(prefix[lastSpace + 1]) != std::wstring::npos)
-                    if (foundSign) break;
-                    else return false;
-                foundSign = true;
-                if (plus.find_first_of(prefix[lastSpace + 1]) != std::wstring::npos) break;
-                negative = true;
-                if (minus.find_first_of(prefix[lastSpace + 1]) != std::wstring::npos) break;
-                return false;
-            default:
-                return false;
-            }
-        }
-    }
-
-    if (suffix.find_first_not_of(spaces) != std::wstring::npos) /* not empty or all space characters */ {
-        const size_t firstArbitrary = suffix.find_first_not_of(spaces + currency + plus + minus);
-        const size_t signAt = suffix.find_first_of(plus + minus);
-        const size_t cncyAt = suffix.find_first_of(currency);
-        if (firstArbitrary == std::wstring::npos
-            && (signAt == std::wstring::npos || signAt == suffix.find_last_of(plus + minus))
-            && (cncyAt == std::wstring::npos || cncyAt == suffix.find_last_of(currency))) {
-            // at most one sign, at most one currency symbol, and the rest space characters
-            if (signAt != std::wstring::npos) {
-                if (foundSign) return false;
-                foundSign = true;
-                if (minus.find_first_of(suffix[signAt]) != std::wstring::npos) negative = true;
-            }
-        }
-        else if (firstArbitrary != 0) {
-            // There will always be at least two characters here; any single character would have been handled already
-            size_t firstSpace = suffix.find_first_of(spaces);
-            if (firstSpace != 0) {
-                if (cncyAt == 0) /* first character in suffix is a currency symbol -- only matters if followed by a sign */ {
-                    bool isMinus = minus.find_first_of(suffix[1]);
-                    bool isPlus = !isMinus && plus.find_first_of(suffix[1]);
-                    if (isPlus || isMinus) {
-                        if (foundSign || firstSpace != 2) return false;
-                        foundSign = true;
-                        if (isMinus) negative = true;
-                    }
-                }
-                else /* first character in suffix is a sign */ {
-                    if (foundSign || !(firstSpace == 1 || (cncyAt == 1 && firstSpace == 2))) return false;
-                    foundSign = true;
-                    negative = minus.find_first_of(suffix[0]) != std::wstring::npos;
-                }
-            }
-        }
-    }
-
-    std::string n[4];
-    int nLevel = 0;
-    bool separatorOK = true;
-    for (size_t i = 0; i < number.length(); ++i) {
-        if (number[i] >= L'0' && number[i] <= L'9') {
-            n[nLevel] += static_cast<char>(number[i]);
-            separatorOK = true;
-            continue;
-        }
-        else if (!separatorOK) return false;
-        separatorOK = false;
-        if (number[i] == decimal) n[nLevel] += '.';
-        else if (number[i] == L':') ++nLevel;
-    }
-    double v = std::stod(n[nLevel]);
-    if (nLevel > 0) v += 60 * std::stod(n[nLevel - 1]);
-    if (nLevel > 1 && !timeUnitIsMinutes) v += 60 * std::stod(n[nLevel - 2]);
-    if (nLevel > 2 || (timeUnitIsMinutes && nLevel > 1)) v += 24 * std::stod(n[0]);
-    value = negative ? -v : v;
-    decimalPlaces = right > decimalPosition ? right - decimalPosition : 0;
-    timeSegments = nLevel;
-    return true;
-
-}
-
-
-std::string formatValue(double value, size_t decimalPlaces, size_t timeSegments, bool decimalSeparatorIsComma, bool unitIsMinutes = false) {
-    char answer[100];
-    std::to_chars_result result;
-    int reasonableDecimalPlaces = static_cast<int>(std::min(static_cast<size_t>(20), decimalPlaces));
-    if (timeSegments && std::abs(value) < std::numeric_limits<long long>::max()) {
-        double t = value;
-        if (decimalPlaces) {
-            int m = 10;
-            for (size_t i = 1; i < decimalPlaces; ++i) m *= 10;
-            t = std::round(m * t) / m;
-        }
-        bool negative = false;
-        if (t < 0) {
-            t = -t;
-            negative = true;
-        }
-        long long n = static_cast<long long>(std::trunc(t));
-        t -= n;
-        int ss = 0;
-        int mm = 0;
-        int hh = 0;
-        if (n >= 60) {
-            ss = n % 60 + 100;
-            n /= 60;
-            if ((unitIsMinutes || n >= 60) && timeSegments > 1) {
-                if (!unitIsMinutes) {
-                    mm = n % 60 + 100;
-                    n /= 60;
-                }
-                if (n >= 24 && timeSegments > 2) {
-                    hh = n % 24 + 100;
-                    n /= 24;
-                }
-            }
-        }
-        if (ss) {
-            char* p = answer;
-            if (negative) {
-                *p = '-';
-                ++p;
-            }
-            result = std::to_chars(p, answer + sizeof(answer), n);
-            if (result.ec != std::errc{}) return "?";
-            p = result.ptr;
-            if (mm || unitIsMinutes) {
-                if (hh) {
-                    result = std::to_chars(p, answer + sizeof(answer), hh);
-                    if (result.ec != std::errc{}) return "?";
-                    *p = ':';
-                    p = result.ptr;
-                }
-                if (!unitIsMinutes) {
-                    result = std::to_chars(p, answer + sizeof(answer), mm);
-                    if (result.ec != std::errc{}) return "?";
-                    *p = ':';
-                    p = result.ptr;
-                }
-            }
-            t += ss;
-            result = std::to_chars(p, answer + sizeof(answer), t, std::chars_format::fixed, reasonableDecimalPlaces);
-            if (result.ec != std::errc{}) return "?";
-            *p = ':';
-        }
-        else {
-            result = std::to_chars(answer, answer + sizeof(answer), value, std::chars_format::fixed, reasonableDecimalPlaces);
-            if (result.ec != std::errc{}) return "?";
-        }
-    }
-    else {
-        result = std::to_chars(answer, answer + sizeof(answer), value, std::chars_format::fixed, reasonableDecimalPlaces);
-        if (result.ec != std::errc{}) return "?";
-    }
-    if (decimalSeparatorIsComma && decimalPlaces) {
-        char* p = (char*)memchr(answer, '.', result.ptr - answer);
-        if (p) *p = ',';
-    }
-    *result.ptr = 0;
-    return answer;
-}
-
-
 void ColumnsPlusPlusData::accumulate(bool isMean) {
 
     auto rs = getRectangularSelection();
     if (!rs.size()) return;
 
     struct Column {
-        double sum      = 0;
-        size_t decimalPlaces = 0;
-        int timeSegments     = 0;
-        int count            = 0;
+        double sum           = 0;
+        int    decimalPlaces = 0;
+        int    timeSegments  = 0;
+        int    count         = 0;
     };
     std::vector<Column> column;
     Column total;
@@ -758,10 +377,8 @@ void ColumnsPlusPlusData::accumulate(bool isMean) {
             if (columnNumber >= column.size()) column.emplace_back();
             Column& col = column[columnNumber];
             ++columnNumber;
-            double value;
-            size_t dp;
-            int ts;
-            if (!getNumber(cell.trim(), value, dp, ts)) {
+            auto [value, dp, ts] = parseNumber(cell.trim());
+            if (!isfinite(value)) {
                 if (cell.trim().find_first_of("0123456789") != std::string::npos) /* ambiguous: likely an error */ {
                     sci.SetSel(cell.left(), cell.right());
                     return;
@@ -789,17 +406,23 @@ void ColumnsPlusPlusData::accumulate(bool isMean) {
     cri.isMean = isMean;
     cri.hasSpace = rs.back().text().find_first_not_of("\t ") == std::string::npos;
     for (Column& col : column) {
+        NumericFormat format;
         if (col.count) {
+            format.maxDec = col.decimalPlaces;
+            if (col.timeSegments) format.timeEnable = timeFormatEnable;
             if (isMean) {
-                int dp = col.count == 1 ? 0 : col.count == 2 || col.count == 5 || col.count == 10 ? 1
-                    : col.count == 20 || col.count == 25 || col.count == 50 || col.count == 100 ? 2 : 3;
-                cri.results.push_back(formatValue(col.sum / col.count, col.decimalPlaces + dp, col.timeSegments, settings.decimalSeparatorIsComma));
+                format.maxDec += col.count == 1 ? 0 : col.count == 2 || col.count == 5 || col.count == 10 ? 1
+                               : col.count == 20 || col.count == 25 || col.count == 50 || col.count == 100 ? 2 : 3;
+                cri.result_values.push_back(col.sum / col.count);
             }
-            else cri.results.push_back(formatValue(col.sum, col.decimalPlaces, col.timeSegments, settings.decimalSeparatorIsComma));
+            else cri.result_values.push_back(col.sum);
             ++cri.columns;
             cri.numbers += col.count;
         }
-        else cri.results.push_back("");
+        else {
+            cri.result_values.push_back(std::numeric_limits<double>::quiet_NaN());
+        }
+        cri.result_auto_formats.push_back(format);
     }
 
     DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_CALCULATION_RESULTS), nppData._nppHandle, calculationResultsDialogProc, reinterpret_cast<LPARAM>(&cri));
@@ -910,11 +533,11 @@ void ColumnsPlusPlusData::calculate() {
     if (DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_CALCULATE), nppData._nppHandle, calculateDialogProc, reinterpret_cast<LPARAM>(&ci)))
         return;
 
-    const char decimalSeparator   = settings.decimalSeparatorIsComma ? ',' : '.';
-    const char thousandsSeparator = calc.thousands == CalculateSettings::None       ? 0
-                                  : calc.thousands == CalculateSettings::Apostrophe ? '\''
-                                  : calc.thousands == CalculateSettings::Blank      ? ' '
-                                  : settings.decimalSeparatorIsComma                ? '.' : ',';
+    const char        decimalSeparator   = settings.decimalSeparatorIsComma ? ',' : '.';
+    const std::string thousandsSeparator = calc.thousands == CalculateSettings::None ? ""
+                                         : calc.thousands == CalculateSettings::Apostrophe ? "\'"
+                                         : calc.thousands == CalculateSettings::Blank ? " "
+                                         : settings.decimalSeparatorIsComma ? "." : ",";
 
     sci.SetSearchFlags(calc.matchCase ? Scintilla::FindOption::RegExp | Scintilla::FindOption::MatchCase : Scintilla::FindOption::RegExp);
 
@@ -930,6 +553,12 @@ void ColumnsPlusPlusData::calculate() {
     history.skipFlag.reserve(rs.size());
     textResults     .reserve(rs.size());
     canAlign        .reserve(rs.size());
+
+    NumericFormat format;
+    format.maxDec = calc.decimalPlaces;
+    if (calc.decimalsFixed) format.minDec = calc.decimalPlaces;
+    format.thousands = thousandsSeparator;
+    if (calc.formatAsTime) format.timeEnable = timeFormatEnable;
 
     for (auto row : rs) {
 
@@ -955,13 +584,7 @@ void ColumnsPlusPlusData::calculate() {
         history.results.back() = result;
 
         if (std::isfinite(result)) {
-            std::string s = formatValue(result, calc.decimalPlaces, !calc.formatAsTime ? 0 : calc.showDays ? 3 : 2,
-                                        settings.decimalSeparatorIsComma, calc.unitIsMinutes);
-            if (!calc.decimalsFixed && calc.decimalPlaces > 0) {
-                s = s.substr(0, s.find_last_not_of('0') + 1);
-                if (s.back() == decimalSeparator) s.pop_back();
-            }
-            s = applyThousandsSeparator(s, decimalSeparator, thousandsSeparator);
+            std::string s = formatNumber(result, format);
             if (calc.aligned) {
                 size_t j = s.find_first_of(decimalSeparator);
                 if (j == std::string::npos) j = s.length();
@@ -987,15 +610,7 @@ void ColumnsPlusPlusData::calculate() {
                     else if (r.type == exprtk::type_store<double>::store_type::e_scalar) {
                         if (lastWasNumeric) s += calc.tabbed ? '\t' : ' ';
                         exprtk::igeneric_function<double>::generic_type::scalar_view sv(r);
-                        if (std::isfinite(sv())) {
-                            std::string v = formatValue(sv(), calc.decimalPlaces, !calc.formatAsTime ? 0 : calc.showDays ? 3 : 2,
-                                                              settings.decimalSeparatorIsComma, calc.unitIsMinutes);
-                            if (!calc.decimalsFixed && calc.decimalPlaces > 0) {
-                                v = v.substr(0, v.find_last_not_of('0') + 1);
-                                if (v.back() == decimalSeparator) v.pop_back();
-                            }
-                            s += applyThousandsSeparator(v, decimalSeparator, thousandsSeparator);
-                        }
+                        if (std::isfinite(sv())) s += formatNumber(sv(), format);
                         lastWasNumeric = true;
                     }
                 }

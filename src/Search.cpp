@@ -14,14 +14,56 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "ColumnsPlusPlus.h"
-#include <regex>
-#include "resource.h"
-#include "commctrl.h"
+#include "Search.h"
 #include "Host\BoostRegexSearch.h"
 
-#undef min
-#undef max
+std::regex rxFormat("\\s*(\\d{1,2}[t]?|t)?(?:([.,])(?:((\\d{1,2})?-)?(\\d{1,2}))?)?\\s*:(.*)", std::regex::optimize);
+
+class RegexCalc {
+public:
+
+    class Formula {
+    public:
+        exprtk::expression<double> expression;
+        NumericFormat format;
+    };
+
+    RegexCalcHistory history;
+    exprtk::symbol_table<double> symbol_table;
+    exprtk::parser<double>       parser;
+    std::vector<Formula>         formula;
+    std::vector<std::string>     replacement;
+    double rcMatch = 0;
+    double rcLine  = 0;
+    double rcThis  = 0;
+    RCReg  rcReg;
+    RCSub  rcSub;
+    RCLast rcLast;
+    size_t maxCapture = 0;  // maximum number of capture groups possible (there could be fewer)
+
+    RegexCalc() : rcReg(history), rcSub(history), rcLast(history) {
+        symbol_table.add_variable("match", rcMatch);
+        symbol_table.add_variable("line" , rcLine );
+        symbol_table.add_variable("this" , rcThis );
+        symbol_table.add_function("reg"  , rcReg  );
+        symbol_table.add_function("sub"  , rcSub  );
+        symbol_table.add_function("last" , rcLast );
+    }
+
+    void clear() {
+        formula.clear();
+        replacement.clear();
+        history.values.clear();
+        history.results.clear();
+        history.lastFiniteResult.clear();
+        rcMatch = 0;
+        maxCapture = 0;
+    }
+
+};
+
+SearchData::SearchData() { regexCalc = std::make_unique<RegexCalc>(); }
+SearchData::~SearchData() {}
 
 INT_PTR CALLBACK searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     ColumnsPlusPlusData* data;
@@ -34,13 +76,14 @@ INT_PTR CALLBACK searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM
 }
 
 void ColumnsPlusPlusData::showSearchDialog() {
+    if (searchData.dialog) if (SetFocus(searchData.dialog)) return;
     if (searchData.enableCustomIndicator) {
         sci.IndicSetStyle(searchData.customIndicator, Scintilla::IndicatorStyle::FullBox);
         sci.IndicSetFore (searchData.customIndicator, searchData.customColor);
         sci.IndicSetAlpha(searchData.customIndicator, static_cast<Scintilla::Alpha>(searchData.customAlpha));
         sci.IndicSetUnder(searchData.customIndicator, true);
     }
-    if (searchData.dialog) if (SetFocus(searchData.dialog)) return;
+    searchData.regexCalc->clear();
     CreateDialogParam(dllInstance, MAKEINTRESOURCE(IDD_SEARCH), nppData._nppHandle,
                       ::searchDialogProc, reinterpret_cast<LPARAM>(this));
 }
@@ -224,6 +267,7 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
                 sci.SetIndicatorCurrent(searchData.indicator);
                 sci.IndicatorClearRange(0, sci.Length());
             }
+            searchData.regexCalc->clear();
             SendMessage(nppData._nppHandle, NPPM_MODELESSDIALOG, MODELESSDIALOGREMOVE, reinterpret_cast<LPARAM>(hwndDlg));
             DestroyWindow(hwndDlg);
             return TRUE;
@@ -368,7 +412,7 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
 }
 
 
-bool searchPrepare(ColumnsPlusPlusData& data, std::string* sciFind, std::string* sciRepl = 0) {
+bool searchPrepare(ColumnsPlusPlusData& data, std::string* sciFind, std::vector<std::string>* sciRepl = 0) {
     if (data.searchData.findWhat.length() == 0) {
         setSearchMessage(data, L"No string to find.");
         SetFocus(GetDlgItem(data.searchData.dialog, IDC_FIND_WHAT));
@@ -380,8 +424,59 @@ bool searchPrepare(ColumnsPlusPlusData& data, std::string* sciFind, std::string*
         if (data.searchData.mode == SearchData::Extended) expandExtendedSearchString(*sciFind, codepage);
     }
     if (sciRepl) {
-        *sciRepl = fromWide(data.searchData.replaceWith, codepage);
-        if (data.searchData.mode == SearchData::Extended) expandExtendedSearchString(*sciRepl, codepage);
+        std::string r = fromWide(data.searchData.replaceWith, codepage);
+        switch (data.searchData.mode) {
+        case SearchData::Extended:
+            expandExtendedSearchString(r, codepage);
+        case SearchData::Normal:
+            sciRepl->push_back(r);
+            break;
+        default:
+        {
+            bool insideQuotes = false;
+            int  depth = 0;
+            sciRepl->emplace_back();
+            for (size_t i = 0; i < r.length(); ++i)
+                if (insideQuotes) {
+                    if (r[i] == '\'') insideQuotes = false;
+                    sciRepl->back() += r[i];
+                }
+                else if (depth) switch (r[i]) {
+                case '\'' :
+                    insideQuotes = true;
+                    sciRepl->back() += '\'';
+                    break;
+                case '(' :
+                    ++depth;
+                    sciRepl->back() += r[i];
+                    break;
+                case ')' :
+                    if (--depth) sciRepl->back() += r[i];
+                    else         sciRepl->emplace_back();
+                    break;
+                default:
+                    sciRepl->back() += r[i];
+                }
+                else switch (r[i]) {
+                case '(' :
+                    if (i < r.length() - 2 && r.substr(i, 3) == "(?=") {
+                        i += 2;
+                        sciRepl->emplace_back();
+                        depth = 1;
+                    }
+                    break;
+                case '\\' :
+                    sciRepl->back() += '\\';
+                    if (i < r.length() - 1) {
+                        ++i;
+                        sciRepl->back() += r[i];
+                    }
+                    break;
+                default:
+                    sciRepl->back() += r[i];
+                }
+        }
+        }
     }
     Scintilla::FindOption searchFlags = Scintilla::FindOption::None;
     if (data.searchData.wholeWord && data.searchData.mode != SearchData::Regex) searchFlags |= Scintilla::FindOption::WholeWord;
@@ -390,6 +485,89 @@ bool searchPrepare(ColumnsPlusPlusData& data, std::string* sciFind, std::string*
                                                                | static_cast<Scintilla::FindOption>(SCFIND_REGEXP_EMPTYMATCH_ALL);
     data.sci.SetSearchFlags(searchFlags);
     return true;
+}
+
+void prepareSubstitutions(ColumnsPlusPlusData& data, const std::string& sciFind, const std::vector<std::string>& sciRepl) {
+    auto& rc = *data.searchData.regexCalc;
+    if (sciRepl == rc.replacement) return;
+    rc.clear();
+    if (sciRepl.size() == 1) return;
+    rc.replacement = sciRepl;
+    for (size_t i = 1; i < rc.replacement.size(); i += 2) {
+        auto& formula = rc.formula.emplace_back();
+        formula.expression.register_symbol_table(rc.symbol_table);
+        std::string s = rc.replacement[i];
+        std::smatch m;
+        if (std::regex_match(s, m, rxFormat)) {
+            if (m[1].matched) {
+                if (std::isdigit(m[1].str()[0])) formula.format.leftPad = std::stoi(m[1]);
+                if (!(std::isdigit(m[1].str().back()))) formula.format.timeEnable = data.timeFormatEnable;
+                formula.format.minDec  = -1;
+                formula.format.maxDec  = 0;
+            }
+            if (m[2].matched) {
+                formula.format.maxDec = 6;
+                if (m[5].matched) {
+                    formula.format.minDec = formula.format.maxDec = std::stoi(m[5]);
+                    if (m[3].matched) formula.format.minDec = m[4].matched ? std::stoi(m[4]) : -1;
+                }
+            }
+            s = m[6];
+        }
+        rc.parser.compile(s, formula.expression);
+    }
+    rc.history.lastFiniteResult.insert(rc.history.lastFiniteResult.end(), rc.formula.size(), 0);
+    rc.maxCapture = std::count(sciFind.begin(), sciFind.end(), '(');
+}
+
+std::string calculateSubstitutions(ColumnsPlusPlusData& data, Scintilla::Position found) {
+    std::string r;
+    auto& rc = *data.searchData.regexCalc;
+    ++rc.rcMatch;
+    rc.rcLine     = static_cast<double>(data.sci.LineFromPosition(found) + 1);
+    auto& values  = rc.history.values.emplace_back();
+    auto& results = rc.history.results.emplace_back();
+    values.push_back(rc.rcThis = data.parseNumber(data.sci.TargetText()));
+    for (size_t j = 1; j <= rc.maxCapture; ++j) {
+        std::string t = data.sci.Tag(static_cast<int>(j));
+        if (t.empty()) continue;
+        NumericParse np = data.parseNumber(t);
+        if (!np) continue;
+        if (values.size() < j) values.insert(values.end(), j - values.size(), std::numeric_limits<double>::quiet_NaN());
+        values.push_back(np.value);
+    }
+    for (size_t i = 0; i < rc.replacement.size(); ++i) {
+        if (i & 1) {
+            rc.history.expressionIndex = (i - 1) / 2;
+            auto& formula = rc.formula[(i - 1) / 2];
+            double result = formula.expression.value();
+            results.push_back(result);
+            if (std::isfinite(result)) {
+                r += data.formatNumber(result, formula.format);
+            }
+            else if (formula.expression.results().count()) {
+                const auto& exResults = formula.expression.results();
+                bool lastWasNumeric = false;
+                for (size_t j = 0; j < exResults.count(); ++j) {
+                    auto& rj = exResults[j];
+                    if (rj.type == rj.e_string) {
+                        exprtk::igeneric_function<double>::generic_type::string_view sv(rj);
+                        r += std::string_view(sv.data_, sv.size());
+                        lastWasNumeric = false;
+                    }
+                    else if (rj.type == exprtk::type_store<double>::store_type::e_scalar) {
+                        if (lastWasNumeric) r += ' ';
+                        exprtk::igeneric_function<double>::generic_type::scalar_view sv(rj);
+                        r += data.formatNumber(sv(), formula.format);
+                        lastWasNumeric = true;
+                    }
+                }
+            }
+        }
+        else r += rc.replacement[i];
+    }
+    for (size_t i = 0; i < results.size(); ++i) if (std::isfinite(results[i])) rc.history.lastFiniteResult[i] = results[i];
+    return r;
 }
 
 bool convertSelectionToSearchRegion(ColumnsPlusPlusData& data) {
@@ -514,17 +692,21 @@ void ColumnsPlusPlusData::searchFind(bool postReplace) {
 
 void ColumnsPlusPlusData::searchReplace() {
     if (!searchRegionReady()) return searchFind();
-    std::string sciFind, sciRepl;
+    std::string sciFind;
+    std::vector<std::string> sciRepl;
     if (!searchPrepare(*this, &sciFind, &sciRepl)) return;
+    prepareSubstitutions(*this, sciFind, sciRepl);
     Scintilla::Position anchor = sci.Anchor();
     Scintilla::Position caret = sci.CurrentPos();
     Scintilla::Position start = std::min(anchor, caret);
     Scintilla::Position end   = std::max(anchor, caret);
-    sci.SetTargetRange(start, end);
+    if (!sci.IndicatorValueAt(searchData.indicator, start)) return searchFind();
+    sci.SetTargetRange(start, sci.IndicatorEnd(searchData.indicator, start));
     Scintilla::Position found = sci.SearchInTarget(sciFind);
     if (found == start && sci.TargetEnd() == end) {
-        Scintilla::Position replacementLength = searchData.mode == SearchData::Regex ? sci.ReplaceTargetRE(sciRepl)
-                                                                                     : sci.ReplaceTarget(sciRepl);
+        std::string r = sciRepl.size() == 1 ? sciRepl[0] : calculateSubstitutions(*this, found);
+        Scintilla::Position replacementLength = searchData.mode == SearchData::Regex ? sci.ReplaceTargetRE(r)
+                                                                                     : sci.ReplaceTarget(r);
         sci.SetIndicatorCurrent(searchData.indicator);
         sci.SetIndicatorValue(1);
         sci.IndicatorFillRange(anchor, replacementLength);
@@ -546,12 +728,14 @@ void ColumnsPlusPlusData::searchReplace() {
 }
 
 void ColumnsPlusPlusData::searchReplaceAll() {
-    std::string sciFind, sciRepl;
+    std::string sciFind;
+    std::vector<std::string> sciRepl;
     if (!searchPrepare(*this, &sciFind, &sciRepl)) return;
     if (!searchRegionReady()) {
         if (!convertSelectionToSearchRegion(*this)) return;
         searchData.wrap = false;
     }
+    prepareSubstitutions(*this, sciFind, sciRepl);
     int count = 0;
     sci.BeginUndoAction();
     for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < sci.Length(); cpFrom = cpTo) {
@@ -572,8 +756,9 @@ void ColumnsPlusPlusData::searchReplaceAll() {
                 }
                 ++count;
                 Scintilla::Position oldLength = sci.TargetEnd() - found;
-                Scintilla::Position newLength = searchData.mode == SearchData::Regex ? sci.ReplaceTargetRE(sciRepl)
-                                                                                     : sci.ReplaceTarget(sciRepl);
+                std::string r = sciRepl.size() == 1 ? sciRepl[0] : calculateSubstitutions(*this, found);
+                Scintilla::Position newLength = searchData.mode == SearchData::Regex ? sci.ReplaceTargetRE(r)
+                                                                                     : sci.ReplaceTarget(r);
                 cpFrom = found + newLength;
                 cpTo += newLength - oldLength;
                 sci.SetIndicatorCurrent(searchData.indicator);
@@ -583,6 +768,7 @@ void ColumnsPlusPlusData::searchReplaceAll() {
         }
     }
     sci.EndUndoAction();
+    searchData.regexCalc->clear();
     if (count > 0) {
         if (settings.elasticEnabled) {
             DocumentData& dd = *getDocument();

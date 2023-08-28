@@ -72,14 +72,6 @@ std::string getLocaleSortKey(const std::string& text, UINT codepage, DWORD optio
     return key;
 }
 
-double getNumericSortKey(ColumnsPlusPlusData& data, const std::string& s) {
-    double value;
-    size_t decimalPlaces;
-    int timeSegments;
-    if (data.getNumber(s, value, decimalPlaces, timeSegments)) return value;
-    return std::numeric_limits<double>::quiet_NaN();
-}
-
 
 void replaceSortSelection(ColumnsPlusPlusData& data, SortSelection& ss, const RectangularSelection& rs) {
 
@@ -246,7 +238,7 @@ void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings) {
             if (data.sci.SearchInTarget(regex) >= 0) {
                 for (size_t i = 0; i < capGroup.size(); ++i) {
                     std::string s = capGroup[i] ? data.sci.Tag(capGroup[i]) : data.sci.TargetText();
-                    if (capType[i] == SortSettings::Numeric) ss[n].keys.emplace_back(getNumericSortKey(data, s), capDesc[i]);
+                    if (capType[i] == SortSettings::Numeric) ss[n].keys.emplace_back(data.parseNumber(s), capDesc[i]);
                     else {
                         if (capType[i] == SortSettings::Locale) s = getLocaleSortKey(s, codepage, options, locale);
                         ss[n].keys.emplace_back(s, capDesc[i]);
@@ -260,7 +252,7 @@ void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings) {
             for (const auto& cell : row) cells.push_back(cell.text());
             for (size_t i = 0; i < capGroup.size(); ++i) {
                 std::string s = capGroup[i] < cells.size() ? cells[capGroup[i]] : "";
-                if (capType[i] == SortSettings::Numeric) ss[n].keys.emplace_back(getNumericSortKey(data, s), capDesc[i]);
+                if (capType[i] == SortSettings::Numeric) ss[n].keys.emplace_back(data.parseNumber(s), capDesc[i]);
                 else {
                     if (capType[i] == SortSettings::Locale) s = getLocaleSortKey(s, codepage, options, locale);
                     ss[n].keys.emplace_back(s, capDesc[i]);
@@ -268,7 +260,7 @@ void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings) {
             }
         }
         else if (sortSettings.sortType == SortSettings::Numeric)
-            for (const auto& cell : row) ss[n].keys.emplace_back(getNumericSortKey(data, cell.trim()), sortSettings.sortDescending);
+            for (const auto& cell : row) ss[n].keys.emplace_back(data.parseNumber(cell.trim()), sortSettings.sortDescending);
         else {
             std::string s(cpMin - ss.textStart + textPointer, cpMax - cpMin);
             if (sortSettings.keyType == SortSettings::IgnoreBlanks) {
