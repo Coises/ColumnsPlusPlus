@@ -295,6 +295,38 @@ INT_PTR CALLBACK calculateDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
                 SendMessage(hwndDlg, WM_NEXTDLGCTL, reinterpret_cast<WPARAM>(cbi.hwndItem), TRUE);
                 return TRUE;
             }
+            h = GetDlgItem(hwndDlg, IDC_CALCULATE_REGEX);
+            n = SendMessage(h, WM_GETTEXTLENGTH, 0, 0);
+            if (n) {
+                std::wstring w(n, 0);
+                SendMessage(h, WM_GETTEXT, n + 1, reinterpret_cast<LPARAM>(w.data()));
+                data.sci.SetSearchFlags(Scintilla::FindOption::RegExp | Scintilla::FindOption::Posix);
+                data.sci.SetTargetRange(0, 0);
+                Scintilla::Position found = data.sci.SearchInTarget(fromWide(w, data.sci.CodePage()));
+                if (found < -1) {
+                    COMBOBOXINFO cbi;
+                    cbi.cbSize = sizeof(COMBOBOXINFO);
+                    GetComboBoxInfo(h, &cbi);
+                    EDITBALLOONTIP ebt;
+                    ebt.cbStruct = sizeof(EDITBALLOONTIP);
+                    ebt.pszTitle = L"";
+                    ebt.ttiIcon = TTI_NONE;
+                    std::wstring ebtText;
+                    if (found == -2) {
+                        if (size_t msglen = data.sci.Call(static_cast<Scintilla::Message>(SCI_GETBOOSTREGEXERRMSG), 0, 0)) {
+                            std::string msg(msglen, 0);
+                            data.sci.Call(static_cast<Scintilla::Message>(SCI_GETBOOSTREGEXERRMSG), msglen, reinterpret_cast<LPARAM>(msg.data()));
+                            ebtText = toWide(msg, CP_UTF8);
+                            ebt.pszText = ebtText.data();
+                        }
+                        else ebt.pszText = L"Invalid regular expression.";
+                    }
+                    else ebt.pszText = L"An unidentified error occurred processing this regular expression.";
+                    SendMessage(cbi.hwndItem, EM_SHOWBALLOONTIP, 0, reinterpret_cast<LPARAM>(&ebt));
+                    SendMessage(hwndDlg, WM_NEXTDLGCTL, reinterpret_cast<WPARAM>(cbi.hwndItem), TRUE);
+                    return TRUE;
+                }
+            }
             updateComboHistory(hwndDlg, IDC_CALCULATE_FORMULA, data.calc.formulaHistory);
             updateComboHistory(hwndDlg, IDC_CALCULATE_REGEX, data.calc.regexHistory);
             data.calc.matchCase     = SendDlgItemMessage(hwndDlg, IDC_CALCULATE_MATCH_CASE    , BM_GETCHECK, 0, 0) == BST_CHECKED;
