@@ -527,8 +527,8 @@ bool prepareSubstitutions(ColumnsPlusPlusData& data, const std::string& sciFind,
             if (m[1].matched) {
                 if (std::isdigit(m[1].str()[0])) formula.format.leftPad = std::stoi(m[1]);
                 if (!(std::isdigit(m[1].str().back()))) formula.format.timeEnable = data.timeFormatEnable;
-                formula.format.minDec  = -1;
-                formula.format.maxDec  = 0;
+                formula.format.minDec = -1;
+                formula.format.maxDec = 0;
             }
             if (m[2].matched) {
                 formula.format.maxDec = 6;
@@ -612,8 +612,8 @@ std::string calculateSubstitutions(ColumnsPlusPlusData& data, Scintilla::Positio
 }
 
 bool convertSelectionToSearchRegion(ColumnsPlusPlusData& data) {
-    if (data.sci.Selections() < 2 || data.sci.SelectionMode() != Scintilla::SelectionMode::Stream) {
-        RectangularSelection rs(data);
+    RectangularSelection rs(data);
+    if (rs.size() || (data.sci.Selections() < 2 && rs.anchor().ln == rs.caret().ln)) {
         rs.extend();
         if (!rs.size()) return false;
     }
