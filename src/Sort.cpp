@@ -433,8 +433,18 @@ INT_PTR CALLBACK sortDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
                         ebt.cbStruct = sizeof(EDITBALLOONTIP);
                         ebt.pszTitle = L"";
                         ebt.ttiIcon = TTI_NONE;
-                        ebt.pszText = found == -2 ? L"Invalid regular expression."
-                                                  : L"An unidentified error occurred processing this regular expression.";
+                        std::wstring ebtText;
+                        if (!n) ebt.pszText = L"A regular expression is required to perform a regular expression sort.";
+                        else if (found == -2) {
+                            if (size_t msglen = data.sci.Call(static_cast<Scintilla::Message>(SCI_GETBOOSTREGEXERRMSG), 0, 0)) {
+                                std::string msg(msglen, 0);
+                                data.sci.Call(static_cast<Scintilla::Message>(SCI_GETBOOSTREGEXERRMSG), msglen , reinterpret_cast<LPARAM>(msg.data()));
+                                ebtText = toWide(msg, CP_UTF8);
+                                ebt.pszText = ebtText.data();
+                            }
+                            else ebt.pszText = L"Invalid regular expression.";
+                        }
+                        else ebt.pszText = L"An unidentified error occurred processing this regular expression.";
                         SendMessage(cbi.hwndItem, EM_SHOWBALLOONTIP, 0, reinterpret_cast<LPARAM>(&ebt));
                         SendMessage(hwndDlg, WM_NEXTDLGCTL, reinterpret_cast<WPARAM>(cbi.hwndItem), TRUE);
                         return TRUE;

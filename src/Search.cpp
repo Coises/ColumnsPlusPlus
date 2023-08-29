@@ -185,6 +185,32 @@ void setSearchMessage(const ColumnsPlusPlusData& data, const std::wstring& text)
     InvalidateRect(data.searchData.dialog, 0, TRUE);
 }
 
+void showSearchError(ColumnsPlusPlusData& data, Scintilla::Position found) {
+    if (found > -2) return;
+    if (found < -2) {
+        setSearchMessage(data, L"An unidentified error occurred (SEARCHINTARGET returned " + std::to_wstring(found) + L").");
+        return;
+    }
+    setSearchMessage(data, L"Invalid regular expression.");
+    HWND h = GetDlgItem(data.searchData.dialog, IDC_FIND_WHAT);
+    SendMessage(data.searchData.dialog, WM_NEXTDLGCTL, reinterpret_cast<WPARAM>(h), TRUE);
+    size_t n = data.sci.Call(static_cast<Scintilla::Message>(SCI_GETBOOSTREGEXERRMSG), 0, 0);
+    if (n) {
+        std::string msg(n, 0);
+        data.sci.Call(static_cast<Scintilla::Message>(SCI_GETBOOSTREGEXERRMSG), n, reinterpret_cast<LPARAM>(msg.data()));
+        std::wstring wmsg = toWide(msg, CP_UTF8);
+        COMBOBOXINFO cbi;
+        cbi.cbSize = sizeof(COMBOBOXINFO);
+        GetComboBoxInfo(GetDlgItem(data.searchData.dialog, IDC_FIND_WHAT), &cbi);
+        EDITBALLOONTIP ebt;
+        ebt.cbStruct = sizeof(EDITBALLOONTIP);
+        ebt.pszTitle = L"";
+        ebt.ttiIcon = TTI_NONE;
+        ebt.pszText = wmsg.data();
+        SendMessage(cbi.hwndItem, EM_SHOWBALLOONTIP, 0, reinterpret_cast<LPARAM>(&ebt));
+    }
+}
+
 
 BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
@@ -487,16 +513,15 @@ bool searchPrepare(ColumnsPlusPlusData& data, std::string* sciFind, std::vector<
     return true;
 }
 
-void prepareSubstitutions(ColumnsPlusPlusData& data, const std::string& sciFind, const std::vector<std::string>& sciRepl) {
+bool prepareSubstitutions(ColumnsPlusPlusData& data, const std::string& sciFind, const std::vector<std::string>& sciRepl) {
     auto& rc = *data.searchData.regexCalc;
-    if (sciRepl == rc.replacement) return;
+    if (sciRepl == rc.replacement) return true;
     rc.clear();
-    if (sciRepl.size() == 1) return;
-    rc.replacement = sciRepl;
-    for (size_t i = 1; i < rc.replacement.size(); i += 2) {
+    if (sciRepl.size() == 1) return true;
+    for (size_t i = 1; i < sciRepl.size(); i += 2) {
         auto& formula = rc.formula.emplace_back();
         formula.expression.register_symbol_table(rc.symbol_table);
-        std::string s = rc.replacement[i];
+        std::string s = sciRepl[i];
         std::smatch m;
         if (std::regex_match(s, m, rxFormat)) {
             if (m[1].matched) {
@@ -514,10 +539,26 @@ void prepareSubstitutions(ColumnsPlusPlusData& data, const std::string& sciFind,
             }
             s = m[6];
         }
-        rc.parser.compile(s, formula.expression);
+        if (!rc.parser.compile(s, formula.expression)) {
+            auto error = rc.parser.get_error(0);
+            std::wstring msg = L"Formula " + std::to_wstring((i + 1) / 2) + L": " + toWide(error.diagnostic, CP_UTF8);
+            COMBOBOXINFO cbi;
+            cbi.cbSize = sizeof(COMBOBOXINFO);
+            GetComboBoxInfo(GetDlgItem(data.searchData.dialog, IDC_REPLACE_WITH), &cbi);
+            EDITBALLOONTIP ebt;
+            ebt.cbStruct = sizeof(EDITBALLOONTIP);
+            ebt.pszTitle = L"";
+            ebt.ttiIcon = TTI_NONE;
+            ebt.pszText = msg.data();
+            SendMessage(cbi.hwndItem, EM_SHOWBALLOONTIP, 0, reinterpret_cast<LPARAM>(&ebt));
+            SendMessage(data.searchData.dialog, WM_NEXTDLGCTL, reinterpret_cast<WPARAM>(cbi.hwndItem), TRUE);
+            return false;
+        }
     }
     rc.history.lastFiniteResult.insert(rc.history.lastFiniteResult.end(), rc.formula.size(), 0);
     rc.maxCapture = std::count(sciFind.begin(), sciFind.end(), '(');
+    rc.replacement = sciRepl;
+    return true;
 }
 
 std::string calculateSubstitutions(ColumnsPlusPlusData& data, Scintilla::Position found) {
@@ -626,15 +667,7 @@ void ColumnsPlusPlusData::searchCount() {
                 sci.SetTargetRange(cpFrom, cpTo);
                 Scintilla::Position found = sci.SearchInTarget(sciFind);
                 if (found == -1) break;
-                if (found < -1) {
-                    if (found == -2) {
-                        setSearchMessage(*this, L"Invalid regular expression.");
-                        SetFocus(GetDlgItem(searchData.dialog, IDC_FIND_WHAT));
-                    }
-                    else setSearchMessage(*this, L"An unidentified error occurred (SEARCHINTARGET returned "
-                                                 + std::to_wstring(found) + L").");
-                    return;
-                }
+                if (found < -1) return showSearchError(*this, found);
                 ++count;
                 Scintilla::Position targetEnd = sci.TargetEnd();
                 cpFrom = cpFrom == targetEnd ? cpFrom + 1 : targetEnd;
@@ -672,15 +705,7 @@ void ColumnsPlusPlusData::searchFind(bool postReplace) {
                                                             : L"Match replaced; next match found.");
                 return;
             }
-            if (found < -1) {
-                if (found == -2) {
-                    setSearchMessage(*this, L"Invalid regular expression.");
-                    SetFocus(GetDlgItem(searchData.dialog, IDC_FIND_WHAT));
-                }
-                else setSearchMessage(*this, L"An unidentified error occurred (SEARCHINTARGET returned "
-                    + std::to_wstring(found) + L").");
-                return;
-            }
+            if (found < -1) return showSearchError(*this, found);
         }
         if (searchData.backward ? cpTo == 0 : cpTo == documentLength) break;
         cpFrom = cpTo;
@@ -695,11 +720,11 @@ void ColumnsPlusPlusData::searchReplace() {
     std::string sciFind;
     std::vector<std::string> sciRepl;
     if (!searchPrepare(*this, &sciFind, &sciRepl)) return;
-    prepareSubstitutions(*this, sciFind, sciRepl);
+    if (!prepareSubstitutions(*this, sciFind, sciRepl)) return;
     Scintilla::Position anchor = sci.Anchor();
-    Scintilla::Position caret = sci.CurrentPos();
-    Scintilla::Position start = std::min(anchor, caret);
-    Scintilla::Position end   = std::max(anchor, caret);
+    Scintilla::Position caret  = sci.CurrentPos();
+    Scintilla::Position start  = std::min(anchor, caret);
+    Scintilla::Position end    = std::max(anchor, caret);
     if (!sci.IndicatorValueAt(searchData.indicator, start)) return searchFind();
     sci.SetTargetRange(start, sci.IndicatorEnd(searchData.indicator, start));
     Scintilla::Position found = sci.SearchInTarget(sciFind);
@@ -709,7 +734,7 @@ void ColumnsPlusPlusData::searchReplace() {
                                                                                      : sci.ReplaceTarget(r);
         sci.SetIndicatorCurrent(searchData.indicator);
         sci.SetIndicatorValue(1);
-        sci.IndicatorFillRange(anchor, replacementLength);
+        sci.IndicatorFillRange(start, replacementLength);
         caret = searchData.backward ? start : start + replacementLength;
         showRange(*this, caret, caret);
         setSearchMessage(*this, L"Match replaced.");
@@ -718,13 +743,7 @@ void ColumnsPlusPlusData::searchReplace() {
         return;
     }
     if (found >= -1) return searchFind();
-    if (found == -2) {
-        setSearchMessage(*this, L"Invalid regular expression.");
-        SetFocus(GetDlgItem(searchData.dialog, IDC_FIND_WHAT));
-        return;
-    }
-    setSearchMessage(*this, L"An unidentified error occurred (SEARCHINTARGET returned "
-                             + std::to_wstring(found) + L").");
+    showSearchError(*this, found);
 }
 
 void ColumnsPlusPlusData::searchReplaceAll() {
@@ -735,7 +754,7 @@ void ColumnsPlusPlusData::searchReplaceAll() {
         if (!convertSelectionToSearchRegion(*this)) return;
         searchData.wrap = false;
     }
-    prepareSubstitutions(*this, sciFind, sciRepl);
+    if (!prepareSubstitutions(*this, sciFind, sciRepl)) return;
     int count = 0;
     sci.BeginUndoAction();
     for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < sci.Length(); cpFrom = cpTo) {
@@ -745,15 +764,7 @@ void ColumnsPlusPlusData::searchReplaceAll() {
                 sci.SetTargetRange(cpFrom, cpTo);
                 Scintilla::Position found = sci.SearchInTarget(sciFind);
                 if (found == -1) break;
-                if (found < -1) {
-                    if (found == -2) {
-                        setSearchMessage(*this, L"Invalid regular expression.");
-                        SetFocus(GetDlgItem(searchData.dialog, IDC_FIND_WHAT));
-                    }
-                    else setSearchMessage(*this, L"An unidentified error occurred (SEARCHINTARGET returned "
-                        + std::to_wstring(found) + L").");
-                    return;
-                }
+                if (found < -1) return showSearchError(*this, found);
                 ++count;
                 Scintilla::Position oldLength = sci.TargetEnd() - found;
                 std::string r = sciRepl.size() == 1 ? sciRepl[0] : calculateSubstitutions(*this, found);
