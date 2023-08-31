@@ -125,6 +125,25 @@ void expandExtendedSearchString(std::string& s, UINT codepage) {
     s = r;
 }
 
+bool updateSearchRegion(ColumnsPlusPlusData& data, bool modify = false, bool remove = false) {
+    bool postClear = data.searchData.autoClearSelection
+                  || ( modify
+                    && data.searchData.autoSetSelection
+                    && ( data.sci.SelectionMode() != Scintilla::SelectionMode::Stream || data.sci.Selections() > 1 )
+                    && ( data.sci.IndicatorValueAt(data.searchData.indicator, 0)
+                      || ( data.sci.IndicatorEnd(data.searchData.indicator, 0) != 0
+                        && data.sci.IndicatorEnd(data.searchData.indicator, 0) != data.sci.Length() ) ) );
+    data.sci.SetIndicatorCurrent(data.searchData.indicator);
+    if (!modify) data.sci.IndicatorClearRange(0, data.sci.Length());
+    data.sci.SetIndicatorValue(1);
+    int n = data.sci.Selections();
+    if (remove)
+         for (int i = 0; i < n; ++i) data.sci.IndicatorClearRange(data.sci.SelectionNStart(i), data.sci.SelectionNEnd(i) - data.sci.SelectionNStart(i));
+    else for (int i = 0; i < n; ++i) data.sci.IndicatorFillRange (data.sci.SelectionNStart(i), data.sci.SelectionNEnd(i) - data.sci.SelectionNStart(i));
+    if (postClear) data.sci.SetEmptySelection(data.sci.CurrentPos());
+    return true;
+}
+
 void searchLayout(const SearchData& sd, const RECT& rcDialog) {
     HWND ctrl;
     RECT rect;
@@ -155,10 +174,12 @@ void updateSearchSettings(SearchData& searchData) {
         SendDlgItemMessage(searchData.dialog, IDC_SEARCH_NORMAL  , BM_GETCHECK, 0, 0) == BST_CHECKED ? SearchData::Normal
       : SendDlgItemMessage(searchData.dialog, IDC_SEARCH_EXTENDED, BM_GETCHECK, 0, 0) == BST_CHECKED ? SearchData::Extended
                                                                                                      : SearchData::Regex;
-    searchData.backward  = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_BACKWARD           , BM_GETCHECK, 0, 0) == BST_CHECKED;
-    searchData.wholeWord = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_WHOLE_WORD         , BM_GETCHECK, 0, 0) == BST_CHECKED;
-    searchData.matchCase = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_MATCH_CASE         , BM_GETCHECK, 0, 0) == BST_CHECKED;
-    searchData.autoClear = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_INDICATOR_AUTOCLEAR, BM_GETCHECK, 0, 0) == BST_CHECKED;
+    searchData.backward           = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_BACKWARD           , BM_GETCHECK, 0, 0) == BST_CHECKED;
+    searchData.wholeWord          = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_WHOLE_WORD         , BM_GETCHECK, 0, 0) == BST_CHECKED;
+    searchData.matchCase          = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_MATCH_CASE         , BM_GETCHECK, 0, 0) == BST_CHECKED;
+    searchData.autoClear          = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_INDICATOR_AUTOCLEAR, BM_GETCHECK, 0, 0) == BST_CHECKED;
+    searchData.autoClearSelection = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_SELECTION_AUTOCLEAR, BM_GETCHECK, 0, 0) == BST_CHECKED;
+    searchData.autoSetSelection   = SendDlgItemMessage(searchData.dialog, IDC_SEARCH_SELECTION_AUTOSET  , BM_GETCHECK, 0, 0) == BST_CHECKED;
 }
 
 void updateSearchHistory(HWND dialog, int control, const std::wstring& string, std::vector<std::wstring>& history) {
@@ -242,17 +263,17 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
         }
         switch (searchData.mode) {
         case SearchData::Normal:
-            SendDlgItemMessage(hwndDlg, IDC_SEARCH_NORMAL, BM_SETCHECK, BST_CHECKED, 0);
+            CheckRadioButton(hwndDlg, IDC_SEARCH_NORMAL, IDC_SEARCH_REGEX, IDC_SEARCH_NORMAL);
             EnableWindow(GetDlgItem(hwndDlg, IDC_SEARCH_BACKWARD  ), TRUE);
             EnableWindow(GetDlgItem(hwndDlg, IDC_SEARCH_WHOLE_WORD), TRUE);
             break;
         case SearchData::Extended:
-            SendDlgItemMessage(hwndDlg, IDC_SEARCH_EXTENDED, BM_SETCHECK, BST_CHECKED, 0);
+            CheckRadioButton(hwndDlg, IDC_SEARCH_NORMAL, IDC_SEARCH_REGEX, IDC_SEARCH_EXTENDED);
             EnableWindow(GetDlgItem(hwndDlg, IDC_SEARCH_BACKWARD  ), TRUE);
             EnableWindow(GetDlgItem(hwndDlg, IDC_SEARCH_WHOLE_WORD), TRUE);
             break;
         case SearchData::Regex:
-            SendDlgItemMessage(hwndDlg, IDC_SEARCH_REGEX, BM_SETCHECK, BST_CHECKED, 0);
+            CheckRadioButton(hwndDlg, IDC_SEARCH_NORMAL, IDC_SEARCH_REGEX, IDC_SEARCH_REGEX);
             EnableWindow(GetDlgItem(hwndDlg, IDC_SEARCH_BACKWARD  ), FALSE);
             EnableWindow(GetDlgItem(hwndDlg, IDC_SEARCH_WHOLE_WORD), FALSE);
             break;
@@ -281,7 +302,9 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
         case 21: SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_SETCURSEL, 5, 0); break;
         default: SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_SETCURSEL, 6, 0);
         }
-        SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR_AUTOCLEAR, BM_SETCHECK, searchData.autoClear ? BST_CHECKED : BST_UNCHECKED, 0);
+        SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR_AUTOCLEAR, BM_SETCHECK, searchData.autoClear          ? BST_CHECKED : BST_UNCHECKED, 0);
+        SendDlgItemMessage(hwndDlg, IDC_SEARCH_SELECTION_AUTOCLEAR, BM_SETCHECK, searchData.autoClearSelection ? BST_CHECKED : BST_UNCHECKED, 0);
+        SendDlgItemMessage(hwndDlg, IDC_SEARCH_SELECTION_AUTOSET  , BM_SETCHECK, searchData.autoSetSelection   ? BST_CHECKED : BST_UNCHECKED, 0);
         syncFindButton();
         SendMessage(nppData._nppHandle, NPPM_MODELESSDIALOG, MODELESSDIALOGADD, reinterpret_cast<LPARAM>(hwndDlg));
         return TRUE;
@@ -326,6 +349,18 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
             updateReplaceHistory(searchData);
             searchReplaceAll();
             syncFindButton();
+            return TRUE;
+        case IDC_SEARCH_SELECTION_SET:
+            updateSearchSettings(searchData);
+            updateSearchRegion(*this);
+            return TRUE;
+        case IDC_SEARCH_SELECTION_ADD:
+            updateSearchSettings(searchData);
+            updateSearchRegion(*this, true);
+            return TRUE;
+        case IDC_SEARCH_SELECTION_REMOVE:
+            updateSearchSettings(searchData);
+            updateSearchRegion(*this, true, true);
             return TRUE;
         case IDC_SEARCH_NORMAL:
         case IDC_SEARCH_EXTENDED:
@@ -649,10 +684,11 @@ bool convertSelectionToSearchRegion(ColumnsPlusPlusData& data) {
         if (!rs.size()) return false;
     }
     data.sci.SetIndicatorCurrent(data.searchData.indicator);
-    if (data.searchData.autoClear) data.sci.IndicatorClearRange(0, data.sci.Length());
+    data.sci.IndicatorClearRange(0, data.sci.Length());
     data.sci.SetIndicatorValue(1);
     int n = data.sci.Selections();
     for (int i = 0; i < n; ++i) data.sci.IndicatorFillRange(data.sci.SelectionNStart(i), data.sci.SelectionNEnd(i) - data.sci.SelectionNStart(i));
+    if (data.searchData.autoClearSelection) data.sci.SetEmptySelection(data.sci.CurrentPos());
     return true;
 }
 
