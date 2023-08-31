@@ -416,9 +416,10 @@ public:
 
     void syncFindButton() {
         if (searchData.dialog) {
+            bool backward = searchData.mode != SearchData::Regex && searchData.backward;
             HWND findButton = GetDlgItem(searchData.dialog, IDOK);
-            if (searchRegionReady() && !searchData.wrap) SetWindowText(findButton, searchData.backward ? L"Find Previous" : L"Find Next" );
-                                                    else SetWindowText(findButton, searchData.backward ? L"Find Last"     : L"Find First");
+            if (searchRegionReady() && !searchData.wrap) SetWindowText(findButton, backward ? L"Find Previous" : L"Find Next" );
+                                                    else SetWindowText(findButton, backward ? L"Find Last"     : L"Find First");
         }
     }
 
