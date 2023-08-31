@@ -143,6 +143,8 @@ public:
     bool wholeWord             = false;
     bool matchCase             = false;
     bool autoClear             = true;
+    bool autoClearSelection    = false;
+    bool autoSetSelection      = true;
     bool enableCustomIndicator = true;      // assign a custom indicator for column searches
     bool forceUserIndicator    = false;     // when false, allocatedIndicator is used if available; when true, userIndicator is used
     int  indicator             = 18;        // indicator used for searches; any number between 9 and 20 is a custom indicator
@@ -408,8 +410,10 @@ public:
     }
 
     bool searchRegionReady() {
-        if (sci.SelectionMode() != Scintilla::SelectionMode::Stream) return false;
-        if (sci.Selections() > 1) return false;
+        if (searchData.autoSetSelection) {
+            if (sci.SelectionMode() != Scintilla::SelectionMode::Stream) return false;
+            if (sci.Selections() > 1) return false;
+        }
         if (sci.IndicatorValueAt(searchData.indicator, 0)) return true;
         return sci.IndicatorEnd(searchData.indicator, 0) != 0 && sci.IndicatorEnd(searchData.indicator, 0) != sci.Length();
     }

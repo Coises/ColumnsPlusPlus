@@ -19,7 +19,7 @@
 // Configuration level 3 - 0.5     - moved former calculateInsert, calculateAddLine and thousandsSeparator from LastSettings to Calculate section
 // Configuration level 4 - 0.6.1   - Search section now uses enableCustomIndicator and forceUserIndicator instead of negative custom(user)Indicator
 // Configuration level 5 - 0.7     - Removed Calculate: unitIsMinutes and showDays, added timeSegments and autoDecimals;
-//                                   added LastSettings: timeScalarUnit, timePartialRule, timeFormatEnable
+//                                   added LastSettings: timeScalarUnit, timePartialRule, timeFormatEnable; Search: autoClearSelection, autoSetSelection
 
 
 #include "ColumnsPlusPlus.h"
@@ -173,6 +173,8 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 else if (setting == "aligned"      ) calc.aligned       = value != "0";
                 else if (setting == "left"         ) calc.left          = value != "0";
                 else if (setting == "autodecimals" ) calc.autoDecimals  = value != "0";
+                else if (setting == "formula"      ) calc.formulaHistory.push_back(decodeDelimitedString(value));
+                else if (setting == "regex"        ) calc.regexHistory.push_back(decodeDelimitedString(value));
                 else if (setting == "thousands") {
                     strlwr(value.data());
                     calc.thousands = value == "comma"      ? CalculateSettings::Comma
@@ -180,30 +182,6 @@ void ColumnsPlusPlusData::loadConfiguration() {
                                    : value == "apostrophe" ? CalculateSettings::Apostrophe
                                    : value == "blank"      ? CalculateSettings::Blank
                                                            : CalculateSettings::None;
-                }
-                else if (setting == "formula") {
-                    if (value.length() > 2 && value.front() == '\\' && value.back() == '\\') {
-                        std::wstring s = toWide(value.substr(1, value.length() - 2), CP_UTF8);
-                        for (size_t i = 0; i < s.length() - 1; ++i) if (s[i] == L'\\') switch (s[i + 1]) {
-                        case L'r': s.replace(i, 2, L"\r"); break;
-                        case L'n': s.replace(i, 2, L"\n"); break;
-                        case L'\\': s.replace(i, 2, L"\\"); break;
-                        default:;
-                        }
-                        calc.formulaHistory.push_back(s);
-                    }
-                }
-                else if (setting == "regex") {
-                    if (value.length() > 2 && value.front() == '\\' && value.back() == '\\') {
-                        std::wstring s = toWide(value.substr(1, value.length() - 2), CP_UTF8);
-                        for (size_t i = 0; i < s.length() - 1; ++i) if (s[i] == L'\\') switch (s[i + 1]) {
-                        case L'r': s.replace(i, 2, L"\r"); break;
-                        case L'n': s.replace(i, 2, L"\n"); break;
-                        case L'\\': s.replace(i, 2, L"\\"); break;
-                        default:;
-                        }
-                        calc.regexHistory.push_back(s);
-                    }
                 }
                 else if (std::regex_match(value, integerValue)) {
                     if (setting == "decimalplaces") calc.decimalPlaces = std::stoi(value);
@@ -218,32 +196,12 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 else if (setting == "wholeword"            ) searchData.wholeWord             = value != "0";
                 else if (setting == "matchcase"            ) searchData.matchCase             = value != "0";
                 else if (setting == "autoclear"            ) searchData.autoClear             = value != "0";
+                else if (setting == "autoclearselection"   ) searchData.autoClearSelection    = value != "0";
+                else if (setting == "autosetselection"     ) searchData.autoSetSelection      = value != "0";
                 else if (setting == "enablecustomindicator") searchData.enableCustomIndicator = value != "0";
                 else if (setting == "forceuserindicator"   ) searchData.forceUserIndicator    = value != "0";
-                else if (setting == "find") {
-                    if (value.length() > 2 && value.front() == '\\' && value.back() == '\\') {
-                        std::wstring s = toWide(value.substr(1, value.length() - 2), CP_UTF8);
-                        for (size_t i = 0; i < s.length() - 1; ++i) if (s[i] == L'\\') switch (s[i+1]) {
-                            case L'r' : s.replace(i, 2, L"\r"); break;
-                            case L'n' : s.replace(i, 2, L"\n"); break;
-                            case L'\\': s.replace(i, 2, L"\\"); break;
-                            default:;
-                        }
-                        searchData.findHistory.push_back(s);
-                    }
-                }
-                else if (setting == "replace") {
-                    if (value.length() > 2 && value.front() == '\\' && value.back() == '\\') {
-                        std::wstring s = toWide(value.substr(1, value.length() - 2), CP_UTF8);
-                        for (size_t i = 0; i < s.length() - 1; ++i) if (s[i] == L'\\') switch (s[i+1]) {
-                            case L'r' : s.replace(i, 2, L"\r"); break;
-                            case L'n' : s.replace(i, 2, L"\n"); break;
-                            case L'\\': s.replace(i, 2, L"\\"); break;
-                            default:;
-                        }
-                        searchData.replaceHistory.push_back(s);
-                    }
-                }
+                else if (setting == "find"                 ) searchData.findHistory.push_back(decodeDelimitedString(value));
+                else if (setting == "replace"              ) searchData.replaceHistory.push_back(decodeDelimitedString(value));
                 else if (std::regex_match(value, integerValue)) {
                     if (setting == "mode") {
                         int i = std::stoi(value);
@@ -395,30 +353,8 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "left\t"          << calc.left          << std::endl;
     file << "timeSegments\t"  << calc.timeSegments  << std::endl;
     file << "autoDecimals\t"  << calc.autoDecimals  << std::endl;
-
-    for (auto it = calc.formulaHistory.size() > 16 ? calc.formulaHistory.end() - 16 : calc.formulaHistory.begin();
-        it != calc.formulaHistory.end(); ++it) {
-        std::wstring s = *it;
-        for (size_t i = 0; i < s.length(); ++i) switch (s[i]) {
-        case L'\r': s.replace(i, 1, L"\\r"); ++i; break;
-        case L'\n': s.replace(i, 1, L"\\n"); ++i; break;
-        case L'\\': s.replace(i, 1, L"\\\\"); ++i; break;
-        default:;
-        }
-        file << "formula\t\\" << fromWide(s, CP_UTF8) << "\\" << std::endl;
-    }
-
-    for (auto it = calc.regexHistory.size() > 16 ? calc.regexHistory.end() - 16 : calc.regexHistory.begin();
-        it != calc.regexHistory.end(); ++it) {
-        std::wstring s = *it;
-        for (size_t i = 0; i < s.length(); ++i) switch (s[i]) {
-        case L'\r': s.replace(i, 1, L"\\r"); ++i; break;
-        case L'\n': s.replace(i, 1, L"\\n"); ++i; break;
-        case L'\\': s.replace(i, 1, L"\\\\"); ++i; break;
-        default:;
-        }
-        file << "regex\t\\" << fromWide(s, CP_UTF8) << "\\" << std::endl;
-    }
+    writeDelimitedStringHistory(file, "formula", calc.formulaHistory);
+    writeDelimitedStringHistory(file, "regex"  , calc.regexHistory);
 
     file << std::endl << "Search" << std::endl << std::endl;
 
@@ -427,36 +363,16 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "wholeWord\t"             << searchData.wholeWord             << std::endl;
     file << "matchCase\t"             << searchData.matchCase             << std::endl;
     file << "autoClear\t"             << searchData.autoClear             << std::endl;
+    file << "autoClearSelection\t"    << searchData.autoClearSelection    << std::endl;
+    file << "autoSetSelection\t"      << searchData.autoSetSelection      << std::endl;
     file << "enableCustomIndicator\t" << searchData.enableCustomIndicator << std::endl;
     file << "forceUserIndicator\t"    << searchData.forceUserIndicator    << std::endl;
     file << "indicator\t"             << searchData.indicator             << std::endl;
     file << "customAlpha\t"           << searchData.customAlpha           << std::endl;
     file << "customColor\t"           << searchData.customColor           << std::endl;
     file << "customIndicator\t"       << searchData.userIndicator         << std::endl;
-
-    for (auto it = searchData.findHistory.size() > 16 ? searchData.findHistory.end() - 16 : searchData.findHistory.begin();
-        it != searchData.findHistory.end(); ++it) {
-        std::wstring s = *it;
-        for (size_t i = 0; i < s.length(); ++i) switch (s[i]) {
-            case L'\r': s.replace(i, 1, L"\\r" ); ++i; break;
-            case L'\n': s.replace(i, 1, L"\\n" ); ++i; break;
-            case L'\\': s.replace(i, 1, L"\\\\"); ++i; break;
-            default:;
-            }
-        file << "find\t\\" << fromWide(s, CP_UTF8) << "\\" << std::endl;
-    }
-
-    for (auto it = searchData.replaceHistory.size() > 16 ? searchData.replaceHistory.end() - 16 : searchData.replaceHistory.begin();
-        it != searchData.replaceHistory.end(); ++it) {
-        std::wstring s = *it;
-        for (size_t i = 0; i < s.length(); ++i) switch (s[i]) {
-            case L'\r': s.replace(i, 1, L"\\r" ); ++i; break;
-            case L'\n': s.replace(i, 1, L"\\n" ); ++i; break;
-            case L'\\': s.replace(i, 1, L"\\\\"); ++i; break;
-            default:;
-            }
-        file << "replace\t\\" << fromWide(s, CP_UTF8) << "\\" << std::endl;
-    }
+    writeDelimitedStringHistory(file, "find"   , searchData.findHistory);
+    writeDelimitedStringHistory(file, "replace", searchData.replaceHistory);
 
     file << std::endl << "Sort" << std::endl << std::endl;
 
