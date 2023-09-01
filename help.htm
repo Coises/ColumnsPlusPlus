@@ -79,11 +79,14 @@ body #centershortlines ~ article section   {max-width: 48em;}
 
 p.subsub            {margin-left: 1.5em;}
 
-
 table.optionsTable        {border: none; margin: 1em 0 1em 1em; border-collapse: collapse;}
 table.optionsTable th     {padding: .5em .5em .5em .5em; font-weight: bold;   text-align: left; vertical-align: top; border: 1px solid black;}
 table.optionsTable td     {padding: .5em .5em .5em .5em; font-weight: normal; text-align: left; vertical-align: top; border: 1px solid black;}
 table.optionsTable .group {text-align: center; background: #d0d0d0; }
+
+table.justAlign       {border: none; margin: 0; border-collapse: collapse;}
+table.justAlign td    {border:none; padding: 0; font: inherit;}
+table.justAlign td+td {padding: 0 0 0 1em;}
 
 ul.optionslist    {margin-top: .5em; margin-bottom: .5em;}
 ul.optionslist li {font-weight: bold;}
@@ -137,16 +140,17 @@ window.addEventListener("load", doPageLoad);
 <div id=centershortlines></div>
 
 <nav class=pagenav><a href="#introduction">Introduction</a>
-<a href="#purpose"    >Purpose and limitations</a>
-<a href="#elastic"    >Elastic tabstops</a>
-<a href="#rectangular">Rectangular selections</a>
-<a href="#search"     >Search</a>
-<a href="#calculation">Calculation</a>
-<a href="#formulas"   >Formulas</a>
-<a href="#alignment"  >Alignment</a>
-<a href="#sorting"    >Sorting</a>
-<a href="#conversion" >Conversion</a>
-<a href="#options"    >Options</a></nav>
+<a href="#purpose"      >Purpose and limitations</a>
+<a href="#elastic"      >Elastic tabstops</a>
+<a href="#rectangular"  >Rectangular selections</a>
+<a href="#search"       >Search</a>
+<a href="#calculation"  >Calculation</a>
+<a href="#formulas"     >Formulas</a>
+<a href="#alignment"    >Alignment</a>
+<a href="#sorting"      >Sorting</a>
+<a href="#conversion"   >Conversion</a>
+<a href="#numberformats">Number formats</a>
+<a href="#options"      >Options</a></nav>
 
 <article>
 
@@ -260,33 +264,94 @@ window.addEventListener("load", doPageLoad);
 
 <section id=search><h2>Search</h2>
 
-<p><strong>Columns++</strong> offers the ability to find and replace within a region marked by an <em>indicator</em>. <strong>Notepad++</strong> uses several indicators, including the 1st to 5th Styles from the Search menu and the Find Mark Style used by the <strong>Mark</strong> function. <strong>Columns++</strong> lets you use any one of those six indicators, or a custom indicator, to define the region for searching.</p>
+<p><strong>Columns++</strong> offers the ability to find and replace within a region marked by an <em>indicator</em>. <strong>Notepad++</strong> uses several indicators, including the 1st to 5th Styles from the Search menu and the Find Mark Style used by the <strong>Mark</strong> function. <strong>Columns++</strong> lets you use any one of those six indicators, or a custom indicator, to define the region for searching. By default, if there is a rectangular or multiple selection when you begin a search, <strong>Columns++</strong> will use it to set the search region.</p>
 
-<p>The <strong>Search...</strong> item on the <strong>Columns++</strong> menu opens the <strong>Search in indicated region</strong> dialog. Most of the options on this dialog are similar to the corresponding <strong>Notepad++</strong> search options.</p>
+<p>The <strong>Search...</strong> item on the <strong>Columns++</strong> menu opens the <strong>Search in indicated region</strong> dialog. Many of the options on this dialog are similar to the corresponding <strong>Notepad++</strong> search options. You can drag the left or right edge of this dialog to make it wider, and you can leave it open while you edit the document in other ways.</p>
 
-<p>When you initiate a search, <strong>Columns++</strong> looks for a rectangular selection or a multiple selection from which to create a search region. If you do not have a such a selection but you do have text marked with the indicator you are using for search, the search proceeds within the indicated region. If you have neither a searchable region nor a rectangular or multiple selection, <strong>Columns++</strong> will prompt you to make a selection.</p>
+<h3>Find what</h3>
 
-<p>Segments of the indicated region are searched sequentially (forward or backward), one at a time. It is not possible for a single match to span multiple segments. When no more occurrences of the search string can be found, <strong>Columns++</strong> gives a status message to that effect; if focus remains on the search dialog, the next search will resume from the beginning of the region.</p>
+<p>The <strong>Find what</strong> box specifies the text, extended text or regular expression for which to search. Contiguous segments of the indicated region are searched sequentially (forward or backward), one at a time. It is not possible for a single match to span multiple segments. (E.g., for a region derived from a rectangular selection, each match must be contained in a single row.) When no more occurrences of the search string can be found, <strong>Columns++</strong> gives a status message to that effect; if focus remains on the search dialog, the next search will resume from the beginning of the region.</p>
 
-<p>The <strong>Indicator</strong> section at the bottom of the <strong>Search in indicated region</strong> dialog lets you select which indicator will be used to identify the search region.</p>
+<p>When using regular expressions, the circumflex (<strong>^</strong>) and the dollar sign (<strong>$</strong>) match the beginning and end (respectively) of contiguous segments of the search region as well as their usual match to the beginning and ending of a line. This is particularly useful when the search region comes from a column selection, since <strong>^</strong> and <strong>$</strong> will match the left and right ends of the selection in each row.</p>
 
-<p>The <strong>Clear automatically</strong> checkbox determines whether an existing indicated region is cleared when the dialog is closed and when initiating a search when you have a rectangular or multiple selection. This option is set to checked when you choose the <strong>Custom Style</strong> indicator and to unchecked when you choose any other indicator; however, you may change it after you select an indicator and it will stick until you change the indicator again.</p>
+<p>Look-behind assertions (<strong>(?&lt;=...)</strong> and <strong>(?&lt;!...)</strong>) examine the preceding characters without regard to region boundaries. Look-ahead assertions (<strong>(?=...)</strong> and <strong>(?!...)</strong>) do not look past the end of the contiguous segment of the search region in which they appear (e.g., for a region derived from a rectangular selection, they cannot see past the end of the selected text in each row).</p>
 
-<p>The <strong>Clear</strong> button in the <strong>Indicator</strong> section clears the current search indicator, so that there is no search region indicated.</p>
+<h3>Replace with</h3>
 
-<p>It is currently possible to select both <strong>Backward direction</strong> and <strong>Regular expression</strong>; however, this combination may produce unexpected results.</p>
+<p>The <strong>Replace with</strong> box specifies the text, extended text or regular expression replacement for <strong>Replace</strong> and <strong>Replace All</strong> searches.</p>
+
+<p>When using regular expressions, the replacement can contain formulas, specified as:
+<br><strong>(?=<em>formula</em>)</strong> or <strong>(?=<em>format</em>:<em>formula</em>)</strong>
+<br>within the replacement string; the <a href="#formulas">Formulas</a> section describes them in detail.</p>
+
+<h3>Other controls in the Search dialog</h3>
+
+<p>When you use one of the search buttons in the upper right (<strong>Find</strong>, <strong>Count</strong>, <strong>Replace</strong> or <strong>Replace All</strong>),
+the region used for the search is determined by whether a region is already defined using the selected indicator, what text you have selected, and the <strong>Auto set</strong> check box in the <strong>Selection -&gt; Region</strong> group box:</p>
+
+<table class=optionsTable>
+<tr><th>type of selection</th><th>no search region defined</th><th>search region defined,<br><em>Auto set</em> checked</th><th>search region defined,<br><em>Auto set</em> not checked</th></tr>
+<tr><th>nothing selected</th>
+<td rowspan=2><strong>Columns++</strong> will prompt you to make a rectangular selection based on the current selection or cursor position.</td>
+<td rowspan=3>The search region is not changed. Stepwise searching (<strong>Find</strong> or <strong>Replace</strong>) begins or continues from the position of the cursor or past the selection.</td>
+<td rowspan=4><p>The search region is not changed. Stepwise searching begins or continues from the position of the cursor or past the selection.</p>
+<p>For rectangular and multiple selections, the primary selection (the one containing the cursor) determines where stepwise searching begins or continues.</p></td>
+</tr>
+<tr><th>selection within a single line</th></tr>
+<tr><th>multi-line selection</th>
+<td>The search region is set to the selection.</td>
+</tr>
+<tr><th>rectangular or multiple selection</th>
+<td colspan=2>The search region is set to the selection.</td>
+</table>
+
+<p><strong>Backward direction</strong>, <strong>Match whole word only</strong>, <strong>Match case</strong> and the <strong>Search Mode</strong> options (<strong>Normal</strong>, <strong>Extended</strong> and <strong>Regular expression</strong>) have the same meanings as in the <strong>Notepad++</strong> search dialogs.</p>
+
+<table class=optionsTable>
+<tr><th colspan=2 class=group>Selection -&gt; Region</th></tr>
+<tr><th>Set</th><td>sets the indicated region to the current selection.</td></tr>
+<tr><th>Add</th><td>adds the current selection to the indicated region.</td></tr>
+<tr><th>Remove</th><td>removes from the indicated region any text that is within the current selection.</td></tr>
+<tr><th>Auto set</th><td>Automatically sets the search region if a rectangular or multiple selection is present when one of the search buttons is clicked, as described above.</td></tr>
+<tr><th>Auto clear</th><td>De-selects the current selection after it is used to set or modify the indicated region. Even if this box is not checked, if <strong>Auto set</strong> is checked, a rectangular or multiple selection will be de-selected after adding it to or removing it from an existing region to prevent the region from being set to the selection when you perform a search.</td></tr>
+<tr><th colspan=2 class=group>Indicator</th></tr>
+<tr><td>drop-down</td><td>selects which indicator is used to identify the search region.</td></tr>
+<tr><th>Clear on close</th><td>determines whether an existing indicated region is cleared when the dialog is closed. This option is set to checked when you choose the <strong>Custom Style</strong> indicator and to unchecked when you choose any other indicator; however, you may change it after you select an indicator and it will stick until you change the indicator again.</td></tr>
+<tr><th>Clear</th><td>clears the current search indicator, so that there is no search region indicated.</td></tr>
+</table>
 
 </section>
 
 <section id=calculation><h2>Calculation</h2>
 
+<p><strong>Columns++</strong> can add or average columns of numbers or perform calculations across rows; these are explained below. See <a href="#numberformats">Number formats</a> for details about how <strong>Columns++</strong> recognizes numbers.</p>
+
 <h3>Calculating in columns</h3>
 
 <p>The <strong>Add numbers...</strong> and <strong>Average numbers...</strong> items on the <strong>Columns++</strong> menu perform calculations on a rectangular selection of a column of numbers, or of multiple columns separated by elastic tabstops. (These commands can be used on selections that include traditional fixed tabs; but the results may not be as expected, since they treat tabs as logical separators, ignoring physical positioning.)</p>
 
-<p><strong>Columns++</strong> shows a dialog to present the results of the calculation. You can select a <strong>Thousands separator</strong> option (<strong>None</strong>, <strong>Comma</strong>/<strong>Period</strong>, <strong>Apostrophe</strong> or <strong>Blank</strong>) to control how the results are formatted. Use the <strong>Insert</strong>...<strong>these results</strong> checkbox to specify whether <strong>Columns++</strong> will insert the results into the document, at the end of the rectangular selection, when you close the dialog. If the last line of the rectangular selection is empty (spaces, tabs and/or virtual space), the option will be to insert the results of the calculation into that space; otherwise, it will be to insert a new line containing the results of the calculation.</p>
+<p><strong>Columns++</strong> shows a dialog to present the results of the calculation, which offers the following options:</p>
 
-<p>Close the dialog with the <strong>Yes</strong> button to copy the results to the clipboard, or use <strong>No</strong> to leave the clipboard unchanged.</p>
+<table class=optionsTable>
+
+<tr><th>Thousands separator</th><td>Select a <strong>Thousands separator</strong> option (<strong>None</strong>, <strong>Comma</strong>/<strong>Period</strong>, <strong>Apostrophe</strong> or <strong>Blank</strong>) to control how numeric results are formatted.</td></tr>
+
+<tr><th>Decimal places</th><td>
+<p>If <strong>Automatic</strong> is checked, <strong>Notepad++</strong> chooses the number of decimal places in the result based on the data. For <strong>Add numbers</strong>, the result uses the fewest decimal places needed to avoid losing precision; for <strong>Average numbers</strong>, the result shows three more than the greatest number of decimal places in any input values.</p>
+<p>If <strong>Automatic</strong> is not checked, choose the number of decimal places (0-16) to which to round results. If <strong>Suppress trailing zeros</strong> is checked, zeros at the end of the decimal portion of numbers are omitted; if this box is not checked, exactly the number of decimal places selected are included.</p>
+</td></tr>
+
+<tr><th>Format as time</th><td>
+<p>If <strong>Automatic</strong> is checked, <strong>Notepad++</strong> uses the time formatting rules set in the <a href="#timeformats">Time formats</a> dialog if at least one of the input numbers is expressed as a time; otherwise, the result is formatted as a simple number.</p>
+<p>If <strong>Automatic</strong> is not checked, choose the format (1-4 segments) to be used for the results.</p>
+</td></tr>
+<tr>
+<th>Insert...</th>
+<td>Check to insert the results into the document, at the end of the rectangular selection, when you close the dialog. If the last line of the rectangular selection is empty (spaces, tabs and/or virtual space), the option will be <strong>Insert these results in the last line of the selection</strong>; otherwise, it will be <strong>Insert a line containing these results following the last line of the selection.</strong></td></tr>
+<tr><th>Copy these results to the clipboard?</th><td>
+Close the dialog with the <strong>Yes</strong> button to copy the results to the clipboard, or use <strong>No</strong> to leave the clipboard unchanged.
+</td></tr>
+</table>
 
 <h3 id="calculation-rows">Calculating across rows</h3>
 
@@ -297,7 +362,7 @@ window.addEventListener("load", doPageLoad);
 <tr><th>Regex</th><td>If you enter a regular expression, the first occurrence of the expression within the selection in each row of the rectangular selection is matched. Use the <strong>match case</strong> box to indicate whether to use case-sensitive matching. If <strong>Skip unmatched lines</strong> is checked and the regular expression box is not empty, rows in which the regular expression does not match are ignored; the formula is not evaluated, nor is a tab or any space padding added to the selection in the row to account for the new column.</td></tr>
 <tr><th>Thousands separator</th><td>Select a <strong>Thousands separator</strong> option (<strong>None</strong>, <strong>Comma</strong>/<strong>Period</strong>, <strong>Apostrophe</strong> or <strong>Blank</strong>) to control how numeric results are formatted.</td></tr>
 <tr><th>Decimal places</th><td>Choose the number of decimal places (0-16) to which to round results. If <strong>Suppress trailing zeros</strong> is checked, zeros at the end of the decimal portion of numbers are omitted; if this box is not checked, exactly the number of decimal places selected are included.</td></tr>
-<tr><th>Format as time</th><td>If you are calculating are times which you want shown as <em>days</em>:<em>hours</em>:<em>minutes</em>:<em>seconds</em>, check the <strong>Time format</strong> box. Check <strong>Unit is minutes</strong> if the times you are using do not include seconds, and check or uncheck <strong>Show days</strong> according to whether or not you want values of 24 hours or more to be shown with the number of days followed by a colon at the beginning of the result. (Note: If your times are minutes and seconds and you don't want hours shown for values of 60 minutes or more, checking <strong>Unit is minutes</strong> and unchecking <strong>Show days</strong> will accomplish this, since calculating minutes and seconds without days or hours is identical to calculating hours and minutes without days or seconds.)</td></tr>
+<tr><th>Format as time</th><td>Check the <strong>Enabled</strong> box to use the formats enabled in the bottom section of the <a href="#timeformats">Time formats</a> dialog to show the results. The <strong>Formats...</strong> button lets you open that dialog without closing this one.</td></tr>
 <tr><th>New column</th><td>
 <table class=optionsTable>
 <tr><th>Tabbed</th><td>Check to use a tab to separate the new column from the existing selection; uncheck to pad with spaces so as to leave one space between edge of the existing selection and the new column.</td></tr>
@@ -306,19 +371,11 @@ window.addEventListener("load", doPageLoad);
 </table></td></tr>
 </table>
 
-<h3>How Columns++ recognizes numbers</h3>
-
-<p>Numbers can include thousands separators and decimals. The <strong>Decimal separator is comma</strong> item near the bottom of the <strong>Columns++</strong> menu determines whether the comma or the period is the decimal separator; thousands separators may be a space, an apostrophe, or whichever of comma or period is not the decimal separator. Numbers can also be times, using colons to separate days, hours, minutes and seconds. For <strong>Add numbers</strong> and <strong>Average numbers</strong>, when only a single colon is used, the values can be either hours and minutes or minutes and seconds, so an additional colon will not be introduced in the results; when two or three colons are used, the rightmost value is assumed to be seconds. As described above, <strong>Calculate</strong> offers more explicit options to define how times are interpreted and presented.</p>
-
-<p>There is some flexibility in what can be included along with a number in a column. Common currency signs can precede the number with or without a space, and a minus sign can precede or follow a currency sign. Non-numeric characters (such as units, like “mg” or “ft”) can follow the number. (These are not interpreted, though; <strong>Columns++</strong> will add 5 yards and 5 inches to get 10 without complaint.) Non-numeric characters can precede the number if they are separated from the number by at least one space.</p>
-
-<p><strong>Add numbers</strong> and <strong>Average numbers</strong> will skip items that have no digits; but if an item which includes one or more digits cannot be unambiguously interpreted as a number, <strong>Columns++</strong> will select the item and will not perform the calculation. In <strong>Calculate</strong> <a href="#formulas">formulas</a>, variables and functions which represent numbers in the document are set to <em>Not-a-Number</em> if the associated document text cannot be unambiguously interpreted as a number.</p>
-
 </section>
 
 <section id=formulas><h2>Formulas</h2>
 
-<p><strong>Formulas</strong> are representations of mathematical computations. <strong>Columns++</strong> uses the <a href="https://github.com/ArashPartow/exprtk">ExprTk (Expression Toolkit)</a> package to implement formulas used by the <a href="#calculation-rows">Calculate...</a> command. Following are descriptions of the variables and functions defined by <strong>Columns++</strong>, along with some general features of the syntax of ExprTk expressions.</p>
+<p><strong>Formulas</strong> are representations of mathematical computations. <strong>Columns++</strong> uses the <a href="https://github.com/ArashPartow/exprtk">ExprTk (Expression Toolkit)</a> package to implement formulas used by the <a href="#calculation-rows">Calculate...</a> command and formulas in regular expression replacements for the <a href="#search">Search</a> functions. Following are descriptions of the variables and functions defined by <strong>Columns++</strong>, along with some general features of the syntax of ExprTk expressions.</p>
 
 <h3>Numeric values in formulas</h3>
 
@@ -331,30 +388,28 @@ window.addEventListener("load", doPageLoad);
 <p>When <strong>Calculate</strong> is applied to a rectangular selection, the formula given is evaluated once for each row of the selection (or, if a regular expression is given and <strong>Skip unmatched lines</strong> is checked, for each row in which the regular expression matches). The term <em>row</em> refers to the part of a single line in the document which is included in the rectangular selection, and the term <em>current row</em> is the row for which the formula is being evaluated, and into which the results of the formula will be inserted. Rows are processed in sequence, from top to bottom.</p>
 
 <table class=optionsTable>
+<tr><th colspan=2 class=group>Variables and functions in Calculate command formulas</th></tr>
 <tr><th>count</th><td>the total number of rows (lines) in the selection</td></tr>
 <tr><th>index</th><td>counting from one, the row number within the selection of the current row</td></tr>
 <tr><th>match</th><td>zero if no regular expression was given or if the regular expression did not match in the current row; otherwise, counting from one and including the current row, the number of rows on which the regular expression has matched</td></tr>
 <tr><th>line</th><td>the line number of line containing the current row (within the entire document, counting from one; that is, the same as the line number shown in the left margin if line numbers are enabled in <strong>Notepad++</strong>)</td></tr>
 <tr><th>this</th><td>if a regular expression was given, the numeric value of the text matched by the regular expression; otherwise, the numeric value of the current row</td></tr>
 <tr><th>
-col
-<br>col(<em>n</em>)
+col(<em>n</em>)
 <br>col(<em>n</em>,<em>p</em>)
 <br>col(<em>n</em>,<em>p</em>,<em>v</em>)
 <br>
-<br>tab
 <br>tab(<em>n</em>)
 <br>tab(<em>n</em>,<em>p</em>)
 <br>tab(<em>n</em>,<em>p</em>,<em>v</em>)
 <br>
-<br>reg
 <br>reg(<em>n</em>)
 <br>reg(<em>n</em>,<em>p</em>)
 <br>reg(<em>n</em>,<em>p</em>,<em>v</em>)
 </th><td>
 These functions retrieve the numeric value in the specified segment within a row (the selected part of a line). The <strong>col</strong> function divides the segments by white space (any run of blanks and/or tabs). The <strong>tab</strong> function divides by tab characters. The <strong>reg</strong> function retrieves regular expression capture groups.
 <table class=optionsTable>
-<tr><th><em>n</em></th><td>the column, tab or capture group to retrieve, numbering from one; if omitted or zero, <strong>col</strong> and <strong>tab</strong> return the entire row (the selected part of the line), while <strong>reg</strong> returns the portion of the row matched by the regular expression</td></tr>
+<tr><th><em>n</em></th><td>the column, tab or capture group to retrieve, numbering from one; if zero, <strong>col</strong> and <strong>tab</strong> return the entire row (the selected part of the line), while <strong>reg</strong> returns the portion of the row matched by the regular expression</td></tr>
 <tr><th><em>p</em></th><td>if given, the number of rows previous to the current one from which the value is to be retrieved; if omitted or zero, the current row is accessed. If a regular expression is specified and <strong>Skip unmatched lines</strong> is checked, unmatched lines will be ignored when counting backward to previous lines.</td></tr>
 <tr><th><em>v</em></th><td>a numeric value to use instead of <em>Not-a-Number</em> if there are not <strong><em>p</em></strong> previous rows, if there are not <strong><em>n</em></strong> columns, tabs or capture groups in the indicated row, or if the indicated text cannot be unambiguously interpreted as a number</td></tr>
 </table>
@@ -366,6 +421,72 @@ last
 </th><td>
 <p>The <strong>last</strong> function with no arguments represents the last result of a calculation that was not <em>Not-a-Number</em>; if the current row is the first row, or if no previous calculations have resulted in anything other than <em>Not-a-Number</em>, <strong>last</strong> is zero.<p>
 <p>When <strong><em>p</em></strong> or <strong><em>p</em></strong> and <strong><em>v</em></strong> are specified, they are interpreted as for <strong>col</strong>/<strong>tab</strong>/<strong>reg</strong>, except that <strong><em>p</em></strong> cannot be zero; the function retrieves the result of the calculation on the row indicated, substituting <strong><em>v</em></strong>, if specified, for <em>Not-a-Number</em>.</p>
+</td></tr>
+</table>
+
+<p>When formulas are used in regular expression replacements for the <a href="#search">Search</a> dialog, the formula given is evaluated once for each match. 
+Formulas in regular expression replacements are specified as:
+<br><strong>(?=<em>formula</em>)</strong> or <strong>(?=<em>format</em>:<em>formula</em>)</strong></p>
+
+<table class=optionsTable>
+<tr><th colspan=2 class=group>Variables and functions in Search regular expression replacement formulas</th></tr>
+<tr><th>match</th><td>counting from one and including the current match, the number of times the regular expression has matched</td></tr>
+<tr><th>line</th><td>the line number in which the current match begins (within the entire document, counting from one; that is, the same as the line number shown in the left margin if line numbers are enabled in <strong>Notepad++</strong>)</td></tr>
+<tr><th>this</th><td>the numeric value of the text matched by the regular expression</td></tr>
+<tr><th>
+reg(<em>n</em>)
+<br>reg(<em>n</em>,<em>p</em>)
+<br>reg(<em>n</em>,<em>p</em>,<em>v</em>)
+</th><td>
+These functions retrieve the numeric value of a regular expression capture group.
+<table class=optionsTable>
+<tr><th><em>n</em></th><td>the capture group the value of which is to be retrieved, numbering from one; zero returns the value of the text matched by the regular expression</td></tr>
+<tr><th><em>p</em></th><td>if given, the number of matches previous to the current one from which the value is to be retrieved; if omitted or zero, the current match is accessed</td></tr>
+<tr><th><em>v</em></th><td>a numeric value to use instead of <em>Not-a-Number</em> if there are not <strong><em>p</em></strong> previous matches, if there are not <strong><em>n</em></strong> capture groups in the indicated match, or if the indicated text cannot be unambiguously interpreted as a number</td></tr>
+</table>
+</td></tr>
+<tr><th>
+sub(<em>n</em>)
+<br>sub(<em>n</em>,<em>p</em>)
+<br>sub(<em>n</em>,<em>p</em>,<em>v</em>)
+</th><td>
+These functions retrieve the numeric value previously calculated for a substitution.
+<table class=optionsTable>
+<tr><th><em>n</em></th><td>the formula substitution the value of which is to be retrieved, counting from the left and numbering from one; zero refers to the formula in which the expression appears</td></tr>
+<tr><th><em>p</em></th><td>
+<p>If given, <strong><em>p</em></strong> specifies the number of matches previous to the current one from which the value is to be retrieved; zero retrieves the value from the current match if <strong><em>n</em></strong> is greater than zero and less than the number of the current formula, otherwise the result is <em>Not-a-Number</em>.</p>
+<p>If omitted, indicates the last result for the <strong><em>n</em></strong>th formula substitution which was not <em>Not-a-Number</em>; if the current match is the first match, or if no previous matches have resulted in anything other than <em>Not-a-Number</em>, the result is zero.</p>
+</td></tr>
+<tr><th><em>v</em></th><td>a numeric value to use instead of <em>Not-a-Number</em> if the result would otherwise be <em>Not-a-Number</em></td></tr>
+</table>
+</td></tr>
+<tr><th>
+last
+<br>last(<em>p</em>)
+<br>last(<em>p</em>,<em>v</em>)
+</th><td>
+<p>equivalent to <strong>sub(0)</strong>, <strong>sub(0,<em>p</em>)</strong> and <strong>sub(0,<em>p</em>,<em>v</em>)</strong>
+</td></tr>
+</table>
+
+<table class=optionsTable id=formatFormula>
+<tr><th colspan=2 class=group>Format specifications for Search regular expression replacement formulas</th></tr>
+<tr><td colspan=2><em>When a format is not specified, the default is </em><strong>1.-6</strong><em> (up to six decimals, suppress trailing zeros, suppress decimal separator if nothing follows, no leading zeros except that a digit is required before the decimal point).</em></td></tr>
+<tr><th><em>n</em></th><td>
+One or two digits specify the minimum number of integer digits to be shown (i.e., shorter values will be left-padded with zeros); <strong>0</strong> indicates that a leading zero is not required for decimals. If omitted, the default is <strong>1</strong>.
+</td></tr>
+<tr><th>t</th><td>
+The letter <strong>t</strong> (or <strong>T</strong>) specifies that the result of the formula will be shown in <a href="#timeformats">time format</a>. If <strong><em>n</em></strong> is used it must appear before <strong>t</strong>; <strong><em>n</em></strong> then applies to the leftmost time segment in each result, regardless of what time unit that represents.</td></tr>
+<tr><td><strong>.</strong><br><strong>,</strong></td><td>A period or a comma indicates that decimal places can be shown, using the current decimal separator (see <a href="#options">Options</a> — it doesn’t matter whether you use a period or a comma in the format). When a format is specified without a decimal indicator, decimals are rounded and not shown. If a decimal indicator is present but no additional specification follows, the default is <strong>.-6</strong> (up to six decimal places, suppress trailing zeros, suppress decimal separator if nothing follows).</td></tr>
+<tr><td colspan=2><em>One of the following can follow the decimal indicator if it is specified:</em></td></tr>
+<tr><td><strong><em>d</em></strong></td><td>
+one or two digits specifying the exact number of decimal places to be shown
+</td></tr>
+<tr><td><strong>-<em>d</em></strong></td><td>
+one or two digits specifying the maximum number of decimal places to be shown, omitting any trailing zeros and decimal separator
+</td></tr>
+<tr><td><strong><em>m</em>-<em>d</em></strong></td><td>
+Up to <strong><em>d</em></strong> decimal places will be shown, but no fewer than <strong><em>m</em></strong>. If <strong><em>m</em></strong> is <strong>0</strong>, all decimal places will be omitted if they are zeros, but the decimal separator will still be shown.
 </td></tr>
 </table>
 
@@ -437,7 +558,7 @@ last
 
 <p><strong>Align left</strong>, <strong>Align right</strong> and <strong>Align numeric</strong> process rectangular selections. The selection can be a single column, or multiple columns separated by elastic tabs. (These commands can be used on selections that include traditional fixed tabs; but the results may not be as expected, since they treat tabs as logical separators, ignoring physical positioning.)</p>
 
-<p>The <strong>Decimal separator is comma</strong> item near the bottom of the <strong>Columns++</strong> menu determines whether the comma or the period is the decimal separator for <strong>Align numeric</strong>. Numbers are recognized in a similar (but somewhat more lenient) fashion as for calculation; the alignment of items which are not recognized as numbers is unchanged. </p>
+<p>The <strong>Decimal separator is comma</strong> item near the bottom of the <strong>Columns++</strong> menu determines whether the comma or the period is the decimal separator for <strong>Align numeric</strong>. Details about how numbers are recognized are given in the section on <a href="#numberformats">Number formats</a>. The alignment of items which are not recognized as numbers is unchanged.</p>
 
 </section>
 
@@ -448,7 +569,7 @@ last
 <table class=optionsTable>
 <tr><th>binary</th><td>The raw byte values of the internal representations of the selected sort strings are used as sort keys. For most purposes, this matches what you would expect from a “case sensitive” sort, with the sort order dependent on the active code page. Unicode files sort by code point.</td></tr>
 <tr><th>locale</th><td>The sort order is defined by the current Windows locale. For most purposes, this matches what you would expect from a “case insensitive” sort.</td></tr>
-<tr><th>numeric</th><td>The selections on each line are interpreted as tab-separated numbers in the same way as described for the Calculation functions. Items which can’t be interpreted as numbers sort first (whether the sort is ascending or descending).</td></tr>
+<tr><th>numeric</th><td>The selections on each line are interpreted as tab-separated numbers. The <a href="#numberformats">Number formats</a> section describes in detail how <strong>Columns++</strong> recognizes numbers. Items which can’t be interpreted as numbers sort first (whether the sort is ascending or descending).</td></tr>
 </table>
 
 <h3>Custom sorts</h3>
@@ -468,7 +589,7 @@ last
 <tr><th>Descending</th><td>Larger numbers, or characters later in the collating sequence, come first.</td></tr>
 <tr><th>Binary</th><td>The raw byte values of the internal representations of the selected sort strings are used as sort keys. For most purposes, this matches what you would expect from a “case sensitive” sort, with the sort order dependent on the active code page. Unicode files sort by code point.</td></tr>
 <tr><th>Locale</th><td>The sort order is defined by a Windows locale, as specified in the <strong>Locale sort details</strong> section.</td></tr>
-<tr><th>Numeric</th><td>Sort strings are interpreted as numbers in the same way as described for the Calculation functions. Strings which can’t be interpreted as numbers sort first (whether the sort is ascending or descending). When <strong>Regular expression</strong> is selected, the regular expression is used to parse the selected text on each line; in all other cases, the text is interpreted as a sequence of tab-separated values.</td></tr>
+<tr><th>Numeric</th><td>Sort strings are interpreted as numbers, as described in the <a href="#numberformats">Number formats</a> section. Strings which can’t be interpreted as numbers sort first (whether the sort is ascending or descending). When <strong>Regular expression</strong> is selected, the regular expression is used to parse the selected text on each line; in all other cases, the text is interpreted as a sequence of tab-separated values.</td></tr>
 </table>
 
 <table class=optionsTable>
@@ -553,9 +674,60 @@ defines an escape character for separated values. The character following an esc
 
 </section>
 
+<section id=numberformats><h2>Number formats</h2>
+
+<p><strong>Columns++</strong> interprets characters in a document as numbers in many contexts, including the <a href="#calculation">Calculation</a> commands, the <a href="#alignment">Align numeric</a> command, numeric <a href="#sorting">sort</a> fields and formula substitutions in regular expression <a href="#search">searches</a>.</p>
+
+<p>Numbers can include thousands separators and decimals. The <strong>Decimal separator is comma</strong> item near the bottom of the <strong>Columns++</strong> menu determines whether the comma or the period is the decimal separator; thousands separators may be a space, an apostrophe, or whichever of comma or period is not the decimal separator. Numbers can also be times, using colons to separate days, hours, minutes and seconds.</p>
+
+<p>There is some flexibility in what can be included along with a number in a column or a regular expression match. Common currency signs can precede the number with or without a space, and a minus sign can precede or follow a currency sign. Non-numeric characters (such as units, like “mg” or “ft”) can follow the number. (These are not interpreted, though; <strong>Columns++</strong> will add 5 yards and 5 inches to get 10 without complaint.) Non-numeric characters can precede the number if they are separated from the number by at least one space.</p>
+
+<ul>
+
+<li><strong>Add numbers</strong> and <strong>Average numbers</strong> skip items that have no digits; but if an item which includes one or more digits cannot be unambiguously interpreted as a number, <strong>Columns++</strong> will select the item and will not perform the calculation.
+
+<li>In <a href="#formulas">formulas</a>, variables and functions which represent numbers in the document are set to <em>Not-a-Number</em> if the associated document text cannot be unambiguously interpreted as a number.
+
+<li>When sorting numerically, fields which cannot be unambiguously interpreted as numbers sort to the beginning.
+
+<li><strong>Align numeric</strong> uses slightly more lenient rules for recognizing numbers; the alignment of items which are not recognized as numbers is unchanged.
+
+</ul>
+
+<h3>Decimal separator is comma</h3>
+
+<p><strong>Decimal separator is comma</strong> may be checked or unchecked to control how <strong>Columns++</strong> interprets numbers. This setting is maintained per document (while the document remains open), so it can be different in different tabs.</p>
+
+<h3 id=timeformats>Time formats</h3>
+<p><strong>Time formats...</strong> opens a dialog that allows you to control how <strong>Columns++</strong> interprets and shows numbers represented as times.</p>
+
+<table class=optionsTable>
+<tr><th colspan=2 class=group>Time units: numbers with no colons represent</th></tr>
+<tr><th>days<br>hours<br>minutes<br>seconds</th><td>Select the unit for calculations involving times. In calculations involving times, times specified without colons are interpreted as being in this unit, and times specified with colons are converted to this unit.</td></tr>
+<tr><th colspan=2 class=group>Numbers with one or two colons represent</th></tr>
+<tr><th>
+<table class=justAlign>
+<tr><td>days:hours</td><td>days:hours:minutes</td></tr>
+<tr><td>hours:minutes</td><td>days:hours:minutes</td></tr>
+<tr><td>hours:minutes</td><td>hours:minutes:seconds</td></tr>
+<tr><td>minutes:seconds</td><td>hours:minutes:seconds</td></tr>
+</table>
+</th><td>Select the way times with one or two colons will be interpreted. (Times with three colons are always <strong>days:hours:minutes:seconds</strong>.)</td></tr>
+<tr><th colspan=2 class=group>Results of calculations can use these formats for times</th></tr>
+<tr><th>
+<table class=justAlign>
+<tr><td>1 segment</td><td><em>unit</em></td></tr>
+<tr><td>2 segments</td><td><em>unit1</em>:<em>unit2</em></td></tr>
+<tr><td>3 segments</td><td><em>unit3</em>:<em>unit4</em>:<em>unit5</em></td></tr>
+<tr><td>4 segments</td><td>days:hours:minutes:seconds</td></tr>
+</table>
+</th><td>Check the box before each format to enable results to be shown in that format when times are displayed. The <a href="#calculation">Calculation</a> commands and <a href="#formatFormula">formula substitutions</a> in regular expression search replacements can show their results as times; when time display is enabled, these settings determine which formats can be used for results.</td></tr>
+</table>
+
+</section>
+
 <section id=options><h2>Options</h2>
 
-<p><strong>Decimal separator is comma</strong> may be checked or unchecked to control how calculations, numeric alignment and numeric sorts interpret numbers.</p>
 
 <p><strong>Options...</strong> opens a dialog that allows you to control some aspects of <strong>Columns++</strong>:
 
