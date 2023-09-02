@@ -131,7 +131,8 @@ std::string ColumnsPlusPlusData::formatNumber(double value, const NumericFormat&
         size_t left = s.find_first_of(".:");
         if (left == std::string::npos) left = s.length();
         if (s[0] == '-') --left;
-        if (left < format.leftPad) s = s[0] == '-' ? '-' + std::string(format.leftPad - left, '0') + s.substr(1) : std::string(format.leftPad - left, '0') + s;
+        if (static_cast<int>(left) < format.leftPad)
+            s = s[0] == '-' ? '-' + std::string(format.leftPad - left, '0') + s.substr(1) : std::string(format.leftPad - left, '0') + s;
     }
 
     if (format.maxDec && segments[best] == maxSeg) {
