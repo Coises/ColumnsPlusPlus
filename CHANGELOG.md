@@ -1,5 +1,32 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Version 0.7-alpha -- September 3rd, 2023
+
+* Added the ability to use formulas in regular expression replacements in the **Search** dialog.
+
+* Made setting and modifying the search region in the **Search** dialog more flexible.
+
+* Made the use of time formats for numbers more controllable and predictable, and added the **Time formats** dialog.
+
+* Made all dialogs that use formulas and/or regular expressions validate them and show balloon tips for errors.
+
+* Improved handling of zero-length regular expression matches.
+
+* Made the caret assertion in regular expressions match the beginning of each contiguous segment in the search region (e.g., the left edge of the selection in each row of a rectangular selection) as well as its standard match to the beginning of lines in multi-line segments.
+
+* Updated help to reflect these changes.
+
+* Fixed an error which caused sluggish scrolling when a rectangular selection covered a large number of lines.
+
+**Known problems:**
+
+* If a tab has Elastic tabstops enabled and has a very large number of lines in a rectangular selection, switching from another tab to that tab is slow: on the author's system, a selection spanning 20,000 lines with 65 tabs per line causes a delay of fifteen to twenty seconds, during which Notepad++ is unresponsive.
+
+* **Serious:** The delay described above is magnified many times, possibly to the point where force-closing Notepad++ is the only reasonable option, if the tab from which one is switching is showing a Markdown Panel (from the MarkdownPanel plugin). At this time, I do not know the reason for this, nor whether other plugins that show side panels could cause a similar effect. (The built-in Document Map does not cause it.) ***Don't leave work unsaved when you are using Elastic tabstops with large files (over a few thousand lines).***
+
+* Numeric alignment does not work consistently with numbers formatted as times.
+
+
 ## Version 0.6.1-alpha -- August 16th, 2023
 
 * Make use of NPPM_ALLOCATEINDICATOR introduced in Notepad++ 8.5.6 while remaining compatible with older versions.
