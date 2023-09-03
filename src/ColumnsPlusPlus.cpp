@@ -310,7 +310,7 @@ void ColumnsPlusPlusData::scnUpdateUI(const Scintilla::NotificationData* scnp) {
         analyzeTabstops(*ddp);
     }
     else if (ddp->elasticAnalysisRequired) analyzeTabstops(*ddp);
-    reselectRectangularSelectionAndControlCharSymbol(*ddp, false);
+    if (Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) reselectRectangularSelectionAndControlCharSymbol(*ddp, false);
     setTabstops(*ddp);
 }
 
