@@ -21,6 +21,101 @@
 #include "commctrl.h"
 
 
+struct ElasticProgressInfo {
+    ColumnsPlusPlusData& data;
+    DocumentData* ddp;
+    Scintilla::Line firstNeeded;
+    Scintilla::Line lastNeeded;
+    Scintilla::Line lastMonospaceFail = -1;
+    int  step         = 0;
+    bool isAnalyze    = false;
+    bool secondTime   = false;
+    bool timerStarted = false;
+
+    static constexpr int stepSize = 50;
+
+    ElasticProgressInfo(ColumnsPlusPlusData& data) : data(data) {}
+
+    Scintilla::Line processed() const { return step * stepSize + (secondTime ? lastNeeded - firstNeeded + 1 : 0); }
+    Scintilla::Line objective() const { return lastNeeded - firstNeeded + (lastMonospaceFail < 0 ? 0 : lastMonospaceFail - firstNeeded + 1); }
+
+    bool analyzeTabstops();
+    bool setTabstops(bool stepless = false);
+};
+
+
+INT_PTR CALLBACK elasticProgressDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+
+    ElasticProgressInfo* epip = 0;
+    if (uMsg == WM_INITDIALOG) {
+        SetWindowLongPtr(hwndDlg, DWLP_USER, lParam);
+        epip = reinterpret_cast<ElasticProgressInfo*>(lParam);
+    }
+    else epip = reinterpret_cast<ElasticProgressInfo*>(GetWindowLongPtr(hwndDlg, DWLP_USER));
+    if (!epip) return TRUE;
+    ElasticProgressInfo& epi = *epip;
+    ColumnsPlusPlusData& data = epi.data;
+
+    switch (uMsg) {
+
+    case WM_DESTROY:
+        return TRUE;
+
+    case WM_INITDIALOG:
+    {
+        RECT rcNpp, rcDlg;
+        GetWindowRect(data.nppData._nppHandle, &rcNpp);
+        GetWindowRect(hwndDlg, &rcDlg);
+        SetWindowPos(hwndDlg, HWND_TOP, (rcNpp.left + rcNpp.right + rcDlg.left - rcDlg.right) / 2,
+            (rcNpp.top + rcNpp.bottom + rcDlg.top - rcDlg.bottom) / 2, 0, 0, SWP_NOSIZE);
+        SendDlgItemMessage(hwndDlg, IDC_ELASTIC_PROGRESS_BAR, PBM_SETRANGE32, 0, epi.objective());
+        SendDlgItemMessage(hwndDlg, IDC_ELASTIC_PROGRESS_BAR, PBM_SETPOS, 0, 0);
+        if (epi.isAnalyze) SetWindowText(hwndDlg, L"Columns++: Analyzing elastic tabstop widths");
+        return TRUE;
+    }
+
+    case WM_WINDOWPOSCHANGED:
+        if (!epi.timerStarted && reinterpret_cast<WINDOWPOS*>(lParam)->flags & SWP_SHOWWINDOW) {
+            epi.timerStarted = true;
+            SetTimer(hwndDlg, 1, 0, 0);
+        }
+        return FALSE;
+
+    case WM_COMMAND:
+        switch (LOWORD(wParam)) {
+        case IDCANCEL:
+            KillTimer(hwndDlg, 1);
+            EndDialog(hwndDlg, 1);
+            return TRUE;
+        }
+        break;
+
+    case WM_TIMER:
+        KillTimer(hwndDlg, 1);
+        if (epi.isAnalyze ? epi.analyzeTabstops() : epi.setTabstops()) {
+            SendDlgItemMessage(hwndDlg, IDC_ELASTIC_PROGRESS_BAR, PBM_SETRANGE32, 0, epi.objective());
+            SendDlgItemMessage(hwndDlg, IDC_ELASTIC_PROGRESS_BAR, PBM_SETPOS, epi.processed(), 0);
+            SetTimer(hwndDlg, 1, 0, 0);
+        }
+        else EndDialog(hwndDlg, 0);
+        return TRUE;
+
+    case WM_NOTIFY:
+        switch (((LPNMHDR)lParam)->code) {
+        case NM_CLICK:
+            KillTimer(hwndDlg, 1);
+            EndDialog(hwndDlg, 1);
+            return TRUE;
+        }
+        break;
+
+    }
+
+    return FALSE;
+
+}
+
+
 int unwrappedWidth(ColumnsPlusPlusData& data, Scintilla::Position from, Scintilla::Position to) {
     auto& sci = data.sci;
     int width = 0;
@@ -48,18 +143,49 @@ int unwrappedWidth(ColumnsPlusPlusData& data, Scintilla::Position from, Scintill
 }
 
 
-void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNeeded, Scintilla::Line lastNeeded, bool secondTime) {
-    const int leadingIndent         = dd.blankWidth * (dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : sci.TabWidth());
-    const int tabGap                = dd.blankWidth * dd.settings.minimumSpaceBetweenColumns;
-    const Scintilla::Line lineCount = sci.LineCount();
+void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNeeded, Scintilla::Line lastNeeded) {
+    ElasticProgressInfo epi(*this);
+    epi.ddp = &dd;
+    const Scintilla::Line lineCount     = sci.LineCount();
+    const Scintilla::Line linesOnScreen = sci.LinesOnScreen();
     if (firstNeeded == -1) {
-        firstNeeded = sci.FirstVisibleLine();
-        lastNeeded  = firstNeeded + sci.LinesOnScreen();
+        epi.firstNeeded = sci.FirstVisibleLine();
+        epi.lastNeeded  = std::min(epi.firstNeeded + linesOnScreen, lineCount - 1);
+        epi.setTabstops(true);
     }
-    if (lastNeeded < 0 || lastNeeded >= lineCount) lastNeeded = lineCount - 1;
-    Scintilla::Line lastMonospaceFail = -1;
+    else {
+        epi.firstNeeded = firstNeeded;
+        epi.lastNeeded  = (lastNeeded < 0 || lastNeeded >= lineCount) ? lineCount - 1 : lastNeeded;
+        unsigned long long before, after;
+        QueryInterruptTime(&before);
+        double timeLimit = elasticProgressTime;
+        while (epi.setTabstops()) {
+            QueryInterruptTime(&after);
+            double projected = static_cast<double>(epi.objective() - epi.processed()) * static_cast<double>(after - before)
+                             / (1e7 * static_cast<double>(epi.stepSize));
+            if (projected > timeLimit) {
+                // The mouse button up message avoids a problem where a flickering, wrong mouse cursor is shown outside of the text area.
+                // SCN_UPDATEUI is sent on mouse down and mouse move; when the dialog opens, Scintilla never gets the mouse up it expects.
+                // The cost of this is that you can no longer drag a rectangular selection once the threshold number of lines is exceeded.
+                SendMessage(activeScintilla, WM_LBUTTONUP, 0, 0);
+                DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_ELASTIC_PROGRESS), nppData._nppHandle, elasticProgressDialogProc, reinterpret_cast<LPARAM>(&epi));
+                break;
+            }
+            before = after;
+        }
+    }
+}
+
+
+bool ElasticProgressInfo::setTabstops(bool stepless) {
+    auto& dd  = *ddp;
+    auto& sci = data.sci;
+    const int leadingIndent = dd.blankWidth * (dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : sci.TabWidth());
+    const int tabGap        = dd.blankWidth * dd.settings.minimumSpaceBetweenColumns;
+    Scintilla::Line firstToProcess = stepless ? firstNeeded : firstNeeded + step * stepSize;
+    Scintilla::Line lastToProcess  = stepless ? lastNeeded  : std::min(lastNeeded, firstToProcess + stepSize - 1);
     size_t tlbIndex = 0;
-    for (Scintilla::Line lineNum = firstNeeded; lineNum <= lastNeeded; ++lineNum) {
+    for (Scintilla::Line lineNum = firstToProcess; lineNum <= lastToProcess; ++lineNum) {
         while (tlbIndex < dd.tabLayouts.size() && dd.tabLayouts[tlbIndex].lastLine < lineNum) ++tlbIndex;
         if (tlbIndex >= dd.tabLayouts.size() || dd.tabLayouts[tlbIndex].firstLine > lineNum) {
             sci.ClearTabStops(lineNum);
@@ -119,7 +245,7 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
                 size_t tabIndex = leadingTabCount;
                 size_t from = 0;
                 for (TabLayoutBlock* tlb = &dd.tabLayouts[tlbIndex]; tabIndex < tabOffsets.size(); ++tabIndex) {
-                    int width = unwrappedWidth(*this, lineStarts + from, lineStarts + tabOffsets[tabIndex]) + tabGap;
+                    int width = unwrappedWidth(data, lineStarts + from, lineStarts + tabOffsets[tabIndex]) + tabGap;
                     if (width > tlb->width) tlb->width = width;
                     size_t i = 0;
                     if (i < tlb->right.size() && tlb->right[i].lastLine < lineNum) ++i;
@@ -130,20 +256,57 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
             }
         }
     }
-    if (lastMonospaceFail >= 0) setTabstops(dd, firstNeeded, lastMonospaceFail, true);
+    if (lastToProcess < lastNeeded) {
+        ++step;
+        return true;
+    }
+    if (secondTime || lastMonospaceFail < 0) return false;
+    secondTime = true;
+    step = 0;
+    if (stepless) return setTabstops(true);
+    return true;
 }
 
 
 void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
-    dd.elasticAnalysisRequired = false;
+    ElasticProgressInfo epi(*this);
+    epi.ddp         = &dd;
+    epi.isAnalyze   = true;
+    epi.firstNeeded = 0;
+    epi.lastNeeded  = sci.LineCount() - 1;
+    unsigned long long before, after;
+    QueryInterruptTime(&before);
+    double timeLimit = elasticProgressTime;
+    while (epi.analyzeTabstops()) {
+        QueryInterruptTime(&after);
+        double projected = static_cast<double>(epi.objective() - epi.processed()) * static_cast<double>(after - before)
+                         / (1e7 * static_cast<double>(epi.stepSize));
+        if (projected > timeLimit) {
+            // The mouse button up message avoids a problem where a flickering, wrong mouse cursor is shown outside of the text area.
+            // SCN_UPDATEUI is sent on mouse down and mouse move; when the dialog opens, Scintilla never gets the mouse up it expects.
+            // The cost of this is that you can no longer drag a rectangular selection once the threshold number of lines is exceeded.
+            SendMessage(activeScintilla, WM_LBUTTONUP, 0, 0);
+            DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_ELASTIC_PROGRESS), nppData._nppHandle, elasticProgressDialogProc, reinterpret_cast<LPARAM>(&epi));
+            break;
+        }
+        before = after;
+    }
+}
+
+
+bool ElasticProgressInfo::analyzeTabstops() {
+    auto& dd  = *ddp;
+    auto& sci = data.sci;
+    dd.elasticAnalysisRequired   = false;
     dd.deleteWithoutLayoutChange = false;
-    int digitWidth = sci.TextWidth(STYLE_DEFAULT, "0");
-    int tabGap = dd.blankWidth * dd.settings.minimumSpaceBetweenColumns;
-    int tabInd = dd.blankWidth * (dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : sci.TabWidth());
-    int tabMin = dd.settings.leadingTabsIndent ? 0 : tabInd;
-    Scintilla::Line lineCount = sci.LineCount();
-    dd.tabLayouts.clear();
-    for (Scintilla::Line lineNum = 0; lineNum < lineCount; ++lineNum) {
+    const Scintilla::Line firstToProcess = step * stepSize;
+    const Scintilla::Line lastToProcess  = std::min(lastNeeded, firstToProcess + stepSize - 1);
+    const int digitWidth = sci.TextWidth(STYLE_DEFAULT, "0");
+    const int tabGap     = dd.blankWidth * dd.settings.minimumSpaceBetweenColumns;
+    const int tabInd     = dd.blankWidth * (dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : sci.TabWidth());
+    const int tabMin     = dd.settings.leadingTabsIndent ? 0 : tabInd;
+    if (!step) dd.tabLayouts.clear();
+    for (Scintilla::Line lineNum = firstToProcess; lineNum <= lastToProcess; ++lineNum) {
         Scintilla::Position begin = sci.PositionFromLine(lineNum);
         Scintilla::Position end = sci.LineEnd(lineNum);
         if (begin == end) continue;
@@ -158,7 +321,7 @@ void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
             TabLayoutBlock& tlb = layouts->back();
             tlb.lastLine = lineNum;
             int width = dd.assumeMonospace ? static_cast<int>(sci.CountCharacters(begin + from, begin + tab)) * digitWidth
-                                           : unwrappedWidth(*this, begin + from, begin + tab);
+                                           : unwrappedWidth(data, begin + from, begin + tab);
             width += tabGap + indentSize;
             indentSize = 0;
             if (width > tlb.width) tlb.width = width;
@@ -166,6 +329,11 @@ void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
             layouts = &tlb.right;
         }
     }
+    if (lastToProcess < lastNeeded) {
+        ++step;
+        return true;
+    }
+    return false;
 }
 
 
@@ -300,6 +468,7 @@ void ColumnsPlusPlusData::scnModified(const Scintilla::NotificationData* scnp) {
 
 
 void ColumnsPlusPlusData::scnUpdateUI(const Scintilla::NotificationData* scnp) {
+    if (!Scintilla::FlagSet(scnp->updated, Scintilla::Update::Content | Scintilla::Update::Selection | Scintilla::Update::VScroll)) return;
     DocumentData* ddp = getDocument(scnp);
     if (!ddp) return;
     if (Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) syncFindButton();

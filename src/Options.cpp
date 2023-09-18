@@ -107,6 +107,9 @@ BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
                 EnableWindow(GetDlgItem(hwndDlg, IDC_OPTIONS_INDICATOR_BLUE        ), searchData.enableCustomIndicator ? TRUE : FALSE);
                 EnableWindow(GetDlgItem(hwndDlg, IDC_OPTIONS_INDICATOR_BLUE_LABEL  ), searchData.enableCustomIndicator ? TRUE : FALSE);
             }
+            SendDlgItemMessage(hwndDlg, IDC_OPTIONS_ELASTIC_PROGRESS_SPIN, UDM_SETRANGE, 0, MAKELPARAM(20, 1));
+            SendDlgItemMessage(hwndDlg, IDC_OPTIONS_ELASTIC_PROGRESS_SPIN, UDM_SETPOS, 0, elasticProgressTime);
+
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_NUMBER_SPIN, UDM_SETRANGE, 0, MAKELPARAM( 20, 9));
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_ALPHA_SPIN , UDM_SETRANGE, 0, MAKELPARAM(255, 0));
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_RED_SPIN   , UDM_SETRANGE, 0, MAKELPARAM(255, 0));
@@ -126,6 +129,9 @@ BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
             EndDialog(hwndDlg, 1);
             return TRUE;
         case IDOK:
+        {
+            int newElasticProgressTime = validateSpin(hwndDlg, IDC_OPTIONS_ELASTIC_PROGRESS_SPIN, L"Time must be between 1 and 20 seconds.");
+            if (newElasticProgressTime < 1) return TRUE;
             if (SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_ENABLED, BM_GETCHECK, 0, 0) == BST_CHECKED) {
                 int indicatorNumber = searchData.allocatedIndicator;
                 bool override = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_OVERRIDE, BM_GETCHECK, 0, 0) == BST_CHECKED;
@@ -157,7 +163,7 @@ BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
                     }
                 }
                 else if (searchData.indicator < 21 && !searchData.dialog) searchData.indicator = searchData.customIndicator;
-           }
+            }
             else {
                 searchData.enableCustomIndicator = false;
                 if (searchData.indicator < 21 && !searchData.dialog) {
@@ -165,6 +171,7 @@ BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
                     searchData.autoClear = false;
                 }
             }
+            elasticProgressTime = newElasticProgressTime;
             showOnMenuBar    = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_MENUBAR          , BM_GETCHECK, 0, 0) == BST_CHECKED;
             replaceStaysPut  = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_REPLACE_STAYS_PUT, BM_GETCHECK, 0, 0) == BST_CHECKED;
             extendSingleLine = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_SINGLELINE, BM_GETCHECK, 0, 0) == BST_CHECKED;
@@ -172,6 +179,7 @@ BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
             extendZeroWidth  = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_ZEROWIDTH , BM_GETCHECK, 0, 0) == BST_CHECKED;
             EndDialog(hwndDlg, 0);
             return TRUE;
+        }
         case IDC_OPTIONS_INDICATOR_ENABLED:
         case IDC_OPTIONS_INDICATOR_OVERRIDE:
         {

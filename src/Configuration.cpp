@@ -154,6 +154,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
                     else if (setting == "minimumspacebetweencolumns") settings.minimumSpaceBetweenColumns = std::stoi(value);
                     else if (setting == "disableoversize"           ) disableOverSize                     = std::stoi(value);
                     else if (setting == "disableoverlines"          ) disableOverLines                    = std::stoi(value);
+                    else if (setting == "elasticprogresstime"       ) elasticProgressTime                 = std::stoi(value);
                     else if (setting == "timescalarunit"            ) timeScalarUnit                      = std::stoi(value);
                     else if (setting == "timepartialrule"           ) timePartialRule                     = std::stoi(value);
                     else if (setting == "timeformatenable"          ) timeFormatEnable                    = std::stoi(value);
@@ -312,6 +313,7 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "monospaceNoMnemonics\t"        << settings.monospaceNoMnemonics           << std::endl;
     file << "disableOverSize\t"             << disableOverSize                         << std::endl;
     file << "disableOverLines\t"            << disableOverLines                        << std::endl;
+    file << "elasticProgressTime\t"         << elasticProgressTime                     << std::endl;
     file << "timeScalarUnit\t"              << timeScalarUnit                          << std::endl;
     file << "timePartialRule\t"             << timePartialRule                         << std::endl;
     file << "timeFormatEnable\t"            << timeFormatEnable                        << std::endl;

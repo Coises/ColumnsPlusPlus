@@ -112,10 +112,14 @@ extern "C" __declspec(dllexport) FuncItem * getFuncsArray(int *n) {
 
 extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
 
+    if (bypassNotifications) return;
+
+    bypassNotifications = true;
+
     auto*& scnp = reinterpret_cast<Scintilla::NotificationData*&>(np);
     auto*& nmhdr = reinterpret_cast<NMHDR*&>(np);
 
-    if (!bypassNotifications) switch (scnp->nmhdr.code) {
+    switch (scnp->nmhdr.code) {
         
     case Scintilla::Notification::Modified:
         data.scnModified(scnp);
@@ -179,9 +183,12 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             data.saveConfiguration();
             break;
 
-        default:;
         }
+
     }
+
+    bypassNotifications = false;
+
 }
 
 extern "C" __declspec(dllexport) LRESULT messageProc(UINT, WPARAM, LPARAM) {return TRUE;}

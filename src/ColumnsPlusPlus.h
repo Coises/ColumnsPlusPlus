@@ -288,16 +288,17 @@ public:
     CsvSettings           csv;
     CalculateSettings     calc;
     SortSettings          sort;
-    int  disableOverSize  = 1000;      // active if greater than zero; if negative, inactive and is negative of last used setting   
-    int  disableOverLines = 5000;      // active if greater than zero; if negative, inactive and is negative of last used setting
-    int  timeScalarUnit   = 3;         // time segment as which to interpert a scalar (no colons): 0 = days, 1 = hours, 2 = minutes, 3 = seconds
-    int  timePartialRule  = 3;         // interpretation of 2 and 3 segment times: 0 = d:h, d:h:m; 1 = h:m, d:h:m; 2 = h:m, h:m:s; 3 = m:s, h:m:s
-    int  timeFormatEnable = 15;        // bit mask for enabled formats: 8 (4 segments) + 4 (3 segments) + 2 (2 segments) + 1 (1 segment)
-    bool showOnMenuBar    = false;     // Show the Columns++ menu on the menu bar instead of the Plugins menu
-    bool replaceStaysPut  = false;     // Same as "Replace: Don't move to the following occurrence" in Notepad++
-    bool extendSingleLine = false;     // Extend single line selections to the last line
-    bool extendFullLines  = false;     // Extend selections of full lines to the enclosing rectangle
-    bool extendZeroWidth  = false;     // Extend zero-width rectangular selections to the right
+    int  disableOverSize     = 1000;      // active if greater than zero; if negative, inactive and is negative of last used setting   
+    int  disableOverLines    = 5000;      // active if greater than zero; if negative, inactive and is negative of last used setting
+    int  elasticProgressTime = 2;         // maximum estimated time remaining in seconds to skip progress dialog for slow elastic tabstop operations
+    int  timeScalarUnit      = 3;         // time segment as which to interpert a scalar (no colons): 0 = days, 1 = hours, 2 = minutes, 3 = seconds
+    int  timePartialRule     = 3;         // interpretation of 2 and 3 segment times: 0 = d:h, d:h:m; 1 = h:m, d:h:m; 2 = h:m, h:m:s; 3 = m:s, h:m:s
+    int  timeFormatEnable    = 15;        // bit mask for enabled formats: 8 (4 segments) + 4 (3 segments) + 2 (2 segments) + 1 (1 segment)
+    bool showOnMenuBar       = false;     // Show the Columns++ menu on the menu bar instead of the Plugins menu
+    bool replaceStaysPut     = false;     // Same as "Replace: Don't move to the following occurrence" in Notepad++
+    bool extendSingleLine    = false;     // Extend single line selections to the last line
+    bool extendFullLines     = false;     // Extend selections of full lines to the enclosing rectangle
+    bool extendZeroWidth     = false;     // Extend zero-width rectangular selections to the right
 
     Scintilla::Position positionFromLineAndPointX(Scintilla::Line line, int px) {
         // [Char]PositionFromPoint does not work with negative horizontal positions, but PointXFromPosition does
@@ -431,7 +432,7 @@ public:
 
     void analyzeTabstops(DocumentData& dd);
     bool findTabLayoutBlock(DocumentData& dd, Scintilla::Position position, Scintilla::Position length, TabLayoutBlock*& tlb, int& width);
-    void setTabstops(DocumentData& dd, Scintilla::Line firstNeeded = -1, Scintilla::Line lastNeeded = -1, bool secondTime = false);
+    void setTabstops(DocumentData& dd, Scintilla::Line firstNeeded = -1, Scintilla::Line lastNeeded = -1);
 
     void bufferActivated();
     void fileClosed     (const NMHDR* nmhdr);

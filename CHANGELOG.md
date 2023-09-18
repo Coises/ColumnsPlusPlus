@@ -1,5 +1,13 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Verions 0.7.1-alpha -- September 18th, 2023
+
+* Added a progress dialog for long-running Elastic tabstops operations. The operation can be cancelled using a link in the dialog or the Escape key. A control to set the minimum estimated time remaining to trigger the progress dialog was added to the Options dialog.
+
+**Known problems:**
+
+* Numeric alignment does not work consistently with numbers formatted as times.
+
 ## Version 0.7-alpha -- September 3rd, 2023
 
 * Added the ability to use formulas in regular expression replacements in the **Search** dialog.

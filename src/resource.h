@@ -17,6 +17,7 @@
 #define IDD_CALCULATE                   127
 #define IDD_SORT                        129
 #define IDD_TIME_FORMATS                131
+#define IDD_ELASTIC_PROGRESS            133
 #define IDC_LINE_UP_ALL                 1003
 #define IDC_LEADING_TABS_INDENT         1006
 #define IDC_DISABLE_FILE_SIZE           1007
@@ -50,7 +51,10 @@
 #define IDC_SEARCH_REPLACE              1034
 #define IDC_SEARCH_REPLACE_ALL          1035
 #define IDC_SEARCH_BACKWARD             1036
+#define IDC_OPTIONS_ELASTIC_PROGRESS    1036
 #define IDC_SEARCH_WHOLE_WORD           1037
+#define IDC_OPTIONS_INDICATOR_NUMBER_SPIN2 1037
+#define IDC_OPTIONS_ELASTIC_PROGRESS_SPIN 1037
 #define IDC_SEARCH_MATCH_CASE           1038
 #define IDC_SEARCH_NORMAL               1040
 #define IDC_SEARCH_EXTENDED             1041
@@ -199,14 +203,16 @@
 #define IDC_SEARCH_SELECTION_ADD        1206
 #define IDC_SEARCH_SELECTION_REMOVE     1207
 #define IDC_SEARCH_SELECTION_AUTOCLEAR  1209
+#define IDC_ELASTIC_PROGRESS_BAR        1213
+#define IDC_SYSLINK1                    1215
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        133
+#define _APS_NEXT_RESOURCE_VALUE        135
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1210
+#define _APS_NEXT_CONTROL_VALUE         1218
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
