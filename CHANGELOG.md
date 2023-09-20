@@ -1,5 +1,9 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Version 0.7.2-alpha -- September 20th, 2023
+
+* Replaced a Windows API call that caused Version 0.7.1-alpha to fail to load on versions of Windows prior to Windows 10 with one that works on Vista and later versions.
+
 ## Verions 0.7.1-alpha -- September 18th, 2023
 
 * Added a progress dialog for long-running Elastic tabstops operations. The operation can be cancelled using a link in the dialog or the Escape key. A control to set the minimum estimated time remaining to trigger the progress dialog was added to the Options dialog.

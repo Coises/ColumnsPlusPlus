@@ -32,7 +32,7 @@ struct ElasticProgressInfo {
     bool secondTime   = false;
     bool timerStarted = false;
 
-    static constexpr int stepSize = 50;
+    static constexpr int stepSize = 100;
 
     ElasticProgressInfo(ColumnsPlusPlusData& data) : data(data) {}
 
@@ -157,12 +157,12 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
         epi.firstNeeded = firstNeeded;
         epi.lastNeeded  = (lastNeeded < 0 || lastNeeded >= lineCount) ? lineCount - 1 : lastNeeded;
         unsigned long long before, after;
-        QueryInterruptTime(&before);
+        before = GetTickCount64();
         double timeLimit = elasticProgressTime;
         while (epi.setTabstops()) {
-            QueryInterruptTime(&after);
+            after = GetTickCount64();
             double projected = static_cast<double>(epi.objective() - epi.processed()) * static_cast<double>(after - before)
-                             / (1e7 * static_cast<double>(epi.stepSize));
+                             / (1000 * static_cast<double>(epi.stepSize));
             if (projected > timeLimit) {
                 // The mouse button up message avoids a problem where a flickering, wrong mouse cursor is shown outside of the text area.
                 // SCN_UPDATEUI is sent on mouse down and mouse move; when the dialog opens, Scintilla never gets the mouse up it expects.
@@ -275,12 +275,12 @@ void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
     epi.firstNeeded = 0;
     epi.lastNeeded  = sci.LineCount() - 1;
     unsigned long long before, after;
-    QueryInterruptTime(&before);
+    before = GetTickCount64();
     double timeLimit = elasticProgressTime;
     while (epi.analyzeTabstops()) {
-        QueryInterruptTime(&after);
+        after = GetTickCount64();
         double projected = static_cast<double>(epi.objective() - epi.processed()) * static_cast<double>(after - before)
-                         / (1e7 * static_cast<double>(epi.stepSize));
+                         / (1000 * static_cast<double>(epi.stepSize));
         if (projected > timeLimit) {
             // The mouse button up message avoids a problem where a flickering, wrong mouse cursor is shown outside of the text area.
             // SCN_UPDATEUI is sent on mouse down and mouse move; when the dialog opens, Scintilla never gets the mouse up it expects.
