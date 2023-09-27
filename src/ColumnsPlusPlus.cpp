@@ -422,6 +422,7 @@ bool ColumnsPlusPlusData::findTabLayoutBlock(DocumentData& dd, Scintilla::Positi
 
 
 void ColumnsPlusPlusData::scnModified(const Scintilla::NotificationData* scnp) {
+    Diagnostic::trace(L"Entered scnModified; scnp->modificationType is " + std::to_wstring(static_cast<int>(scnp->modificationType)));
     using Scintilla::FlagSet;
     if ( !FlagSet( scnp->modificationType,
                    ( Scintilla::ModificationFlags::InsertText | Scintilla::ModificationFlags::BeforeDelete
@@ -429,10 +430,18 @@ void ColumnsPlusPlusData::scnModified(const Scintilla::NotificationData* scnp) {
     DocumentData* ddp = getDocument(scnp);
     if (!ddp) return;
     DocumentData& ctd = *ddp;
-    if (!ctd.settings.elasticEnabled || ctd.elasticAnalysisRequired) return;
+    if (!ctd.settings.elasticEnabled) {
+        Diagnostic::trace(L"Exiting scnModified; Elastic tabs are not enabled.");
+        return;
+    }
+    if (ctd.elasticAnalysisRequired) {
+        Diagnostic::trace(L"Exiting scnModified; full Elastic analysis already required.");
+        return;
+    }
     int blankWidth = sci.TextWidth(STYLE_DEFAULT, " ");
     int tabGap = blankWidth * ctd.settings.minimumSpaceBetweenColumns;
     if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::InsertText)) {
+        Diagnostic::trace(L"scnModified processing InsertText; scnp->linesAdded = " + std::to_wstring(scnp->linesAdded));
         ctd.deleteWithoutLayoutChange = false;
         if (scnp->linesAdded == 0) /* Unless the number of lines is unchanged, we need full analysis. */ {
             TabLayoutBlock* tlb;
@@ -441,46 +450,74 @@ void ColumnsPlusPlusData::scnModified(const Scintilla::NotificationData* scnp) {
                 if (tlb) {
                     width += tabGap;
                     if (width > tlb->width) tlb->width = width;
+                    Diagnostic::trace(L"Exiting scnModified; findTabLayoutBlock returned true, tlb found.");
                 }
+                else Diagnostic::trace(L"Exiting scnModified; findTabLayoutBlock returned true, tlb not found.");
                 return;
             }
+            else Diagnostic::trace(L"findTabLayoutBlock returned false.");
         }
     }
     else if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::BeforeDelete)) {
+        Diagnostic::trace(L"scnModified processing BeforeDelete.");
         TabLayoutBlock* tlb;
         int width;
         if (findTabLayoutBlock(ctd, scnp->position, scnp->length, tlb, width) && (!tlb || width + tabGap < tlb->width)) {
             ctd.deleteWithoutLayoutChange         = true;
             ctd.deleteWithoutLayoutChangePosition = scnp->position;
             ctd.deleteWithoutLayoutChangeLength   = scnp->length;
+            Diagnostic::trace(L"Exiting scnModified; deleteWithoutLayoutChange is true.");
         }
-        else ctd.deleteWithoutLayoutChange = false;
+        else {
+            ctd.deleteWithoutLayoutChange = false;
+            Diagnostic::trace(L"Exiting scnModified; deleteWithoutLayoutChange is false.");
+        }
         return;
     }
     else if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::DeleteText)) {
+        Diagnostic::trace(L"scnModified processing BeforeDelete.");
         if (ctd.deleteWithoutLayoutChange && scnp->position == ctd.deleteWithoutLayoutChangePosition && scnp->length == ctd.deleteWithoutLayoutChangeLength) {
             ctd.deleteWithoutLayoutChange = false;
+            Diagnostic::trace(L"Exiting scnModified; deleteWithoutLayoutChange was true, set to false.");
             return;
         }
     }
     ctd.elasticAnalysisRequired = true;
+    Diagnostic::trace(L"Exiting scnModified; elasticAnalysisRequired set to true.");
 }
 
 
 void ColumnsPlusPlusData::scnUpdateUI(const Scintilla::NotificationData* scnp) {
+    Diagnostic::trace(L"Entered scnUpdateUI; scnp->updated is " + std::to_wstring(static_cast<int>(scnp->updated)));
     if (!Scintilla::FlagSet(scnp->updated, Scintilla::Update::Content | Scintilla::Update::Selection | Scintilla::Update::VScroll)) return;
     DocumentData* ddp = getDocument(scnp);
     if (!ddp) return;
-    if (Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) syncFindButton();
-    if (!ddp->settings.elasticEnabled) return;
+    if (Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) {
+        Diagnostic::trace(L"scnUpdateUI calling syncFindButton.");
+        syncFindButton();
+    }
+    if (!ddp->settings.elasticEnabled) {
+        Diagnostic::trace(L"Exiting scnUpdateUI: Elastic tabstops not enabled.");
+        return;
+    }
     ddp->deleteWithoutLayoutChange = false;
     if (fontSpacingChange(*ddp)) {
+        Diagnostic::trace(L"scnUpdateUI calling setSpacing.");
         setSpacing(*ddp);
+        Diagnostic::trace(L"scnUpdateUI calling analyzeTabstops.");
         analyzeTabstops(*ddp);
     }
-    else if (ddp->elasticAnalysisRequired) analyzeTabstops(*ddp);
-    if (Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) reselectRectangularSelectionAndControlCharSymbol(*ddp, false);
+    else if (ddp->elasticAnalysisRequired) {
+        Diagnostic::trace(L"scnUpdateUI calling analyzeTabstops.");
+        analyzeTabstops(*ddp);
+    }
+    if (Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) {
+        Diagnostic::trace(L"scnUpdateUI calling reselectRectangularSelectionAndControlCharSymbol.");
+        reselectRectangularSelectionAndControlCharSymbol(*ddp, false);
+    }
+    Diagnostic::trace(L"scnUpdateUI calling setTabstops.");
     setTabstops(*ddp);
+    Diagnostic::trace(L"Exiting scnUpdateUI.");
 }
 
 

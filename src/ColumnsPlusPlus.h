@@ -37,6 +37,8 @@ namespace NPP {
 #undef min
 #undef max
 
+#include "Diagnostic.h"
+
 template< class T, class S > constexpr const T clamp_cast(const S& v) {
     using s = std::numeric_limits<S>;
     using t = std::numeric_limits<T>;
@@ -338,23 +340,40 @@ public:
     }
 
     DocumentData* getDocument() {
+        Diagnostic::trace(L"Entered getDocument without scnp, calling DocPointer.");
         void* docptr = sci.DocPointer();
+        Diagnostic::trace(L"getDocument checking if documents contains docptr = " + std::to_wstring(reinterpret_cast<uintptr_t>(docptr)));
         bool isNew = !documents.contains(docptr);
+        Diagnostic::trace(L"getDocument getting document data address.");
         DocumentData& dd = documents[docptr];
         if (isNew) {
+            Diagnostic::trace(L"getDocument document is new, sending NPPM_GETCURRENTBUFFERID.");
             dd.buffer = SendMessage(nppData._nppHandle, NPPM_GETCURRENTBUFFERID, 0, 0);
             dd.settings = settings;
         }
+        Diagnostic::trace(L"getDocument returning document data address " + std::to_wstring(reinterpret_cast<uintptr_t>(&dd)));
         return &dd;
     }
 
     DocumentData* getDocument(const Scintilla::NotificationData* scnp) {
+        Diagnostic::trace(L"Entered getDocument with scnp = " + std::to_wstring(reinterpret_cast<uintptr_t>(scnp)));
         activeScintilla = reinterpret_cast<HWND>(scnp->nmhdr.hwndFrom);
+        Diagnostic::trace(L"getDocument sending GetDirectPointer to activeScintilla = " + std::to_wstring(reinterpret_cast<uintptr_t>(activeScintilla)));
         pointerScintilla = SendMessage(activeScintilla, static_cast<UINT>(Scintilla::Message::GetDirectPointer), 0, 0);
+        Diagnostic::trace(L"getDocument calling SetFnPtr(" + std::to_wstring(reinterpret_cast<uintptr_t>(directStatusScintilla))
+                                                           + L"," + std::to_wstring(pointerScintilla) + L").");
         sci.SetFnPtr(directStatusScintilla, pointerScintilla);
+        Diagnostic::trace(L"getDocument calling DocPointer.");
         void* docptr = sci.DocPointer();
-        if (!documents.contains(docptr)) return 0;
-        return &documents[docptr];
+        Diagnostic::trace(L"getDocument checking if documents contains docptr = " + std::to_wstring(reinterpret_cast<uintptr_t>(docptr)));
+        if (!documents.contains(docptr)) {
+            Diagnostic::trace(L"getDocument returning 0.");
+            return 0;
+        }
+        Diagnostic::trace(L"getDocument getting document data address.");
+        DocumentData* ddp = &documents[docptr];
+        Diagnostic::trace(L"getDocument returning document data address " + std::to_wstring(reinterpret_cast<uintptr_t>(ddp)));
+        return ddp;
     }
 
     RectangularSelection getRectangularSelection();

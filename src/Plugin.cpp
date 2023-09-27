@@ -24,11 +24,15 @@ static bool fileIsOpening = false;
 static bool startupOrShutdown = true;
 
 static void getScintillaPointers() {
+    Diagnostic::trace(L"Entering getScintillaPointers.");
     int currentEdit = 0;
     SendMessage(data.nppData._nppHandle, NPPM_GETCURRENTSCINTILLA, 0, reinterpret_cast<LPARAM>(&currentEdit));
+    Diagnostic::trace(L"Sent NPPM_GETCURRENTSCINTILLA.");
     data.activeScintilla = currentEdit ? data.nppData._scintillaSecondHandle : data.nppData._scintillaMainHandle;
     data.pointerScintilla = SendMessage(data.activeScintilla, static_cast<UINT>(Scintilla::Message::GetDirectPointer), 0, 0);
+    Diagnostic::trace(L"Sent Scintilla::Message::GetDirectPointer.");
     data.sci.SetFnPtr(data.directStatusScintilla, data.pointerScintilla);
+    Diagnostic::trace(L"Called SetFnPtr.");
 }
 
 static void cmdWrap(void (ColumnsPlusPlusData::* cmdFunction)()) {
@@ -114,6 +118,8 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
 
     if (bypassNotifications) return;
 
+    try {
+
     bypassNotifications = true;
 
     auto*& scnp = reinterpret_cast<Scintilla::NotificationData*&>(np);
@@ -122,14 +128,17 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
     switch (scnp->nmhdr.code) {
         
     case Scintilla::Notification::Modified:
+        Diagnostic::trace(L"Calling scnModified.");
         data.scnModified(scnp);
         break;
 
     case Scintilla::Notification::UpdateUI:
+        Diagnostic::trace(L"Calling scnUpdateUI.");
         data.scnUpdateUI(scnp);
         break;
 
     case Scintilla::Notification::Zoom:
+        Diagnostic::trace(L"Calling scnZoom.");
         data.scnZoom(scnp);
         break;
 
@@ -143,7 +152,9 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
 
         case NPPN_BUFFERACTIVATED:
             if (!startupOrShutdown && !fileIsOpening) {
+                Diagnostic::trace(L"Processing NPPN_BUFFERACTIVATED.");
                 getScintillaPointers();
+                Diagnostic::trace(L"Calling bufferActivated.");
                 data.bufferActivated();
             }
             break;
@@ -157,34 +168,48 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             break;
 
         case NPPN_FILECLOSED:
+            Diagnostic::trace(L"Calling fileClosed.");
             data.fileClosed(nmhdr);
             break;
 
         case NPPN_FILEOPENED:
             fileIsOpening = false;
+            Diagnostic::trace(L"Calling fileOpened.");
             data.fileOpened(nmhdr);
             break;
 
         case NPPN_READY:
+            Diagnostic::trace(L"Processing NPPN_READY.");
             if (data.showOnMenuBar) data.moveMenuToMenuBar();
             startupOrShutdown = false;
             data.elasticEnabledMenuItem = menuDefinition.elasticEnabled._cmdID;
             data.decimalSeparatorMenuItem = menuDefinition.decimalSeparatorIsComma._cmdID;
+            Diagnostic::trace(L"Sending NPPM_ALLOCATEINDICATOR.");
             if (!SendMessage(data.nppData._nppHandle, NPPM_ALLOCATEINDICATOR, 1, reinterpret_cast<LPARAM>(&data.searchData.allocatedIndicator)))
                 data.searchData.allocatedIndicator = 0;
             data.searchData.customIndicator = data.searchData.forceUserIndicator || !data.searchData.allocatedIndicator ? data.searchData.userIndicator
                                                                                                                         : data.searchData.allocatedIndicator;
             if (data.searchData.indicator < 21) data.searchData.indicator = data.searchData.customIndicator;
             getScintillaPointers();
+            Diagnostic::trace(L"Calling bufferActivated.");
             data.bufferActivated();
             break;
 
         case NPPN_SHUTDOWN:
+            Diagnostic::trace(L"Processing NPPN_SHUTDOWN.");
             data.saveConfiguration();
             break;
 
         }
 
+    }
+
+
+    }
+    catch (...) {
+        Diagnostic::display();
+        bypassNotifications = false;
+        throw;
     }
 
     bypassNotifications = false;
