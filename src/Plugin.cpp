@@ -33,13 +33,22 @@ static void getScintillaPointers() {
     Diagnostic::trace(L"Sent Scintilla::Message::GetDirectPointer.");
     data.sci.SetFnPtr(data.directStatusScintilla, data.pointerScintilla);
     Diagnostic::trace(L"Called SetFnPtr.");
+    data.sci.SetStatus(Scintilla::Status::Ok);
+    Diagnostic::trace(L"Called SetStatus(Ok).");
 }
 
 static void cmdWrap(void (ColumnsPlusPlusData::* cmdFunction)()) {
-    bypassNotifications = true;
-    getScintillaPointers();
-    (data.*cmdFunction)();
-    bypassNotifications = false;
+    try {
+        bypassNotifications = true;
+        getScintillaPointers();
+        (data.*cmdFunction)();
+        bypassNotifications = false;
+    }
+    catch (...) {
+        Diagnostic::display();
+        bypassNotifications = false;
+        throw;
+    }
 }
 
 static struct MenuDefinition {

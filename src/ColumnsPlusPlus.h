@@ -363,6 +363,8 @@ public:
         Diagnostic::trace(L"getDocument calling SetFnPtr(" + std::to_wstring(reinterpret_cast<uintptr_t>(directStatusScintilla))
                                                            + L"," + std::to_wstring(pointerScintilla) + L").");
         sci.SetFnPtr(directStatusScintilla, pointerScintilla);
+        Diagnostic::trace(L"getDocument setting Scintilla status to Ok.");
+        sci.SetStatus(Scintilla::Status::Ok);
         Diagnostic::trace(L"getDocument calling DocPointer.");
         void* docptr = sci.DocPointer();
         Diagnostic::trace(L"getDocument checking if documents contains docptr = " + std::to_wstring(reinterpret_cast<uintptr_t>(docptr)));

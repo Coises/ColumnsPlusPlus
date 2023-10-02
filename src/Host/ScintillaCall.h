@@ -1,3 +1,10 @@
+// This file is part of Columns++ for Notepad++.
+// Changes 2023 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
+//
+// Modified from original:
+//     added #include <charconv>
+//     struct Failure changed to be based on std::exception so Notepad++ will show a more meaningful error
+
 // SciTE - Scintilla based Text Editor
 /** @file ScintillaCall.h
  ** Interface to calling a Scintilla instance.
@@ -11,6 +18,8 @@
 #ifndef SCINTILLACALL_H
 #define SCINTILLACALL_H
 
+#include <charconv>
+
 namespace Scintilla {
 
 enum class Message;	// Declare in case ScintillaMessages.h not included
@@ -22,9 +31,14 @@ struct RangeToFormatFull;
 
 using FunctionDirect = intptr_t(*)(intptr_t ptr, unsigned int iMessage, uintptr_t wParam, intptr_t lParam, int *pStatus);
 
-struct Failure {
+struct Failure : std::exception {
 	Scintilla::Status status;
 	explicit Failure(Scintilla::Status status_) noexcept : status(status_) {
+	}
+	virtual const char* what() const noexcept override {
+		static char text[36] = "Scintilla error; status code \0\0\0\0\0\0";
+		static auto tcr = std::to_chars(text + 29, text + 35, static_cast<int>(status));
+		return text;
 	}
 };
 
