@@ -1,5 +1,13 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Version 0.7.3-alpha -- October 4th, 2023
+
+* Improved exception handling: Exceptions from the Scintilla C++ interface will now be passed to Notepad++ in a way that allows it to report them as such, and uncleared error status codes from outside Columns++ will no longer cause exceptions in Columns++.
+
+* An error in handling parentheses in regular expression replacement strings was fixed.
+
+* A design flaw that could cause formula substitutions in regular expression replacement strings to be misinterpreted as part of a special sequence (such as a $*n* capture group reference) was fixed.
+
 ## Version 0.7.2-alpha -- September 20th, 2023
 
 * Replaced a Windows API call that caused Version 0.7.1-alpha to fail to load on versions of Windows prior to Windows 10 with one that works on Vista and later versions.
