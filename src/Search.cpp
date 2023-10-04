@@ -554,6 +554,7 @@ bool searchPrepare(ColumnsPlusPlusData& data, std::string* sciFind, std::vector<
                         sciRepl->emplace_back();
                         depth = 1;
                     }
+                    else sciRepl->back() += r[i];
                     break;
                 case '\\' :
                     sciRepl->back() += '\\';
