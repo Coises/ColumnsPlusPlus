@@ -531,40 +531,34 @@ bool searchPrepare(ColumnsPlusPlusData& data, std::string* sciFind, std::vector<
                     if (r[i] == '\'') insideQuotes = false;
                     sciRepl->back() += r[i];
                 }
-                else if (depth) switch (r[i]) {
-                case '\'' :
-                    insideQuotes = true;
-                    sciRepl->back() += '\'';
-                    break;
-                case '(' :
-                    ++depth;
-                    sciRepl->back() += r[i];
-                    break;
-                case ')' :
-                    if (--depth) sciRepl->back() += r[i];
-                    else         sciRepl->emplace_back();
-                    break;
-                default:
+                else if (depth) {
+                    switch (r[i]) {
+                    case '\'' :
+                        insideQuotes = true;
+                        break;
+                    case '(' :
+                        ++depth;
+                        break;
+                    case ')' :
+                        if (!--depth) sciRepl->emplace_back();
+                        break;
+                    }
                     sciRepl->back() += r[i];
                 }
-                else switch (r[i]) {
-                case '(' :
-                    if (i < r.length() - 2 && r.substr(i, 3) == "(?=") {
-                        i += 2;
-                        sciRepl->emplace_back();
-                        depth = 1;
-                    }
-                    else sciRepl->back() += r[i];
-                    break;
-                case '\\' :
-                    sciRepl->back() += '\\';
-                    if (i < r.length() - 1) {
-                        ++i;
-                        sciRepl->back() += r[i];
-                    }
-                    break;
-                default:
+                else {
                     sciRepl->back() += r[i];
+                    switch (r[i]) {
+                    case '(':
+                        if (i < r.length() - 2 && r.substr(i, 3) == "(?=") {
+                            i += 2;
+                            sciRepl->emplace_back();
+                            depth = 1;
+                        }
+                        break;
+                    case '\\':
+                        if (i < r.length() - 1) sciRepl->back() += r[++i];
+                        break;
+                    }
                 }
         }
         }
