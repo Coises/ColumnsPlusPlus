@@ -352,6 +352,7 @@ public:
         activeScintilla = reinterpret_cast<HWND>(scnp->nmhdr.hwndFrom);
         pointerScintilla = SendMessage(activeScintilla, static_cast<UINT>(Scintilla::Message::GetDirectPointer), 0, 0);
         sci.SetFnPtr(directStatusScintilla, pointerScintilla);
+        sci.SetStatus(Scintilla::Status::Ok);  // C-interface code can ignore an error status, which would cause the C++ interface to raise an exception 
         void* docptr = sci.DocPointer();
         if (!documents.contains(docptr)) return 0;
         return &documents[docptr];

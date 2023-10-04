@@ -29,6 +29,7 @@ static void getScintillaPointers() {
     data.activeScintilla = currentEdit ? data.nppData._scintillaSecondHandle : data.nppData._scintillaMainHandle;
     data.pointerScintilla = SendMessage(data.activeScintilla, static_cast<UINT>(Scintilla::Message::GetDirectPointer), 0, 0);
     data.sci.SetFnPtr(data.directStatusScintilla, data.pointerScintilla);
+    data.sci.SetStatus(Scintilla::Status::Ok);  // C-interface code can ignore an error status, which would cause the C++ interface to raise an exception 
 }
 
 static void cmdWrap(void (ColumnsPlusPlusData::* cmdFunction)()) {
