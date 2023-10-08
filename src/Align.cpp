@@ -66,8 +66,10 @@ void ColumnsPlusPlusData::alignNumeric() {
 
     struct Item {
         std::string text;
-        intptr_t extentLeft;
-        intptr_t extentRight;
+        intptr_t colonExtentLeft;
+        intptr_t colonExtentRight;
+        intptr_t decimalExtentLeft;
+        intptr_t decimalExtentRight;
         bool     align;
     };
 
@@ -77,10 +79,12 @@ void ColumnsPlusPlusData::alignNumeric() {
     };
 
     struct Column {
-        intptr_t extentLeft  = 0;
-        intptr_t extentRight = 0;
-        intptr_t width     = 0;
-        intptr_t pad       = 0;
+        intptr_t colonExtentLeft    = 0;
+        intptr_t colonExtentRight   = 0;
+        intptr_t decimalExtentLeft  = 0;
+        intptr_t decimalExtentRight = 0;
+        intptr_t width              = 0;
+        intptr_t pad                = 0;
     };
 
     auto rs = getRectangularSelection();
@@ -101,18 +105,31 @@ void ColumnsPlusPlusData::alignNumeric() {
             intptr_t width = sci.PointXFromPosition(cell.end()) - sci.PointXFromPosition(cell.start());
             if (cell.isLastInRow()) width += rs.blankWidth * (row.vsMax() - row.vsMin());
             if (width > cColumn.width) cColumn.width = width;
-            size_t dp = cell.trimLength() > 0 ? findDecimal(cell.trim()) : std::string::npos;
-            if (dp == std::string::npos) {
+            size_t cp = 0;
+            size_t dp = 0;
+            if (cell.trimLength() == 0 || !getNumericAlignment(cell.trim(), cp, dp)) {
                 cItem.text = cell.text();
                 cItem.align = false;
                 continue;
             }
-            cItem.extentLeft  = sci.PointXFromPosition(cell.left() + dp) - sci.PointXFromPosition(cell.left()     );
-            cItem.extentRight = sci.PointXFromPosition(cell.right()    ) - sci.PointXFromPosition(cell.left() + dp);
+            if (cp == std::string::npos) {
+                auto dpX = sci.PointXFromPosition(cell.left() + dp);
+                cItem.decimalExtentLeft  = dpX - sci.PointXFromPosition(cell.left());
+                cItem.decimalExtentRight = sci.PointXFromPosition(cell.right()) - dpX;
+                if (cItem.decimalExtentLeft  > cColumn.decimalExtentLeft ) cColumn.decimalExtentLeft  = cItem.decimalExtentLeft;
+                if (cItem.decimalExtentRight > cColumn.decimalExtentRight) cColumn.decimalExtentRight = cItem.decimalExtentRight;
+                cItem.colonExtentLeft = cItem.colonExtentRight = 0;
+            }
+            else {
+                auto cpX = sci.PointXFromPosition(cell.left() + cp);
+                cItem.colonExtentLeft  = cpX - sci.PointXFromPosition(cell.left());
+                cItem.colonExtentRight = sci.PointXFromPosition(cell.right()) - cpX;
+                if (cItem.colonExtentLeft  > cColumn.colonExtentLeft ) cColumn.colonExtentLeft  = cItem.colonExtentLeft;
+                if (cItem.colonExtentRight > cColumn.colonExtentRight) cColumn.colonExtentRight = cItem.colonExtentRight;
+                cItem.decimalExtentLeft = cItem.decimalExtentRight = 0;
+            }
             cItem.text = cell.trim();
             cItem.align = true;
-            if (cItem.extentLeft  > cColumn.extentLeft ) cColumn.extentLeft  = cItem.extentLeft;
-            if (cItem.extentRight > cColumn.extentRight) cColumn.extentRight = cItem.extentRight;
         }
     }
 
@@ -122,15 +139,35 @@ void ColumnsPlusPlusData::alignNumeric() {
     // Each item.text to be aligned has been trimmed of leading and trailing blanks.
     // column.width is the maximum number of pixels in any item in the column before trimming,
     //     including virtual space.
-    // item.extentLeft is the number of pixels left of the (possibly implicit) decimal separator
-    // item.extentRight is the number of pixels right of the (possibly implicit) ones digit,
-    //     including the decimal separator if there is one.
-    // column.extentLeft and .extentRight are the maximums of the extentLeft and extentRight values
+    // item.colonExtentLeft is the number of pixels left of the colon that will be used for alignment,
+    //     if there is a colon; else it is zero.
+    // item.colonExtentRight is the number of pixels right of the colon that will be used for alignment,
+    //     including the colon itself, if there is a colon; else it is zero.
+    // item.decimalExtentLeft is the number of pixels left of the (possibly implicit) decimal separator
+    //     when there is no colon; else it is zero.
+    // item.decimalExtentRight is the number of pixels right of the (possibly implicit) ones digit,
+    //     including the decimal separator if there is one, when there is no colon; else it is zero.
+    // column.*ExtentLeft and .*ExtentRight are the maximums of the *ExtentLeft and *ExtentRight values
     //     of all items in the column.
 
+    // colonDecimalExtent is the number of pixels the alignment colon for time format numbers should be left of the decimal in non-time format numbers
+    
+    intptr_t colonDecimalOffset = (timeScalarUnit - (timePartialRule == 0 ? 0 : timePartialRule == 3 ? 2 : 1)) * sci.TextWidth(STYLE_DEFAULT, ":00");
+
     for (Column& col : column) {
-        intptr_t pad = col.width - col.extentLeft - col.extentRight;
-        col.pad = pad > 0 ? (2 * pad + rs.blankWidth) / (2 * rs.blankWidth) : (2 * pad - rs.blankWidth) / (2 * rs.blankWidth);
+        if (col.colonExtentRight == 0) /* no time format numbers in this column */ {
+            intptr_t pad = col.width - col.decimalExtentLeft - col.decimalExtentRight;
+            col.pad = pad > 0 ? (2 * pad + rs.blankWidth) / (2 * rs.blankWidth) : (2 * pad - rs.blankWidth) / (2 * rs.blankWidth);
+        }
+        else if (col.decimalExtentLeft == 0 && col.decimalExtentRight == 0) /* only time format numbers in this column */ {
+            intptr_t pad = col.width - col.colonExtentLeft - col.colonExtentRight;
+            col.pad = pad > 0 ? (2 * pad + rs.blankWidth) / (2 * rs.blankWidth) : (2 * pad - rs.blankWidth) / (2 * rs.blankWidth);
+        }
+        else /* mixed time and non-time formats in this column */ {
+            intptr_t pad = col.width - std::max(col.colonExtentLeft , col.decimalExtentLeft  - colonDecimalOffset)
+                                     - std::max(col.colonExtentRight, col.decimalExtentRight + colonDecimalOffset);
+            col.pad = pad > 0 ? (2 * pad + rs.blankWidth) / (2 * rs.blankWidth) : (2 * pad - rs.blankWidth) / (2 * rs.blankWidth);
+        } 
     }
 
     // A positive pad value means once leading and trailing blanks are removed from all items in a column
@@ -151,10 +188,35 @@ void ColumnsPlusPlusData::alignNumeric() {
             const Column& col = column[j];
             if (cell.align) {
                 if (col.pad > 0) r += std::string(col.pad, ' ');
-                r += std::string((2 * (col.extentLeft - cell.extentLeft) + rs.blankWidth) / (2 * rs.blankWidth), ' ');
+                intptr_t colLeft, colRight, cellLeft, cellRight;
+                if (col.colonExtentRight == 0) /* no time format numbers in this column */ {
+                    colLeft   = col .decimalExtentLeft;
+                    colRight  = col .decimalExtentRight;
+                    cellLeft  = cell.decimalExtentLeft;
+                    cellRight = cell.decimalExtentRight;
+                }
+                else if (col.decimalExtentLeft == 0 && col.decimalExtentRight == 0) /* only time format numbers in this column */ {
+                    colLeft   = col .colonExtentLeft;
+                    colRight  = col .colonExtentRight;
+                    cellLeft  = cell.colonExtentLeft;
+                    cellRight = cell.colonExtentRight;
+                }
+                else /* mixed time and non-time formats in this column */ {
+                    colLeft  = std::max(col.colonExtentLeft , col.decimalExtentLeft  - colonDecimalOffset);
+                    colRight = std::max(col.colonExtentRight, col.decimalExtentRight + colonDecimalOffset);
+                    if (cell.colonExtentRight == 0) {
+                        cellLeft  = cell.decimalExtentLeft  - colonDecimalOffset;
+                        cellRight = cell.decimalExtentRight + colonDecimalOffset;
+                    }
+                    else {
+                        cellLeft  = cell.colonExtentLeft;
+                        cellRight = cell.colonExtentRight;
+                    }
+                }
+                r += std::string((2 * (colLeft - cellLeft) + rs.blankWidth) / (2 * rs.blankWidth), ' ');
                 r += cell.text;
                 if (j == lastCell ? notEOL : !settings.elasticEnabled)
-                    r += std::string((2 * (col.extentRight - cell.extentRight) + rs.blankWidth) / (2 * rs.blankWidth), ' ');
+                    r += std::string((2 * (colRight - cellRight) + rs.blankWidth) / (2 * rs.blankWidth), ' ');
             }
             else {
                 r += cell.text;

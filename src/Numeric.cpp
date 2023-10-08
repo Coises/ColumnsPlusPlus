@@ -357,37 +357,6 @@ INT_PTR CALLBACK calculateDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
 }
 
 
-size_t ColumnsPlusPlusData::findDecimal(const std::string& text, bool timeUnitIsMinutes) {
-
-    static const std::wstring inside = L".,:'0123456789 \u00A0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F";
-
-    const char decimal = settings.decimalSeparatorIsComma ? ',' : '.';
-
-    size_t left = text.find_first_of("0123456789");
-    if (left == std::string::npos) return std::string::npos;
-    size_t right = text.find_last_of("0123456789");
-
-    size_t decimalPosition = (left > 0 && text[left - 1] == decimal) ? --left : text.find_first_of(decimal, left);
-    if (decimalPosition > right) decimalPosition = right + 1;
-    else if (decimalPosition != text.find_last_of(decimal, right)) return std::string::npos;
-
-    size_t colonPosition = text.find_last_of(':', right);
-    if (colonPosition != std::string::npos) {
-        if (colonPosition > decimalPosition) return std::string::npos;
-        if (std::count(std::next(text.begin(), left), std::next(text.begin(), right), ':')
-            > (timeUnitIsMinutes ? 2 : 3)) return std::string::npos;
-    }
-
-    std::wstring s = toWide(text, sci.CodePage());
-    left = s.find_first_of(L"0123456789");
-    right = s.find_last_of(L"0123456789");
-    if (s.find_first_not_of(inside, left) < right) return std::string::npos;
-
-    return decimalPosition;
-
-}
-
-
 void ColumnsPlusPlusData::accumulate(bool isMean) {
 
     auto rs = getRectangularSelection();

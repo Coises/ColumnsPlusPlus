@@ -470,17 +470,16 @@ public:
 
     // Numeric.cpp
 
-    size_t findDecimal(const std::string& text, bool timeUnitIsMinutes = false); 
-    void   accumulate(bool isMean);
-
+    void accumulate(bool isMean);
     void addNumbers()     { accumulate(false); }
     void averageNumbers() { accumulate(true ); }
     void calculate();
 
     // NumericFormat.cpp
 
-    std::string formatNumber(double value, const NumericFormat& format) const;
+    std::string  formatNumber(double value, const NumericFormat& format) const;
     NumericParse parseNumber(const std::string& text);
+    bool         getNumericAlignment(const std::string& text, size_t& colonPosition, size_t& decimalPosition);
 
     // Options.cpp
 

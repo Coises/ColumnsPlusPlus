@@ -352,3 +352,41 @@ NumericParse ColumnsPlusPlusData::parseNumber(const std::string& text) {
     return numericParse;
 
 }
+
+
+bool ColumnsPlusPlusData::getNumericAlignment(const std::string& text, size_t& colonPosition, size_t& decimalPosition) {
+
+    static const std::wstring inside = L".,:'0123456789 \u00A0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F";
+
+    const char decimal = settings.decimalSeparatorIsComma ? ',' : '.';
+
+    size_t left = text.find_first_of("0123456789");
+    if (left == std::string::npos) return false;
+    size_t right = text.find_last_of("0123456789");
+
+    decimalPosition = (left > 0 && text[left - 1] == decimal) ? --left : text.find_first_of(decimal, left);
+    if (decimalPosition > right) decimalPosition = right + 1;
+    else if (decimalPosition != text.find_last_of(decimal, right)) return false;
+
+    colonPosition = text.find_last_of(':', right);
+    if (colonPosition != std::string::npos) {
+        if (colonPosition > decimalPosition) return false;
+        size_t colonCount = std::count(std::next(text.begin(), left), std::next(text.begin(), right), ':');
+        if (colonCount > 3) return false;
+        if (colonCount == 2) {
+            if (timePartialRule == 0 || timePartialRule == 2) colonPosition = text.find_first_of(':', left);
+        }
+        else if (colonCount == 3) {
+            if (timePartialRule == 0) colonPosition = text.find_first_of(':', left);
+            else if (timePartialRule != 3) colonPosition = text.find_last_of(':', colonPosition - 1);
+        }
+    }
+
+    std::wstring s = toWide(text, sci.CodePage());
+    left = s.find_first_of(L"0123456789");
+    right = s.find_last_of(L"0123456789");
+    if (s.find_first_not_of(inside, left) < right) return false;
+
+    return true;
+
+}
