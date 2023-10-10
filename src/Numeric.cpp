@@ -534,7 +534,6 @@ void ColumnsPlusPlusData::calculate() {
     if (DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_CALCULATE), nppData._nppHandle, calculateDialogProc, reinterpret_cast<LPARAM>(&ci)))
         return;
 
-    const char        decimalSeparator   = settings.decimalSeparatorIsComma ? ',' : '.';
     const std::string thousandsSeparator = calc.thousands == CalculateSettings::None ? ""
                                          : calc.thousands == CalculateSettings::Apostrophe ? "\'"
                                          : calc.thousands == CalculateSettings::Blank ? " "
@@ -542,38 +541,47 @@ void ColumnsPlusPlusData::calculate() {
 
     sci.SetSearchFlags(calc.matchCase ? Scintilla::FindOption::RegExp | Scintilla::FindOption::MatchCase : Scintilla::FindOption::RegExp);
 
-    size_t matches   = 0;
-    size_t maxLeft   = 0;
-    size_t maxRight  = 0;
-    size_t maxString = 0;
-    std::vector<std::string> textResults;
-    std::vector<bool> canAlign;
+    size_t   matches   = 0;
+    intptr_t maxLeft   = 0;
+    intptr_t maxRight  = 0;
+    intptr_t maxString = 0;
+
+    struct Item {
+        std::string text;
+        intptr_t left  = 0;
+        bool     align = false;
+    };
+
+    std::vector<Item> items;
 
     history.results .reserve(rs.size());
     history.skipMap .reserve(rs.size());
     history.skipFlag.reserve(rs.size());
-    textResults     .reserve(rs.size());
-    canAlign        .reserve(rs.size());
+    items           .reserve(rs.size());
 
     NumericFormat format;
-    format.maxDec = calc.decimalPlaces;
-    if (calc.decimalsFixed) format.minDec = calc.decimalPlaces;
+    intptr_t      colonDecimalOffset = 0;
+
+    format.maxDec    = calc.decimalPlaces;
     format.thousands = thousandsSeparator;
-    if (calc.formatAsTime) format.timeEnable = timeFormatEnable;
+    if (calc.decimalsFixed) format.minDec = calc.decimalPlaces;
+    if (calc.formatAsTime) {
+        format.timeEnable  = timeFormatEnable;
+        colonDecimalOffset = (timeScalarUnit - (timePartialRule == 0 ? 0 : timePartialRule == 3 ? 2 : 1)) * 3;
+    }
 
     for (auto row : rs) {
 
         ++exIndex;
-        exLine  = static_cast<double>(row.line() + 1);
+        exLine = static_cast<double>(row.line() + 1);
         history.push();
+        items.emplace_back();
         if (calc.regexHistory.size() && !calc.regexHistory.back().empty()) {
             Scintilla::Position found;
             exThis = history.reg(0, 0, &found);
             if (found < 0) {
                 if (calc.skipUnmatched) {
                     history.skip();
-                    textResults.push_back("");
-                    canAlign.push_back(false);
                     continue;
                 }
                 exMatch = 0;
@@ -583,18 +591,21 @@ void ColumnsPlusPlusData::calculate() {
         else exThis = history.col(0, 0);
         double result = ci.expression.value();
         history.results.back() = result;
+        Item& item = items.back();
 
         if (std::isfinite(result)) {
-            std::string s = formatNumber(result, format);
+            item.text = formatNumber(result, format);
+            intptr_t textLength = item.text.length();
             if (calc.aligned) {
-                size_t j = s.find_first_of(decimalSeparator);
-                if (j == std::string::npos) j = s.length();
-                if (j > maxLeft) maxLeft = j;
-                if (s.length() - j > maxRight) maxRight = s.length() - j;
+                size_t cp = 0;
+                size_t dp = 0;
+                getNumericAlignment(item.text, cp, dp);
+                item.left = cp == std::string::npos ? static_cast<intptr_t>(dp) - colonDecimalOffset : cp;
+                if (item.left > maxLeft) maxLeft = item.left;
+                if (textLength - item.left > maxRight) maxRight = textLength - item.left;
+                item.align = true;
             }
-            else if (s.length() > maxRight) maxRight = s.length();
-            textResults.push_back(s);
-            canAlign.push_back(true);
+            else if (textLength > maxString) maxString = textLength;
         }
         else {
             if (ci.expression.results().count()) {
@@ -615,11 +626,9 @@ void ColumnsPlusPlusData::calculate() {
                         lastWasNumeric = true;
                     }
                 }
-                textResults.push_back(s);
-                if (maxString < s.length()) maxString = s.length();
+                item.text = s;
+                if (maxString < static_cast<intptr_t>(s.length())) maxString = s.length();
             }
-            else textResults.push_back("");
-            canAlign.push_back(false);
         }
 
     }
@@ -629,12 +638,9 @@ void ColumnsPlusPlusData::calculate() {
     sci.BeginUndoAction();
     for (auto row : rs) {
         if (!history.skipped(resultsIndex)) {
-            std::string s = textResults[resultsIndex];
-            if (calc.aligned && canAlign[resultsIndex]) {
-                size_t j = s.find_first_of(decimalSeparator);
-                if (j == std::string::npos) j = s.length();
-                s = std::string(maxLeft - j, ' ') + s;
-            }
+            Item& item = items[resultsIndex];
+            std::string s = item.text;
+            if (calc.aligned && item.align) s = std::string(maxLeft - item.left, ' ') + s;
             if (!settings.elasticEnabled || !calc.tabbed) s += std::string(maxLeft + maxRight - s.length(), ' ');
             if (calc.left) {
                 s += calc.tabbed ? '\t' : ' ';
