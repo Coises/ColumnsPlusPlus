@@ -1,5 +1,9 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Version 0.7.4-alpha  -- October 10th, 2023
+
+* The **Align numeric** command and the **Numeric aligned** option of the **Calculate...** command now take into account numbers formatted as times, based on the settings in the **Time formats** dialog.
+
 ## Version 0.7.3-alpha -- October 4th, 2023
 
 * Improved exception handling: Exceptions from the Scintilla C++ interface will now be passed to Notepad++ in a way that allows it to report them as such, and uncleared error status codes from outside Columns++ will no longer cause exceptions in Columns++.

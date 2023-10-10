@@ -16,10 +16,10 @@ The integrated implementation of __Elastic tabstops__ works to line up columns w
 ## Main Features
 
 * __Elastic tabstops:__ Columns++ includes a new implementation of Nick Gravgaard's [Elastic tabstops](https://nickgravgaard.com/elastic-tabstops/). _(Please note that as of this writing I have not communicated with Mr. Gravgaard about my implementation of his proposal, and no endorsement on his part is implied.)_
-* __Find and replace:__ Columns++ supports find and replace within regions, which can be defined by rectangular selections or multiple selections.
+* __Find and replace:__ Columns++ supports find and replace within regions, which can be defined by rectangular selections or multiple selections. Numeric formulas are supported in regular expression replacement strings.
 * __Calculations:__ There are commands to add or average numbers in one or more columns and to insert the results of a calculation into each line of a rectangular selection.
 * __Alignment:__ You can left- or right-align text, or line up numbers.
-* __Sorting:__ Columns++ includes  sort commands that work correctly with rectangular selections in files that use tabs.
+* __Sorting:__ Columns++ includes sort commands that work correctly with rectangular selections in files that use tabs. Sorts can be based on multiple columns or on regular expression capture groups.
 * __Conversion:__ Commands to convert tabs to spaces and to convert between comma (or other delimiter) separated values and tabbed presentation are included.
 
 There is a [help file](https://coises.github.io/ColumnsPlusPlus/help.htm).
@@ -28,7 +28,7 @@ There is a [help file](https://coises.github.io/ColumnsPlusPlus/help.htm).
 
 Columns++ is optimized for use with Elastic tabstops. It also works with files that use traditional, fixed tabs for alignment, or no tabs at all; however, you should ordinarily select only one column at a time in files that don't use Elastic tabstops.
 
-Columns++ is generally not helpful when columns do not line up visually, such as in comma-separated values files. However, Columns++ can convert between delimiter-separated values and tabbed presentation.
+Columns++ is generally not helpful when columns do not line up visually, such as in comma-separated values files. However, Columns++ can convert between delimiter-separated values and tabbed presentation; and there are some features, particularly search using numeric formulas in regular expression replacement strings and sorting with custom criteria, which may be useful in documents that are not column-oriented.
 
 Elastic tabstops can cause loading and editing to be slow for large files. Performance can be significantly improved by avoiding proportionally-spaced fonts. By default, Elastic tabstops is automatically turned off for files over 1000 KB or 5000 lines. You can change these limits.
 

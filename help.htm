@@ -170,7 +170,7 @@ window.addEventListener("load", doPageLoad);
 
 <p><strong>Columns++</strong> is optimized for use with Elastic tabstops. It also works with files that use traditional, fixed tabs for alignment, or no tabs at all; however, you should ordinarily select only one column at a time in files that don’t use Elastic tabstops.</p>
 
-<p><strong>Columns++</strong> is generally not helpful when columns do not line up visually, such as in comma-separated values files. However, Columns++ can convert between delimiter-separated values and tabbed presentation.</p>
+<p><strong>Columns++</strong> is generally not helpful when columns do not line up visually, such as in comma-separated values files. However, Columns++ can convert between delimiter-separated values and tabbed presentation; and there are some features, particularly <a href="#search">Search</a> using numeric formulas in regular expression replacement strings and <a href="#sorting">Sorting</a> with custom criteria, which may be useful in documents that are not column-oriented.</p>
 
 <p>Elastic tabstops can cause loading and editing to be slow for large files. By default, Elastic tabstops is automatically turned off for files over 1000 KB or 5000 lines. You can change these limits.</p>
 
@@ -366,7 +366,7 @@ Close the dialog with the <strong>Yes</strong> button to copy the results to the
 <tr><th>New column</th><td>
 <table class=optionsTable>
 <tr><th>Tabbed</th><td>Check to use a tab to separate the new column from the existing selection; uncheck to pad with spaces so as to leave one space between edge of the existing selection and the new column.</td></tr>
-<tr><th>Numeric&nbsp;aligned</th><td>Check to align results as numbers; uncheck to leave results left-justified.</td></tr>
+<tr><th>Numeric&nbsp;aligned</th><td>Check to align results as numbers, following the same rules as the <a href="#alignment">Align numeric</a> command; uncheck to leave results left-justified.</td></tr>
 <tr><th>Insert&nbsp;at&nbsp;left</th><td>Check to insert the new column at the left of the selection; uncheck to insert on the right.</td></tr>
 </table></td></tr>
 </table>
@@ -556,9 +556,13 @@ Up to <strong><em>d</em></strong> decimal places will be shown, but no fewer tha
 
 <section id=alignment><h2>Alignment</h2>
 
-<p><strong>Align left</strong>, <strong>Align right</strong> and <strong>Align numeric</strong> process rectangular selections. The selection can be a single column, or multiple columns separated by elastic tabs. (These commands can be used on selections that include traditional fixed tabs; but the results may not be as expected, since they treat tabs as logical separators, ignoring physical positioning.)</p>
+<p><strong>Align left</strong>, <strong>Align right</strong> and <strong>Align numeric</strong> process rectangular selections. The selection can be a single column, or multiple columns separated by elastic tabs. (These commands can be used on selections that include traditional fixed tabs; but the results may not be as expected, since they treat tabs as logical separators, ignoring physical positioning.) Alignment is accomplished by adding and/or removing ASCII spaces at the beginning and/or end of a column; therefore, precise right or numeric alignment is not always possible when using proportionally-spaced fonts.</p>
 
-<p>The <strong>Decimal separator is comma</strong> item near the bottom of the <strong>Columns++</strong> menu determines whether the comma or the period is the decimal separator for <strong>Align numeric</strong>. Details about how numbers are recognized are given in the section on <a href="#numberformats">Number formats</a>. The alignment of items which are not recognized as numbers is unchanged.</p>
+<h3>Align numeric</h3>
+
+<p>Details about how numbers are recognized and interpreted are given in the section on <a href="#numberformats">Number formats</a>. The alignment of items which are not recognized as numbers is unchanged. The <strong>Decimal separator is comma</strong> item near the bottom of the <strong>Columns++</strong> menu determines whether the comma or the period is the decimal separator.</p>
+
+<p>The settings in the <a href="#timeformats">Time formats</a> dialog determine how numeric alignment proceeds when there are numbers with colons. The <strong>Numbers with one or two colons represent</strong> setting identifies which colon (days<strong>:</strong>hours, hours<strong>:</strong>minutes or minutes<strong>:</strong>seconds) is present in all numbers with colons; that colon is aligned across all lines. Numbers without colons are aligned according to the <strong>Time units: numbers with no colons represent</strong> setting, such that they line up with the position that same unit would occupy in a time-formatted number with four segments, all of which except days have two integer digits (e.g., “1:00:00:00”).</p>
 
 </section>
 
