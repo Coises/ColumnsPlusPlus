@@ -106,7 +106,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
         else if (std::regex_match(line, match, extensionsHeader  )) readingSection = sectionExtensions;
         else if (std::regex_match(line, match, profileHeader     )) {
             readingSection = sectionProfile;
-            profileName = toWide(match[1], CP_UTF8);
+            profileName = toWide(match.str(1), CP_UTF8);
         }
         else if (std::regex_match(line, match, dataLine)) {
             if (readingSection == sectionLastSettings) {
@@ -272,8 +272,8 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 }
             }
             else if (readingSection == sectionExtensions) {
-                std::wstring extension = toWide(match[1], CP_UTF8);
-                std::wstring profile   = toWide(match[2], CP_UTF8);
+                std::wstring extension = toWide(match.str(1), CP_UTF8);
+                std::wstring profile   = toWide(match.str(2), CP_UTF8);
                 if      (extension == L"new")     extensionToProfile[L"" ] = profile;
                 else if (extension == L"none")    extensionToProfile[L"."] = profile;
                 else if (extension == L"default") extensionToProfile[L"*"] = profile;

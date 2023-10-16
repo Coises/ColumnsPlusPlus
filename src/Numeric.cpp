@@ -644,12 +644,14 @@ void ColumnsPlusPlusData::calculate() {
             if (!settings.elasticEnabled || !calc.tabbed) s += std::string(maxLeft + maxRight - s.length(), ' ');
             if (calc.left) {
                 s += calc.tabbed ? '\t' : ' ';
-                row.replace(s + row.text());
+                s += row.text();
+                row.replace(s);
             }
             else {
                 if (calc.tabbed) s = row.text().length() > 0 && row.text()[row.text().length() - 1] == '\t' ? s + '\t' : '\t' + s;
                 else s = ' ' + s;
-                row.replace(row.text() + s);
+                s.insert(0, row.text());
+                row.replace(s);
             }
         }
         ++resultsIndex;

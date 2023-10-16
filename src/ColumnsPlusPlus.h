@@ -52,18 +52,20 @@ template< class T, class S > constexpr const T clamp_cast(const S& v) {
 }
 
 
-inline std::string fromWide(const std::wstring& s, unsigned int codepage) {
+inline std::string fromWide(std::wstring_view s, unsigned int codepage) {
     std::string r;
     size_t inputLength = s.length();
     if (!inputLength) return r;
     constexpr unsigned int safeSize = std::numeric_limits<int>::max() / 8;
     size_t workingPoint = 0;
     while (inputLength - workingPoint > safeSize) {
-        int segmentLength = WideCharToMultiByte(codepage, 0, s.data() + workingPoint, safeSize, 0, 0, 0, 0);
+        int ss = safeSize;
+        if (s[ss - 1] >= 0xD800 && s[ss - 1] <= 0xDBFF) --ss;  // proposed block ends with high surrogate: leave it for the next block
+        int segmentLength = WideCharToMultiByte(codepage, 0, s.data() + workingPoint, ss, 0, 0, 0, 0);
         size_t outputPoint = r.length();
         r.resize(outputPoint + segmentLength);
-        WideCharToMultiByte(codepage, 0, s.data() + workingPoint, safeSize, r.data() + outputPoint, segmentLength, 0, 0);
-        workingPoint += safeSize;
+        WideCharToMultiByte(codepage, 0, s.data() + workingPoint, ss, r.data() + outputPoint, segmentLength, 0, 0);
+        workingPoint += ss;
     }
     int segmentLength = WideCharToMultiByte(codepage, 0, s.data() + workingPoint, static_cast<int>(inputLength - workingPoint), 0, 0, 0, 0);
     size_t outputPoint = r.length();
@@ -72,18 +74,20 @@ inline std::string fromWide(const std::wstring& s, unsigned int codepage) {
     return r;
 }
 
-inline std::wstring toWide(const std::string& s, unsigned int codepage) {
+inline std::wstring toWide(std::string_view s, unsigned int codepage) {
     std::wstring r;
     size_t inputLength = s.length();
     if (!inputLength) return r;
     constexpr unsigned int safeSize = std::numeric_limits<int>::max() / 2;
     size_t workingPoint = 0;
     while (inputLength - workingPoint > safeSize) {
-        int segmentLength = MultiByteToWideChar(codepage, 0, s.data() + workingPoint, safeSize, 0, 0);
+        int ss = safeSize;
+        if (codepage == CP_UTF8 && ((s[ss] & 0xC0) == 0x80)) while ((s[--ss] & 0xC0) == 0x80);  // find a first byte to start the next block
+        int segmentLength = MultiByteToWideChar(codepage, 0, s.data() + workingPoint, ss, 0, 0);
         size_t outputPoint = r.length();
         r.resize(outputPoint + segmentLength);
-        MultiByteToWideChar(codepage, 0, s.data() + workingPoint, safeSize, r.data() + outputPoint, segmentLength);
-        workingPoint += safeSize;
+        MultiByteToWideChar(codepage, 0, s.data() + workingPoint, ss, r.data() + outputPoint, segmentLength);
+        workingPoint += ss;
     }
     int segmentLength = MultiByteToWideChar(codepage, 0, s.data() + workingPoint, static_cast<int>(inputLength - workingPoint), 0, 0);
     size_t outputPoint = r.length();
@@ -645,7 +649,7 @@ public:
     Scintilla::Position vsMax      () const { return std::max(_vsAnchor, _vsCaret); }
     Scintilla::Line     line       () const { return _line; }
     Scintilla::Position endOfLine  () const { return _endOfLine; }
-    std::string         text       () const { return _offset ? _text.substr(_offset) : _text ; }
+    std::string_view    text       () const { return std::string_view(_text).substr(_offset); }
     bool                isEndOfLine() const { return cpMax() == _endOfLine; }
     RectangularSelection_Cell_Iterator begin() const;
     RectangularSelection_Cell_Iterator end() const;
