@@ -1,5 +1,9 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Version 0.7.5-alpha  -- October 17th, 2023
+
+* When the user attempts to initiate a search with a multiple selection in which all selections are empty, show a message that a search region could not be constructed from the selection. Previous behavior was to become unresponsive, requiring the user to force-close Notepad++. Addresses issue #13.
+
 ## Version 0.7.4-alpha  -- October 10th, 2023
 
 * The **Align numeric** command and the **Numeric aligned** option of the **Calculate...** command now take into account numbers formatted as times, based on the settings in the **Time formats** dialog.

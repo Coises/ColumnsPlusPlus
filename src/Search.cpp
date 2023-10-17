@@ -678,10 +678,17 @@ bool convertSelectionToSearchRegion(ColumnsPlusPlusData& data) {
         rs.extend();
         if (!rs.size()) return false;
     }
+    int n = data.sci.Selections();
+    for (int i = 0;; ++i) {
+        if (i >= n) {
+            MessageBox(data.searchData.dialog, L"Could not construct a search region from this selection.", L"Search in indicated region", MB_ICONERROR);
+            return false;
+        }
+        if (data.sci.SelectionNStart(i) < data.sci.SelectionNEnd(i)) break;
+    }
     data.sci.SetIndicatorCurrent(data.searchData.indicator);
     data.sci.IndicatorClearRange(0, data.sci.Length());
     data.sci.SetIndicatorValue(1);
-    int n = data.sci.Selections();
     for (int i = 0; i < n; ++i) data.sci.IndicatorFillRange(data.sci.SelectionNStart(i), data.sci.SelectionNEnd(i) - data.sci.SelectionNStart(i));
     if (data.searchData.autoClearSelection) data.sci.SetEmptySelection(data.sci.CurrentPos());
     return true;
