@@ -99,14 +99,15 @@ inline std::wstring toWide(std::string_view s, unsigned int codepage) {
 
 inline std::wstring updateComboHistory(HWND dialog, int control, std::vector<std::wstring>& history) {
     HWND h = GetDlgItem(dialog, control);
-    auto n = SendMessage(h, WM_GETTEXTLENGTH, 0, 0);
+    auto n = GetWindowTextLength(h);
     std::wstring s(n, 0);
-    SendMessage(h, WM_GETTEXT, n + 1, (LPARAM)s.data());
+    s.resize(GetWindowText(h, s.data(), n + 1));
     if (history.empty() || history.back() != s) {
         if (!history.empty()) {
             auto existing = std::find(history.begin(), history.end(), s);
             if (existing != history.end()) {
                 SendMessage(h, CB_DELETESTRING, history.end() - existing - 1, 0);
+                SetWindowText(h, s.data());
                 history.erase(existing);
             }
         }
@@ -141,7 +142,6 @@ public:
 
 class SearchSettings {
 public:
-    std::wstring findWhat, replaceWith;
     enum {Normal = 0, Extended = 1, Regex = 2} mode = Normal;
     bool backward              = false;
     bool wholeWord             = false;

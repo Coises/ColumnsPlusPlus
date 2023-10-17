@@ -14,9 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "ColumnsPlusPlus.h"
-#include <regex>
-#include <string.h>
+#include "RegularExpression.h"
 #include "commctrl.h"
 #include "resource.h"
 
@@ -53,16 +51,16 @@ public:
     ColumnsPlusPlusData& data;
     const int origin;
 
+    RegularExpression rx;
     std::vector<LineCache> cache;
     std::vector<double>    results;
     std::vector<size_t>    skipMap;
     std::vector<bool>      skipFlag;
     double lastFiniteResult = 0;
     size_t currentEntry     = 0;
-    size_t regCount         = 10;
 
     CalculateHistory(ColumnsPlusPlusData& data)
-        : data(data), origin(data.sci.Anchor() > data.sci.CurrentPos() ? data.sci.Selections() - 1 : 0) {}
+        : data(data), rx(data), origin(data.sci.Anchor() > data.sci.CurrentPos() ? data.sci.Selections() - 1 : 0) {}
 
 
     // previous(n) - get the index of the entry in the cache corresponding to the line n lines previous to the current line,
@@ -157,30 +155,22 @@ public:
         return lc.col[i];
     }
 
-    double reg(size_t n, size_t i, Scintilla::Position* response = 0) {
-        if (response) *response = -1;
-        if (i > 50) return std::numeric_limits<double>::quiet_NaN();
+    double reg(size_t n, size_t i, bool* response = 0) {
+        if (response) *response = false;
+        if (!rx.can_search() || i > rx.mark_count()) return std::numeric_limits<double>::quiet_NaN();
         const size_t lcn = previous(n);
         if (lcn == std::string::npos) return std::numeric_limits<double>::quiet_NaN();
         LineCache& lc = cache[lcn];
-        if (!lc.regValid || i > lc.reg.size()) {
-            if (i > regCount) regCount = i;
+        if (!lc.regValid) {
             lc.regValid = true;
             lc.reg.clear();
             int index = selectionIndex(lcn);
             Scintilla::Position cpMin = data.sci.SelectionNStart(index);
             Scintilla::Position cpMax = data.sci.SelectionNEnd(index);
-            Scintilla::Position found = -1;
-            if (cpMin != cpMax) {
-                data.sci.SetTargetRange(cpMin, cpMax);
-                std::string rx = fromWide(data.calc.regexHistory.back(), CP_UTF8);
-                found = data.sci.SearchInTarget(rx);
-            }
-            if (found < 0) for (size_t j = 0; j <= regCount; ++j) lc.reg.push_back(std::numeric_limits<double>::quiet_NaN());
-            else {
-                lc.reg.push_back(data.parseNumber(data.sci.TargetText()));
-                for (size_t j = 1; j <= regCount; ++j) lc.reg.push_back( data.parseNumber(data.sci.Tag(static_cast<int>(j))));
-            if (response) *response = found;
+            std::string s = data.sci.StringOfRange(Scintilla::Span(cpMin, cpMax));
+            if (rx.search(s)) {
+                for (size_t j = 0; j < rx.size(); ++j) lc.reg.push_back(data.parseNumber(rx.str(j)));
+                if (response) *response = true;
             }
         }
         if (i >= lc.reg.size()) return std::numeric_limits<double>::quiet_NaN();
