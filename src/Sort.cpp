@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "ColumnsPlusPlus.h"
+#include "RegularExpression.h"
 #include "commctrl.h"
 #include "resource.h"
 #include <algorithm>
@@ -170,11 +170,9 @@ void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings) {
     LPCWSTR locale   = sortSettings.localeName.data();
     bool    forward  = rs.topToBottom();
 
-    std::string regex;
     std::vector<unsigned int>           capGroup;
     std::vector<bool>                   capDesc;
     std::vector<SortSettings::SortType> capType;
-    if (sortSettings.keyType == SortSettings::Regex) regex = fromWide(sortSettings.regexHistory.back(), codepage);
     if (sortSettings.keyType == SortSettings::Tabbed || (sortSettings.keyType == SortSettings::Regex && sortSettings.regexUseKey)) {
         std::wstring s = sortSettings.keygroupHistory.back();
         std::wsmatch m;
@@ -231,13 +229,11 @@ void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings) {
         ss[n].vsRight = row.vsMax();
 
         if (sortSettings.keyType == SortSettings::Regex) {
-            data.sci.SetSearchFlags(sortSettings.regexMatchCase ? 
-                                      Scintilla::FindOption::RegExp | Scintilla::FindOption::Posix | Scintilla::FindOption::MatchCase
-                                    : Scintilla::FindOption::RegExp | Scintilla::FindOption::Posix);
-            data.sci.SetTargetRange(cpMin, cpMax);
-            if (data.sci.SearchInTarget(regex) >= 0) {
+            RegularExpression rx(data);
+            rx.find(sortSettings.regexHistory.back(), sortSettings.regexMatchCase);
+            if (rx.search(row.text())) {
                 for (size_t i = 0; i < capGroup.size(); ++i) {
-                    std::string s = capGroup[i] ? data.sci.Tag(capGroup[i]) : data.sci.TargetText();
+                    std::string s = rx.str(capGroup[i]);
                     if (capType[i] == SortSettings::Numeric) ss[n].keys.emplace_back(data.parseNumber(s), capDesc[i]);
                     else {
                         if (capType[i] == SortSettings::Locale) s = getLocaleSortKey(s, codepage, options, locale);
@@ -248,7 +244,7 @@ void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings) {
         }
         else if (sortSettings.keyType == SortSettings::Tabbed) {
             std::vector<std::string> cells;
-            cells.emplace_back(cpMin - ss.textStart + textPointer, cpMax - cpMin);
+            cells.emplace_back(row.text());
             for (const auto& cell : row) cells.push_back(cell.text());
             for (size_t i = 0; i < capGroup.size(); ++i) {
                 std::string s = capGroup[i] < cells.size() ? cells[capGroup[i]] : "";
@@ -262,7 +258,7 @@ void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings) {
         else if (sortSettings.sortType == SortSettings::Numeric)
             for (const auto& cell : row) ss[n].keys.emplace_back(data.parseNumber(cell.trim()), sortSettings.sortDescending);
         else {
-            std::string s(cpMin - ss.textStart + textPointer, cpMax - cpMin);
+            std::string s(row.text());
             if (sortSettings.keyType == SortSettings::IgnoreBlanks) {
                 size_t i = s.find_first_not_of("\t ");
                 if (i == std::string::npos) s = "";
@@ -416,35 +412,22 @@ INT_PTR CALLBACK sortDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
                 if (IsDlgButtonChecked(hwndDlg, IDC_SORT_REGEX) == BST_CHECKED) {
                     HWND h = GetDlgItem(hwndDlg, IDC_SORT_FIND_WHAT);
                     auto n = SendMessage(h, WM_GETTEXTLENGTH, 0, 0);
-                    Scintilla::Position found = -2;
+                    std::wstring error = L"A regular expression is required to perform a regular expression sort.";
                     if (n) {
+                        RegularExpression rx(data);
                         std::wstring w(n, 0);
                         SendMessage(h, WM_GETTEXT, n + 1, reinterpret_cast<LPARAM>(w.data()));
-                        std::string s = fromWide(w, data.sci.CodePage());
-                        data.sci.SetSearchFlags(Scintilla::FindOption::RegExp | Scintilla::FindOption::Posix);
-                        data.sci.SetTargetRange(0, 0);
-                        found = data.sci.SearchInTarget(s);
+                        error = rx.find(w, 0);
                     }
-                    if (found < -1) {
+                    if (!error.empty()) {
                         COMBOBOXINFO cbi;
                         cbi.cbSize = sizeof(COMBOBOXINFO);
                         GetComboBoxInfo(h, &cbi);
                         EDITBALLOONTIP ebt;
                         ebt.cbStruct = sizeof(EDITBALLOONTIP);
                         ebt.pszTitle = L"";
-                        ebt.ttiIcon = TTI_NONE;
-                        std::wstring ebtText;
-                        if (!n) ebt.pszText = L"A regular expression is required to perform a regular expression sort.";
-                        else if (found == -2) {
-                            if (size_t msglen = data.sci.Call(static_cast<Scintilla::Message>(SCI_GETBOOSTREGEXERRMSG), 0, 0)) {
-                                std::string msg(msglen, 0);
-                                data.sci.Call(static_cast<Scintilla::Message>(SCI_GETBOOSTREGEXERRMSG), msglen , reinterpret_cast<LPARAM>(msg.data()));
-                                ebtText = toWide(msg, CP_UTF8);
-                                ebt.pszText = ebtText.data();
-                            }
-                            else ebt.pszText = L"Invalid regular expression.";
-                        }
-                        else ebt.pszText = L"An unidentified error occurred processing this regular expression.";
+                        ebt.ttiIcon  = TTI_NONE;
+                        ebt.pszText  = error.data();
                         SendMessage(cbi.hwndItem, EM_SHOWBALLOONTIP, 0, reinterpret_cast<LPARAM>(&ebt));
                         SendMessage(hwndDlg, WM_NEXTDLGCTL, reinterpret_cast<WPARAM>(cbi.hwndItem), TRUE);
                         return TRUE;

@@ -298,12 +298,11 @@ INT_PTR CALLBACK calculateDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
             h = GetDlgItem(hwndDlg, IDC_CALCULATE_REGEX);
             n = SendMessage(h, WM_GETTEXTLENGTH, 0, 0);
             if (n) {
+                RegularExpression rx(data);
                 std::wstring w(n, 0);
                 SendMessage(h, WM_GETTEXT, n + 1, reinterpret_cast<LPARAM>(w.data()));
-                data.sci.SetSearchFlags(Scintilla::FindOption::RegExp | Scintilla::FindOption::Posix);
-                data.sci.SetTargetRange(0, 0);
-                Scintilla::Position found = data.sci.SearchInTarget(fromWide(w, data.sci.CodePage()));
-                if (found < -1) {
+                std::wstring error = rx.find(w, 0);
+                if (!error.empty()) {
                     COMBOBOXINFO cbi;
                     cbi.cbSize = sizeof(COMBOBOXINFO);
                     GetComboBoxInfo(h, &cbi);
@@ -311,17 +310,7 @@ INT_PTR CALLBACK calculateDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
                     ebt.cbStruct = sizeof(EDITBALLOONTIP);
                     ebt.pszTitle = L"";
                     ebt.ttiIcon = TTI_NONE;
-                    std::wstring ebtText;
-                    if (found == -2) {
-                        if (size_t msglen = data.sci.Call(static_cast<Scintilla::Message>(SCI_GETBOOSTREGEXERRMSG), 0, 0)) {
-                            std::string msg(msglen, 0);
-                            data.sci.Call(static_cast<Scintilla::Message>(SCI_GETBOOSTREGEXERRMSG), msglen, reinterpret_cast<LPARAM>(msg.data()));
-                            ebtText = toWide(msg, CP_UTF8);
-                            ebt.pszText = ebtText.data();
-                        }
-                        else ebt.pszText = L"Invalid regular expression.";
-                    }
-                    else ebt.pszText = L"An unidentified error occurred processing this regular expression.";
+                    ebt.pszText = error.data();
                     SendMessage(cbi.hwndItem, EM_SHOWBALLOONTIP, 0, reinterpret_cast<LPARAM>(&ebt));
                     SendMessage(hwndDlg, WM_NEXTDLGCTL, reinterpret_cast<WPARAM>(cbi.hwndItem), TRUE);
                     return TRUE;
@@ -539,7 +528,7 @@ void ColumnsPlusPlusData::calculate() {
                                          : calc.thousands == CalculateSettings::Blank ? " "
                                          : settings.decimalSeparatorIsComma ? "." : ",";
 
-    sci.SetSearchFlags(calc.matchCase ? Scintilla::FindOption::RegExp | Scintilla::FindOption::MatchCase : Scintilla::FindOption::RegExp);
+    if (calc.regexHistory.size() && !calc.regexHistory.back().empty()) history.rx.find(calc.regexHistory.back(), calc.matchCase);
 
     size_t   matches   = 0;
     intptr_t maxLeft   = 0;
@@ -576,17 +565,17 @@ void ColumnsPlusPlusData::calculate() {
         exLine = static_cast<double>(row.line() + 1);
         history.push();
         items.emplace_back();
-        if (calc.regexHistory.size() && !calc.regexHistory.back().empty()) {
-            Scintilla::Position found;
+        if (history.rx.can_search()) {
+            bool found;
             exThis = history.reg(0, 0, &found);
-            if (found < 0) {
+            if (found) exMatch = static_cast<double>(++matches);
+            else {
                 if (calc.skipUnmatched) {
                     history.skip();
                     continue;
                 }
                 exMatch = 0;
             }
-            else exMatch = static_cast<double>(++matches);
         }
         else exThis = history.col(0, 0);
         double result = ci.expression.value();
