@@ -14,6 +14,12 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+//#include "RegularExpressionBuffered.h"
+#include "RegularExpressionDirect.h"
+#include <regex>
+#include <string.h>
+#include "commctrl.h"
+#include "resource.h"
 #include "Search.h"
 #include "Host\BoostRegexSearch.h"
 
@@ -39,7 +45,6 @@ public:
     RCReg  rcReg;
     RCSub  rcSub;
     RCLast rcLast;
-    size_t maxCapture = 0;  // maximum number of capture groups possible (there could be fewer)
 
     RegexCalc() : rcReg(history), rcSub(history), rcLast(history) {
         symbol_table.add_variable("match", rcMatch);
@@ -57,7 +62,6 @@ public:
         history.results.clear();
         history.lastFiniteResult.clear();
         rcMatch = 0;
-        maxCapture = 0;
     }
 
 };
@@ -88,41 +92,41 @@ void ColumnsPlusPlusData::showSearchDialog() {
                       ::searchDialogProc, reinterpret_cast<LPARAM>(this));
 }
 
-const std::regex rxExtended("([^\\\\]*)(\\\\([0nrt\\\\]|b[01]{1,8}|d\\d{1,3}|o[0-7]{1,3}|u[\\da-fA-F]{1,4}|x[\\da-fA-F]{1,2}|))(.*)", std::regex::optimize);
+const std::wregex rxExtended(L"([^\\\\]*)(\\\\([0nrt\\\\]|b[01]{1,8}|d\\d{1,3}|o[0-7]{1,3}|u[\\da-fA-F]{1,4}|x[\\da-fA-F]{1,2}|))(.*)", std::regex::optimize);
 
-void expandExtendedSearchString(std::string& s, UINT codepage) {
-    std::string r;
+std::wstring expandExtendedSearchString(const std::wstring& original, UINT codepage) {
+    std::wstring s = original;
+    std::wstring r;
     while (s.length()) {
-        std::smatch m;
+        std::wsmatch m;
         if (!std::regex_match(s, m, rxExtended)) {
             r += s;
             break;
         }
         r += m[1];
-        std::string e = m[3];
-        if (e.length() == 0) r += '\\';
+        std::wstring e = m[3];
+        if (e.length() == 0) r += L'\\';
         else switch (e[0]) {
-        case '\\': r += '\\'; break;
-        case '0': r += '\0'; break;
-        case 'n': r += '\n'; break;
-        case 'r': r += '\r'; break;
-        case 't': r += '\t'; break;
-        case 'b': r += static_cast<char>(std::stoi(e.substr(1), 0,  2)); break;
-        case 'd': r += static_cast<char>(std::stoi(e.substr(1), 0, 10)); break;
-        case 'o': r += static_cast<char>(std::stoi(e.substr(1), 0,  8)); break;
-        case 'x': r += static_cast<char>(std::stoi(e.substr(1), 0, 16)); break;
-        case 'u': {
-            wchar_t u[1];
-            char c[4];
-            u[0] = static_cast<wchar_t>(std::stoi(e.substr(1), 0, 16));
-            int cLen = WideCharToMultiByte(codepage, 0, u, 1, c, 4, 0, 0);
-            r += std::string(c, cLen);
-            break;
-        }
+        case L'\\': r += L'\\'; break;
+        case L'0' : r += L'\0'; break;
+        case L'n' : r += L'\n'; break;
+        case L'r' : r += L'\r'; break;
+        case L't' : r += L'\t'; break;
+        case L'u' : r += static_cast<wchar_t>(std::stoi(e.substr(1), 0, 16)); break;
+        default:
+            int c = 0;
+            switch (e[0]) {
+            case L'b' : c = std::stoi(e.substr(1), 0,  2); break;
+            case L'd' : c = std::stoi(e.substr(1), 0, 10); break;
+            case L'o' : c = std::stoi(e.substr(1), 0,  8); break;
+            case L'x' : c = std::stoi(e.substr(1), 0, 16); break;
+            }
+            if (codepage == CP_UTF8) r += static_cast<wchar_t>(c);
+            else r += toWide(std::string(1, static_cast<char>(c)), codepage);
         }
         s = m[4];
     }
-    s = r;
+    return r;
 }
 
 bool updateSearchRegion(ColumnsPlusPlusData& data, bool modify = false, bool remove = false) {
@@ -181,7 +185,7 @@ bool updateFindHistory(ColumnsPlusPlusData& data) {
     s.resize(GetWindowText(h, s.data(), n + 1));
     std::wstring error = s.empty() ? L"Enter something to find." : L"";
     if (!s.empty() && data.searchData.mode == SearchData::Regex) {
-        RegularExpressionBuffered rx(data);
+        RegularExpressionDirect rx(data);
         error = rx.find(s);
     }
     if (!error.empty()) {
@@ -286,8 +290,10 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
         SendDlgItemMessage(hwndDlg, IDC_SEARCH_MATCH_CASE, BM_SETCHECK, searchData.matchCase ? BST_CHECKED : BST_UNCHECKED, 0);
         for (const auto& s : searchData.findHistory)
             SendDlgItemMessage(hwndDlg, IDC_FIND_WHAT, CB_INSERTSTRING, 0, reinterpret_cast<LPARAM>(s.data()));
+        SendDlgItemMessage(hwndDlg, IDC_FIND_WHAT, CB_SETCURSEL, 0, 0);
         for (const auto& s : searchData.replaceHistory)
             SendDlgItemMessage(hwndDlg, IDC_REPLACE_WITH, CB_INSERTSTRING, 0, reinterpret_cast<LPARAM>(s.data()));
+        SendDlgItemMessage(hwndDlg, IDC_REPLACE_WITH, CB_SETCURSEL, 0, 0);
         SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Find Mark Style"));
         SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Mark Style 1"));
         SendDlgItemMessage(hwndDlg, IDC_SEARCH_INDICATOR, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(L"Mark Style 2"));
@@ -309,10 +315,16 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
         SendDlgItemMessage(hwndDlg, IDC_SEARCH_SELECTION_AUTOCLEAR, BM_SETCHECK, searchData.autoClearSelection ? BST_CHECKED : BST_UNCHECKED, 0);
         SendDlgItemMessage(hwndDlg, IDC_SEARCH_SELECTION_AUTOSET  , BM_SETCHECK, searchData.autoSetSelection   ? BST_CHECKED : BST_UNCHECKED, 0);
         syncFindButton();
+        searchData.nullAt   = -1;
+        searchData.findStep = -1;
         SendMessage(nppData._nppHandle, NPPM_MODELESSDIALOG, MODELESSDIALOGADD, reinterpret_cast<LPARAM>(hwndDlg));
         return TRUE;
     
     case WM_COMMAND:
+        if (LOWORD(wParam) != IDOK && LOWORD(wParam) != IDC_SEARCH_COUNT && LOWORD(wParam) != IDC_SEARCH_REPLACE) {
+            searchData.nullAt   = -1;
+            searchData.findStep = -1;
+        }
         switch (LOWORD(wParam)) {
         case IDCANCEL:
             sci.CallTipCancel();
@@ -472,7 +484,11 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
     }
 
     case WM_ACTIVATE:
-        if (LOWORD(wParam) == WA_INACTIVE) searchData.wrap = false;
+        if (LOWORD(wParam) == WA_INACTIVE) {
+            searchData.findStep = -1;
+            searchData.nullAt   = -1;
+            searchData.wrap     = false;
+        }
         break;
 
     default:
@@ -484,100 +500,76 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
 }
 
 
-bool searchPrepare(ColumnsPlusPlusData& data, std::string* sciFind, std::vector<std::string>* sciRepl = 0, bool isStepwiseReplace = false) {
-    if (data.searchData.findHistory.back().length() == 0) {
-        setSearchMessage(data, L"No string to find.");
-        SetFocus(GetDlgItem(data.searchData.dialog, IDC_FIND_WHAT));
-        return false;
+std::string prepareFind(ColumnsPlusPlusData& data) {
+    if (data.searchData.mode != SearchData::Regex) {
+        Scintilla::FindOption searchFlags = Scintilla::FindOption::None;
+        if (data.searchData.wholeWord) searchFlags |= Scintilla::FindOption::WholeWord;
+        if (data.searchData.matchCase) searchFlags |= Scintilla::FindOption::MatchCase;
+        data.sci.SetSearchFlags(searchFlags);
     }
+    return fromWide(data.searchData.mode == SearchData::Extended
+                    ? expandExtendedSearchString(data.searchData.findHistory.back(), data.sci.CodePage())
+                    : data.searchData.findHistory.back(),
+                    data.sci.CodePage());
+}
+
+bool doesRegexUseK(std::wstring_view r) {
+    return r.find(L"\\K") != std::wstring::npos;  // false positives affect efficiency but not accuracy
+}
+
+std::vector<std::string> prepareReplace(ColumnsPlusPlusData& data) {
+    std::vector<std::string> sciRepl;
     UINT codepage = data.sci.CodePage();
-    if (sciFind) {
-        sciFind[0] = fromWide(data.searchData.findHistory.back(), codepage);
-        if (data.searchData.mode == SearchData::Extended) expandExtendedSearchString(*sciFind, codepage);
-        if (data.searchData.mode != SearchData::Regex) sciFind[1] = sciFind[0];
-        else /* build alternate search expression replacing ^ with \G to be used as first search in a row or selection */ {
-            std::string& s = sciFind[0];
-            std::string& r = sciFind[1];
-            bool charClass = false;
-            bool quoted    = false;
-            bool escaped   = false;
-            for (size_t i = 0; i < s.length(); ++i) {
-                if (!charClass && !quoted && !escaped && s[i] == '^') {
-                    r += "\\G";
-                    continue;
+    if (data.searchData.mode != SearchData::Regex) {
+        sciRepl.push_back(fromWide(
+            data.searchData.mode == SearchData::Extended ? expandExtendedSearchString(data.searchData.replaceHistory.back(), codepage)
+                                                         : data.searchData.replaceHistory.back(),
+            codepage));
+        return sciRepl;
+    }
+    std::string r = fromWide(data.searchData.replaceHistory.back(), codepage);
+    bool insideQuotes = false;
+    int  depth = 0;
+    sciRepl.emplace_back();
+    for (size_t i = 0; i < r.length(); ++i) {
+        if (insideQuotes) {
+            if (r[i] == '\'') insideQuotes = false;
+            sciRepl.back() += r[i];
+        }
+        else if (depth) {
+            switch (r[i]) {
+            case '\'' :
+                insideQuotes = true;
+                break;
+            case '(' :
+                ++depth;
+                break;
+            case ')' :
+                if (!--depth) sciRepl.emplace_back();
+                break;
+            }
+            sciRepl.back() += r[i];
+        }
+        else {
+            sciRepl.back() += r[i];
+            switch (r[i]) {
+            case '(':
+                if (i < r.length() - 2 && r.substr(i, 3) == "(?=") {
+                    i += 2;
+                    sciRepl.emplace_back();
+                    depth = 1;
                 }
-                r += s[i];
-                if      (quoted                 ) { if (s.substr(i, 2) == "\\E") quoted = false; }
-                else if (escaped                ) escaped = false;
-                else if (s.substr(i, 2) == "\\Q") quoted  = true;
-                else if (s[i] == '\\'           ) escaped = true;
-                else if (charClass              ) { if (s[i] == ']') charClass = false; }
-                else if (s[i] == '['            ) charClass = true;
+                break;
+            case '\\':
+                if (i < r.length() - 1) sciRepl.back() += r[++i];
+                break;
             }
         }
     }
-    if (sciRepl) {
-        std::string r = fromWide(data.searchData.replaceHistory.back(), codepage);
-        switch (data.searchData.mode) {
-        case SearchData::Extended:
-            expandExtendedSearchString(r, codepage);
-        case SearchData::Normal:
-            sciRepl->push_back(r);
-            break;
-        default:
-        {
-            bool insideQuotes = false;
-            int  depth = 0;
-            sciRepl->emplace_back();
-            for (size_t i = 0; i < r.length(); ++i)
-                if (insideQuotes) {
-                    if (r[i] == '\'') insideQuotes = false;
-                    sciRepl->back() += r[i];
-                }
-                else if (depth) {
-                    switch (r[i]) {
-                    case '\'' :
-                        insideQuotes = true;
-                        break;
-                    case '(' :
-                        ++depth;
-                        break;
-                    case ')' :
-                        if (!--depth) sciRepl->emplace_back();
-                        break;
-                    }
-                    sciRepl->back() += r[i];
-                }
-                else {
-                    sciRepl->back() += r[i];
-                    switch (r[i]) {
-                    case '(':
-                        if (i < r.length() - 2 && r.substr(i, 3) == "(?=") {
-                            i += 2;
-                            sciRepl->emplace_back();
-                            depth = 1;
-                        }
-                        break;
-                    case '\\':
-                        if (i < r.length() - 1) sciRepl->back() += r[++i];
-                        break;
-                    }
-                }
-        }
-        }
-    }
-    Scintilla::FindOption searchFlags = Scintilla::FindOption::None;
-    if (data.searchData.wholeWord && data.searchData.mode != SearchData::Regex) searchFlags |= Scintilla::FindOption::WholeWord;
-    if (data.searchData.matchCase) searchFlags |= Scintilla::FindOption::MatchCase;
-    if (data.searchData.mode == SearchData::Regex) {
-        searchFlags |= Scintilla::FindOption::RegExp | Scintilla::FindOption::Posix | static_cast<Scintilla::FindOption>(SCFIND_REGEXP_EMPTYMATCH_ALL);
-        if (isStepwiseReplace) searchFlags |= static_cast<Scintilla::FindOption>(SCFIND_REGEXP_EMPTYMATCH_ALLOWATSTART);
-    }
-    data.sci.SetSearchFlags(searchFlags);
-    return true;
+    return sciRepl;
 }
 
-bool prepareSubstitutions(ColumnsPlusPlusData& data, const std::string& sciFind, const std::vector<std::string>& sciRepl) {
+bool prepareSubstitutions(ColumnsPlusPlusData& data, const std::vector<std::string>& sciRepl) {
     auto& rc = *data.searchData.regexCalc;
     if (sciRepl == rc.replacement) return true;
     rc.clear();
@@ -620,20 +612,19 @@ bool prepareSubstitutions(ColumnsPlusPlusData& data, const std::string& sciFind,
         }
     }
     rc.history.lastFiniteResult.insert(rc.history.lastFiniteResult.end(), rc.formula.size(), 0);
-    rc.maxCapture = std::count(sciFind.begin(), sciFind.end(), '(');
     rc.replacement = sciRepl;
     return true;
 }
 
 
-std::string calculateSubstitutions(ColumnsPlusPlusData& data, const RegularExpressionBuffered& rx, Scintilla::Position found) {
+std::string calculateSubstitutions(ColumnsPlusPlusData& data, const RegularExpressionDirect& rx, Scintilla::Position found) {
     std::string r;
     auto& rc = *data.searchData.regexCalc;
     ++rc.rcMatch;
     rc.rcLine = static_cast<double>(data.sci.LineFromPosition(found) + 1);
     auto& values = rc.history.values.emplace_back();
     auto& results = rc.history.results.emplace_back();
-    for (size_t i = 0; i < rx.size(); ++i) values.push_back(data.parseNumber(rx.str(i)));
+    for (int i = 0; i < rx.size(); ++i) values.push_back(data.parseNumber(rx.str(i)));
     rc.rcThis = values[0];
     for (size_t i = 0; i < rc.replacement.size(); ++i) {
         if (i & 1) {
@@ -718,8 +709,6 @@ void showRange(ColumnsPlusPlusData& data, Scintilla::Position foundStart, Scinti
 }
 
 void ColumnsPlusPlusData::searchCount() {
-    std::string sciFind[2];
-    if (!searchPrepare(*this, sciFind)) return;
     if (!searchRegionReady()) {
         if (!convertSelectionToSearchRegion(*this)) return;
         searchData.wrap = false;
@@ -727,16 +716,49 @@ void ColumnsPlusPlusData::searchCount() {
     sci.CallTipCancel();
     Scintilla::Position documentLength = sci.Length();
     int count = 0;
-    RegularExpressionBuffered rx(*this);
-    rx.find(searchData.findHistory.back(), searchData.matchCase, searchData.mode != SearchData::Regex);
-    for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < documentLength; cpFrom = cpTo) {
-        cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
-        if (sci.IndicatorValueAt(searchData.indicator, cpFrom)) {
-            Scintilla::Position start = sci.IndicatorStart(searchData.indicator, cpFrom);
-            while (cpFrom < cpTo) {
-                if (!rx.search(cpFrom, cpTo, start)) break;
-                ++count;
-                cpFrom = rx.position(0) + rx.length(0);
+    if (searchData.mode == SearchData::Regex) {
+        RegularExpressionDirect rx(*this);
+        rx.find(searchData.findHistory.back(), searchData.matchCase);
+        bool usesK = doesRegexUseK(searchData.findHistory.back());
+        Scintilla::Position nullAt = -1;
+        for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < documentLength; cpFrom = cpTo) {
+            cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
+            if (sci.IndicatorValueAt(searchData.indicator, cpFrom)) {
+                Scintilla::Position start = sci.IndicatorStart(searchData.indicator, cpFrom);
+                rx.invalidate();
+                while (cpFrom <= cpTo) {
+                    if (!rx.search(cpFrom, cpTo, start)) break;
+                    Scintilla::Position found  = rx.position(0);
+                    Scintilla::Position length = rx.length();
+                    if (length == 0) {
+                        if (usesK) {
+                            if (found == nullAt) {
+                                cpFrom = found + 1;
+                                continue;
+                            }
+                            nullAt = cpFrom = found;
+                        }
+                        else cpFrom = found + 1;
+                    }
+                    else cpFrom = found + length;
+                    ++count;
+                }
+            }
+        }
+    }
+    else {
+        std::string sciFind = prepareFind(*this);
+        for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < documentLength; cpFrom = cpTo) {
+            cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
+            if (sci.IndicatorValueAt(searchData.indicator, cpFrom)) {
+                while (cpFrom < cpTo) {
+                    sci.SetTargetRange(cpFrom, cpTo);
+                    Scintilla::Position found = sci.SearchInTarget(sciFind);
+                    if (found == -1) break;
+                    if (found < -1) return showSearchError(*this, found);
+                    ++count;
+                    cpFrom = sci.TargetEnd();
+                }
             }
         }
     }
@@ -746,8 +768,7 @@ void ColumnsPlusPlusData::searchCount() {
 }
 
 void ColumnsPlusPlusData::searchFind(bool postReplace) {
-    std::string sciFind[2];
-    if (!searchPrepare(*this, sciFind)) return;
+
     bool fullSearch = searchData.wrap;
     Scintilla::Position documentLength = sci.Length();
     if (!searchRegionReady()) {
@@ -755,71 +776,88 @@ void ColumnsPlusPlusData::searchFind(bool postReplace) {
         fullSearch = true;
     }
     searchData.wrap = false;
+    if (fullSearch) searchData.nullAt = -1;
     bool backward = searchData.mode != SearchData::Regex && searchData.backward;
     sci.CallTipCancel();
     Scintilla::Position cpFrom = fullSearch ? (backward ? documentLength : 0)
-                               : backward ? std::min(sci.Anchor(), sci.CurrentPos())
-                               : std::max(sci.Anchor(), sci.CurrentPos());
+                               : backward   ? std::min(sci.Anchor(), sci.CurrentPos())
+                                            : std::max(sci.Anchor(), sci.CurrentPos());
     Scintilla::Position cpTo;
-    for (;;) {
+    if (searchData.mode == SearchData::Regex) {
+        RegularExpressionDirect rx(*this);
+        rx.find(searchData.findHistory.back(), searchData.matchCase);
+        for (;;) {
+            cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
+            if (sci.IndicatorValueAt(searchData.indicator, cpFrom)) {
+                Scintilla::Position start = sci.IndicatorStart(searchData.indicator, cpFrom);
+                while (rx.search(cpFrom, cpTo, start)) {
+                    Scintilla::Position found  = rx.position();
+                    Scintilla::Position length = rx.length(0);
+                    if (length == 0 && found == searchData.nullAt) {
+                        if (cpFrom >= cpTo) break;
+                        ++cpFrom;
+                        continue;
+                    }
+                    showRange(*this, found, found + length);
+                    if (length == 0) {
+                        searchData.nullAt = found;
+                        sci.CallTipShow(found, "^ zero length match");
+                    }
+                    setSearchMessage(*this, !postReplace ? L"" : L"Match replaced; next match found.");
+                    searchData.findStep = cpFrom;
+                    return;
+                }
+            }
+            if (cpTo == documentLength) break;
+            cpFrom = cpTo;
+            rx.invalidate();
+        }
+        searchData.findStep = -1;
+    }
+    else {
+        std::string sciFind = prepareFind(*this);
+        for (;;) {
         cpTo = backward ? sci.IndicatorStart(searchData.indicator, cpFrom - 1) : sci.IndicatorEnd(searchData.indicator, cpFrom);
         if (sci.IndicatorValueAt(searchData.indicator, backward ? cpTo : cpFrom)) {
-            if (searchData.mode == SearchData::Regex) {
-                RegularExpressionBuffered rx(*this);
-                rx.find(searchData.findHistory.back(), searchData.matchCase);
-                if (rx.search(cpFrom, cpTo, sci.IndicatorStart(searchData.indicator, cpFrom))) {
-                    Scintilla::Position targetStart = rx.position();
-                    Scintilla::Position targetEnd   = targetStart + rx.length(0);
-                    showRange(*this, targetStart, targetEnd);
-                    if (targetStart == targetEnd) sci.CallTipShow(targetStart, "^ zero length match");
-                    setSearchMessage(*this, !postReplace ? L""
-                                          : backward     ? L"Match replaced; previous match found."
-                                                         : L"Match replaced; next match found.");
-                    return;
-                }
+            sci.SetTargetRange(cpFrom, cpTo);
+            Scintilla::Position found = sci.SearchInTarget(sciFind);
+            if (found >= 0) {
+                showRange(*this, found, sci.TargetEnd());
+                setSearchMessage(*this, !postReplace ? L""
+                                      : backward     ? L"Match replaced; previous match found."
+                                                     : L"Match replaced; next match found.");
+                return;
             }
-            else {
-                sci.SetTargetRange(cpFrom, cpTo);
-                Scintilla::Position found = sci.SearchInTarget(sciFind[0]);
-                if (found >= 0) {
-                    Scintilla::Position targetStart = sci.TargetStart();
-                    Scintilla::Position targetEnd   = sci.TargetEnd();
-                    showRange(*this, targetStart, targetEnd);
-                    if (targetStart == targetEnd) sci.CallTipShow(targetStart, "^ zero length match");
-                    setSearchMessage(*this, !postReplace ? L""
-                                          : backward     ? L"Match replaced; previous match found."
-                                                         : L"Match replaced; next match found.");
-                    return;
-                }
-                if (found < -1) return showSearchError(*this, found);
-            }
+            if (found < -1) return showSearchError(*this, found);
         }
         if (backward ? cpTo == 0 : cpTo == documentLength) break;
         cpFrom = cpTo;
+        }
     }
     setSearchMessage(*this, postReplace ? L"Match replaced; no more matches found."
                           : fullSearch  ? L"No matches found." : L"No more matches found.");
     searchData.wrap = true;
 }
 
+
 void ColumnsPlusPlusData::searchReplace() {
     if (!searchRegionReady()) return searchFind();
-    std::string sciFind[2];
-    std::vector<std::string> sciRepl;
-    if (!searchPrepare(*this, sciFind, &sciRepl, true)) return;
-    if (!prepareSubstitutions(*this, sciFind[0], sciRepl)) return;
+    std::vector<std::string> sciRepl = prepareReplace(*this);
+    if (!prepareSubstitutions(*this, sciRepl)) return;
     Scintilla::Position anchor = sci.Anchor();
     Scintilla::Position caret  = sci.CurrentPos();
     Scintilla::Position start  = std::min(anchor, caret);
     Scintilla::Position end    = std::max(anchor, caret);
     if (!sci.IndicatorValueAt(searchData.indicator, start)) return searchFind();
+    if (replaceStaysPut && anchor == caret && searchData.findStep == -1 && searchData.nullAt == caret) return searchFind();
     sci.CallTipCancel();
     if (searchData.mode == SearchData::Regex) {
         Scintilla::Position regionStart = sci.IndicatorStart(searchData.indicator, start);
         Scintilla::Position regionEnd   = sci.IndicatorEnd(searchData.indicator, start);
-        RegularExpressionBuffered rx(*this);
+        Scintilla::Position cpMin       = searchData.findStep < 0 ? start : searchData.findStep;
+        RegularExpressionDirect rx(*this);
         rx.find(searchData.findHistory.back(), searchData.matchCase);
-        if (rx.search(start, regionEnd, regionStart) && rx.position() == start && rx.length(0) == end - start) {
+        if (rx.search(cpMin, regionEnd, regionStart) && rx.position() == start && rx.length(0) == end - start) {
             std::string r = rx.format(sciRepl.size() == 1 ? sciRepl[0] : calculateSubstitutions(*this, rx, start));
             sci.SetTargetRange(start, end);
             sci.ReplaceTarget(r);
@@ -827,17 +865,20 @@ void ColumnsPlusPlusData::searchReplace() {
             sci.SetIndicatorValue(1);
             sci.IndicatorFillRange(start, r.length());
             caret = start + r.length();
+            searchData.nullAt = start == end ? caret : -1;
             showRange(*this, caret, caret);
             setSearchMessage(*this, L"Match replaced.");
-            searchData.wrap = false;
+            searchData.findStep = -1;
+            searchData.wrap     = false;
             if (!replaceStaysPut) searchFind(true);
             return;
         }
         else return searchFind();
     }
     else {
+        std::string sciFind = prepareFind(*this);
         sci.SetTargetRange(start, sci.IndicatorEnd(searchData.indicator, start));
-        Scintilla::Position found = sci.SearchInTarget(sciFind[0]);
+        Scintilla::Position found = sci.SearchInTarget(sciFind);
         if (found == start && sci.TargetEnd() == end) {
             std::string r = sciRepl[0];
             Scintilla::Position replacementLength = sci.ReplaceTarget(r);
@@ -857,38 +898,73 @@ void ColumnsPlusPlusData::searchReplace() {
 }
 
 void ColumnsPlusPlusData::searchReplaceAll() {
-    std::string sciFind[2];
-    std::vector<std::string> sciRepl;
-    if (!searchPrepare(*this, sciFind, &sciRepl)) return;
+    std::vector<std::string> sciRepl = prepareReplace(*this);
     if (!searchRegionReady()) {
         if (!convertSelectionToSearchRegion(*this)) return;
         searchData.wrap = false;
     }
-    if (!prepareSubstitutions(*this, sciFind[0], sciRepl)) return;
+    if (!prepareSubstitutions(*this, sciRepl)) return;
     sci.CallTipCancel();
     int count = 0;
-    RegularExpressionBuffered rx(*this);
-    rx.find(searchData.findHistory.back(), searchData.matchCase, searchData.mode != SearchData::Regex);
     sci.BeginUndoAction();
-    for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < sci.Length(); cpFrom = cpTo) {
-        cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
-        if (sci.IndicatorValueAt(searchData.indicator, cpFrom)) {
-            Scintilla::Position start = sci.IndicatorStart(searchData.indicator, cpFrom);
-            while (cpFrom < cpTo) {
-                if (!rx.search(cpFrom, cpTo, start)) break;
-                ++count;
-                Scintilla::Position found  = rx.position(0);
-                Scintilla::Position length = rx.length(0);
-                std::string r = searchData.mode == SearchData::Regex ? rx.format(sciRepl.size() == 1 ? sciRepl[0] : calculateSubstitutions(*this, rx, found))
-                                                                     : sciRepl[0];
-                sci.SetTargetRange(found, found + length);
-                sci.ReplaceTarget(r);
+    if (searchData.mode == SearchData::Regex) {
+        RegularExpressionDirect rx(*this);
+        rx.find(searchData.findHistory.back(), searchData.matchCase);
+        bool usesK = doesRegexUseK(searchData.findHistory.back());
+        Scintilla::Position nullAt = -1;
+        for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < sci.Length(); cpFrom = cpTo) {
+            cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
+            if (sci.IndicatorValueAt(searchData.indicator, cpFrom)) {
+                Scintilla::Position start = sci.IndicatorStart(searchData.indicator, cpFrom);
                 rx.invalidate();
-                cpFrom = found + r.length();
-                cpTo += r.length() - length;
-                sci.SetIndicatorCurrent(searchData.indicator);
-                sci.SetIndicatorValue(1);
-                sci.IndicatorFillRange(found, r.length());
+                while (cpFrom <= cpTo) {
+                    if (!rx.search(cpFrom, cpTo, start)) break;
+                    Scintilla::Position found  = rx.position(0);
+                    Scintilla::Position length = rx.length(0);
+                    if (length == 0) {
+                        if (usesK) {
+                            if (found == nullAt) {
+                                cpFrom = found + 1;
+                                continue;
+                            }
+                            nullAt = cpFrom = found;
+                        }
+                        else cpFrom = found + 1;
+                    }
+                    else cpFrom = found + length;
+                    ++count;
+                    std::string r = rx.format(sciRepl.size() == 1 ? sciRepl[0] : calculateSubstitutions(*this, rx, found));
+                    sci.SetTargetRange(found, found + length);
+                    sci.ReplaceTarget(r);
+                    cpFrom += r.length() - length;
+                    cpTo   += r.length() - length;
+                    sci.SetIndicatorCurrent(searchData.indicator);
+                    sci.SetIndicatorValue(1);
+                    sci.IndicatorFillRange(found, r.length());
+                    rx.invalidate();
+                }
+            }
+        }
+    }
+    else {
+        std::string sciFind = prepareFind(*this);
+        for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < sci.Length(); cpFrom = cpTo) {
+            cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
+            if (sci.IndicatorValueAt(searchData.indicator, cpFrom)) {
+                while (cpFrom < cpTo) {
+                    sci.SetTargetRange(cpFrom, cpTo);
+                    Scintilla::Position found = sci.SearchInTarget(sciFind);
+                    if (found == -1) break;
+                    if (found < -1) return showSearchError(*this, found);
+                    ++count;
+                    Scintilla::Position oldLength = sci.TargetEnd() - found;
+                    Scintilla::Position newLength = sci.ReplaceTarget(sciRepl[0]);
+                    cpFrom = found + newLength;
+                    cpTo += newLength - oldLength;
+                    sci.SetIndicatorCurrent(searchData.indicator);
+                    sci.SetIndicatorValue(1);
+                    sci.IndicatorFillRange(found, newLength);
+                }
             }
         }
     }

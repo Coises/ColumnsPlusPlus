@@ -14,12 +14,6 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include "RegularExpressionBuffered.h"
-#include <regex>
-#include <string.h>
-#include "commctrl.h"
-#include "resource.h"
-
 #pragma warning (push)
 #pragma warning (disable: 4702)
 #define exprtk_disable_rtl_io

@@ -14,6 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#pragma once
+
 #include <algorithm>
 #include <charconv>
 #include <map>
@@ -107,11 +109,11 @@ inline std::wstring updateComboHistory(HWND dialog, int control, std::vector<std
             auto existing = std::find(history.begin(), history.end(), s);
             if (existing != history.end()) {
                 SendMessage(h, CB_DELETESTRING, history.end() - existing - 1, 0);
-                SetWindowText(h, s.data());
                 history.erase(existing);
             }
         }
         SendMessage(h, CB_INSERTSTRING, 0, reinterpret_cast<LPARAM>(s.data()));
+        SendMessage(h, CB_SETCURSEL, 0, 0);
         history.push_back(s);
     }
     return s;
@@ -166,7 +168,9 @@ public:
     int  dialogButtonLeft;
     int  dialogComboWidth;
     int  allocatedIndicator = 0;               // allocated indicator starting with Notepad++ 8.5.6; otherwise 0
-    bool wrap = false;
+    Scintilla::Position findStep = -1;         // starting position for the last stepwise regex Find, or -1 if not valid for stepwise Replace
+    Scintilla::Position nullAt   = -1;         // used to avoid multiple matches to the same null string during incremental Find or Replace
+    bool                wrap     = false;      // next stepwise Find/Replace should start at the beginning (or end, if backward) of document
     RECT dialogLastPosition = { 0, 0, 0, 0 };
     std::vector<std::wstring> findHistory;
     std::vector<std::wstring> replaceHistory;

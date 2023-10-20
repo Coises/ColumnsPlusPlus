@@ -32,7 +32,7 @@
     <ClInclude Include="..\src\Host\ScintillaCall.h" />
     <ClInclude Include="..\src\Numeric.h" />
     <ClInclude Include="..\src\RegularExpression.h" />
-    <ClInclude Include="..\src\RegularExpressionBuffered.h" />
+    <ClInclude Include="..\src\RegularExpressionDirect.h" />
     <ClInclude Include="..\src\resource.h" />
     <ClInclude Include="..\src\Search.h" />
   </ItemGroup>
