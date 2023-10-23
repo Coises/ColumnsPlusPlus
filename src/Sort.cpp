@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include "ColumnsPlusPlus.h"
 #include "RegularExpression.h"
 #include "commctrl.h"
 #include "resource.h"
@@ -154,11 +155,7 @@ void replaceSortColumn(ColumnsPlusPlusData& data, const SortSelection& ss, const
 }
 
 
-void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings) {
-
-    auto rs = data.getRectangularSelection();
-    int lines = rs.size();
-    if (lines < 2) return;
+void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings, RectangularSelection& rs) {
 
     DWORD options = LCMAP_SORTKEY | NORM_LINGUISTIC_CASING;
     if (!sortSettings.localeCaseSensitive  ) options |= LINGUISTIC_IGNORECASE;
@@ -195,6 +192,7 @@ void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings) {
         capType .push_back(sortSettings.sortType);
     }
 
+    int lines = rs.size();
     SortSelection ss;
     std::vector<LinePointers> unsortedLinePointers;
     ss.resize(lines);
@@ -549,10 +547,12 @@ BOOL CALLBACK addLocale(LPWSTR pStr, DWORD, LPARAM lparam) {
 
 
 void sortStandard(ColumnsPlusPlusData& data, SortSettings::SortType sortType, bool descending) {
+    auto rs = data.getRectangularSelection();
+    if (rs.size() < 2) return;
     SortSettings sortSettings;
     sortSettings.sortType = sortType;
     sortSettings.sortDescending = descending;
-    sortCommon(data, sortSettings);
+    sortCommon(data, sortSettings, rs);
 }
 
 } // end anonymous namespace
@@ -566,8 +566,12 @@ void ColumnsPlusPlusData::sortAscendingNumeric () {sortStandard(*this, SortSetti
 void ColumnsPlusPlusData::sortDescendingNumeric() {sortStandard(*this, SortSettings::Numeric, true );}
 
 void ColumnsPlusPlusData::sortCustom() {
+
+    auto rs = getRectangularSelection();
+    if (rs.size() < 2) return;
+
     SortInfo si(*this);
     EnumSystemLocalesEx(addLocale, LOCALE_ALL, reinterpret_cast<LPARAM>(&si), 0);
     if (DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_SORT), nppData._nppHandle, sortDialogProc, reinterpret_cast<LPARAM>(&si))) return;
-    sortCommon(*this, sort);
+    sortCommon(*this, sort, rs);
 }

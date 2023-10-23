@@ -32,7 +32,6 @@
     <ClInclude Include="..\src\Host\ScintillaCall.h" />
     <ClInclude Include="..\src\Numeric.h" />
     <ClInclude Include="..\src\RegularExpression.h" />
-    <ClInclude Include="..\src\RegularExpressionDirect.h" />
     <ClInclude Include="..\src\resource.h" />
     <ClInclude Include="..\src\Search.h" />
   </ItemGroup>
@@ -48,6 +47,7 @@
     <ClCompile Include="..\src\Numeric.cpp" />
     <ClCompile Include="..\src\Options.cpp" />
     <ClCompile Include="..\src\Rectangular.cpp" />
+    <ClCompile Include="..\src\RegularExpression.cpp" />
     <ClCompile Include="..\src\Search.cpp" />
     <ClCompile Include="..\src\Plugin.cpp" />
     <ClCompile Include="..\src\Sort.cpp" />

@@ -14,8 +14,8 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-//#include "RegularExpressionBuffered.h"
-#include "RegularExpressionDirect.h"
+#include "ColumnsPlusPlus.h"
+#include "RegularExpression.h"
 #include <regex>
 #include <string.h>
 #include "commctrl.h"
@@ -185,7 +185,7 @@ bool updateFindHistory(ColumnsPlusPlusData& data) {
     s.resize(GetWindowText(h, s.data(), n + 1));
     std::wstring error = s.empty() ? L"Enter something to find." : L"";
     if (!s.empty() && data.searchData.mode == SearchData::Regex) {
-        RegularExpressionDirect rx(data);
+        RegularExpression rx(data);
         error = rx.find(s);
     }
     if (!error.empty()) {
@@ -617,14 +617,14 @@ bool prepareSubstitutions(ColumnsPlusPlusData& data, const std::vector<std::stri
 }
 
 
-std::string calculateSubstitutions(ColumnsPlusPlusData& data, const RegularExpressionDirect& rx, Scintilla::Position found) {
+std::string calculateSubstitutions(ColumnsPlusPlusData& data, const RegularExpression& rx, Scintilla::Position found) {
     std::string r;
     auto& rc = *data.searchData.regexCalc;
     ++rc.rcMatch;
     rc.rcLine = static_cast<double>(data.sci.LineFromPosition(found) + 1);
     auto& values = rc.history.values.emplace_back();
     auto& results = rc.history.results.emplace_back();
-    for (int i = 0; i < rx.size(); ++i) values.push_back(data.parseNumber(rx.str(i)));
+    for (int i = 0; i < static_cast<int>(rx.size()); ++i) values.push_back(data.parseNumber(rx.str(i)));
     rc.rcThis = values[0];
     for (size_t i = 0; i < rc.replacement.size(); ++i) {
         if (i & 1) {
@@ -717,7 +717,7 @@ void ColumnsPlusPlusData::searchCount() {
     Scintilla::Position documentLength = sci.Length();
     int count = 0;
     if (searchData.mode == SearchData::Regex) {
-        RegularExpressionDirect rx(*this);
+        RegularExpression rx(*this);
         rx.find(searchData.findHistory.back(), searchData.matchCase);
         bool usesK = doesRegexUseK(searchData.findHistory.back());
         Scintilla::Position nullAt = -1;
@@ -784,7 +784,7 @@ void ColumnsPlusPlusData::searchFind(bool postReplace) {
                                             : std::max(sci.Anchor(), sci.CurrentPos());
     Scintilla::Position cpTo;
     if (searchData.mode == SearchData::Regex) {
-        RegularExpressionDirect rx(*this);
+        RegularExpression rx(*this);
         rx.find(searchData.findHistory.back(), searchData.matchCase);
         for (;;) {
             cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
@@ -855,7 +855,7 @@ void ColumnsPlusPlusData::searchReplace() {
         Scintilla::Position regionStart = sci.IndicatorStart(searchData.indicator, start);
         Scintilla::Position regionEnd   = sci.IndicatorEnd(searchData.indicator, start);
         Scintilla::Position cpMin       = searchData.findStep < 0 ? start : searchData.findStep;
-        RegularExpressionDirect rx(*this);
+        RegularExpression rx(*this);
         rx.find(searchData.findHistory.back(), searchData.matchCase);
         if (rx.search(cpMin, regionEnd, regionStart) && rx.position() == start && rx.length(0) == end - start) {
             std::string r = rx.format(sciRepl.size() == 1 ? sciRepl[0] : calculateSubstitutions(*this, rx, start));
@@ -908,7 +908,7 @@ void ColumnsPlusPlusData::searchReplaceAll() {
     int count = 0;
     sci.BeginUndoAction();
     if (searchData.mode == SearchData::Regex) {
-        RegularExpressionDirect rx(*this);
+        RegularExpression rx(*this);
         rx.find(searchData.findHistory.back(), searchData.matchCase);
         bool usesK = doesRegexUseK(searchData.findHistory.back());
         Scintilla::Position nullAt = -1;

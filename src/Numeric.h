@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include "ColumnsPlusPlus.h"
 #include "RegularExpression.h"
 #include "commctrl.h"
 #include "resource.h"
@@ -169,7 +170,7 @@ public:
             Scintilla::Position cpMax = data.sci.SelectionNEnd(index);
             std::string s = data.sci.StringOfRange(Scintilla::Span(cpMin, cpMax));
             if (rx.search(s)) {
-                for (size_t j = 0; j < rx.size(); ++j) lc.reg.push_back(data.parseNumber(rx.str(j)));
+                for (int j = 0; j < static_cast<int>(rx.size()); ++j) lc.reg.push_back(data.parseNumber(rx.str(j)));
                 if (response) *response = true;
             }
         }
