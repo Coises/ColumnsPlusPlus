@@ -48,10 +48,6 @@ class RegularExpressionA : public RegularExpressionInterface {
 
         char operator*() const { return pos < gap ? pt1[pos] : pt2[pos]; }
 
-        DocumentIterator operator+(const ptrdiff_t difference   ) const { return DocumentIterator(*this, pos + difference); }
-        DocumentIterator operator-(const ptrdiff_t difference   ) const { return DocumentIterator(*this, pos - difference); }
-        ptrdiff_t        operator-(const DocumentIterator& other) const { return pos - other.pos; }
-
         intptr_t          position(           ) const { return pos; }
         DocumentIterator& position(intptr_t at)       { pos = at; return *this; }
 
@@ -99,7 +95,7 @@ public:
     }
 
     intptr_t length(int n = 0) const override {
-        return aMatch.empty() || n < 0 || n >= static_cast<int>(aMatch.size()) ? -1 : aMatch[n].second - aMatch[n].first;
+        return aMatch.empty() || n < 0 || n >= static_cast<int>(aMatch.size()) ? -1 : aMatch[n].second.position() - aMatch[n].first.position();
     }
 
     size_t mark_count() const override { return !regexValid ? 0 : aFind.mark_count(); }
@@ -165,8 +161,6 @@ class RegularExpressionW : public RegularExpressionInterface {
 
     class DocumentIterator {
 
-        friend class RegularExpressionW;
-
         intptr_t    pos;
         intptr_t    end;
         intptr_t    gap;
@@ -190,7 +184,7 @@ class RegularExpressionW : public RegularExpressionInterface {
         // the longest valid prefix as a single error, this iterator regards each byte of an undecodable sequence as an error.
         // The replacement character, 0xFFFD, results from dereferencing an iterator to an error byte.
 
-        // Four-byte sequences encompass two iterator positions.  The first position in on the lead byte; dereferencing it
+        // Four-byte sequences encompass two iterator positions.  The first position is on the lead byte; dereferencing it
         // returns the high surrogate.  The second position is on the last byte of the sequence; dereferencing it returns
         // the low surrogate.  Iterators to other valid sequences are always positioned on the lead byte; an iterator position
         // on a continuation byte other than the last byte of a valid four-byte sequence is an error byte.

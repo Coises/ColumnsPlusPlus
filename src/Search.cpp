@@ -130,17 +130,21 @@ std::wstring expandExtendedSearchString(const std::wstring& original, UINT codep
 }
 
 bool updateSearchRegion(ColumnsPlusPlusData& data, bool modify = false, bool remove = false) {
+    int n = data.sci.Selections();
+    data.sci.SetIndicatorCurrent(data.searchData.indicator);
+    data.sci.SetIndicatorValue(1);
+    if (n < 2 && data.sci.SelectionEmpty() && !modify) {
+        data.sci.IndicatorFillRange(0, data.sci.Length());
+        return true;
+    }
     bool postClear = data.searchData.autoClearSelection
                   || ( modify
                     && data.searchData.autoSetSelection
-                    && ( data.sci.SelectionMode() != Scintilla::SelectionMode::Stream || data.sci.Selections() > 1 )
+                    && ( data.sci.SelectionMode() != Scintilla::SelectionMode::Stream || n > 1 )
                     && ( data.sci.IndicatorValueAt(data.searchData.indicator, 0)
                       || ( data.sci.IndicatorEnd(data.searchData.indicator, 0) != 0
                         && data.sci.IndicatorEnd(data.searchData.indicator, 0) != data.sci.Length() ) ) );
-    data.sci.SetIndicatorCurrent(data.searchData.indicator);
     if (!modify) data.sci.IndicatorClearRange(0, data.sci.Length());
-    data.sci.SetIndicatorValue(1);
-    int n = data.sci.Selections();
     if (remove)
          for (int i = 0; i < n; ++i) data.sci.IndicatorClearRange(data.sci.SelectionNStart(i), data.sci.SelectionNEnd(i) - data.sci.SelectionNStart(i));
     else for (int i = 0; i < n; ++i) data.sci.IndicatorFillRange (data.sci.SelectionNStart(i), data.sci.SelectionNEnd(i) - data.sci.SelectionNStart(i));
@@ -661,12 +665,19 @@ std::string calculateSubstitutions(ColumnsPlusPlusData& data, const RegularExpre
 }
 
 bool convertSelectionToSearchRegion(ColumnsPlusPlusData& data) {
+    int n = data.sci.Selections();
+    if (data.searchData.autoSetSelection && n < 2 && data.sci.SelectionEmpty()) {
+        data.sci.SetIndicatorCurrent(data.searchData.indicator);
+        data.sci.SetIndicatorValue(1);
+        data.sci.IndicatorFillRange(0, data.sci.Length());
+        return true;
+    }
     RectangularSelection rs(data);
-    if (rs.size() || (data.sci.Selections() < 2 && rs.anchor().ln == rs.caret().ln)) {
+    if (rs.size() || (n < 2 && rs.anchor().ln == rs.caret().ln)) {
         rs.extend();
         if (!rs.size()) return false;
+        n = data.sci.Selections();
     }
-    int n = data.sci.Selections();
     for (int i = 0;; ++i) {
         if (i >= n) {
             MessageBox(data.searchData.dialog, L"Could not construct a search region from this selection.", L"Search in indicated region", MB_ICONERROR);
@@ -768,7 +779,6 @@ void ColumnsPlusPlusData::searchCount() {
 }
 
 void ColumnsPlusPlusData::searchFind(bool postReplace) {
-
     bool fullSearch = searchData.wrap;
     Scintilla::Position documentLength = sci.Length();
     if (!searchRegionReady()) {
@@ -841,9 +851,9 @@ void ColumnsPlusPlusData::searchFind(bool postReplace) {
 
 
 void ColumnsPlusPlusData::searchReplace() {
-    if (!searchRegionReady()) return searchFind();
     std::vector<std::string> sciRepl = prepareReplace(*this);
     if (!prepareSubstitutions(*this, sciRepl)) return;
+    if (!searchRegionReady()) return searchFind();
     Scintilla::Position anchor = sci.Anchor();
     Scintilla::Position caret  = sci.CurrentPos();
     Scintilla::Position start  = std::min(anchor, caret);
@@ -899,11 +909,11 @@ void ColumnsPlusPlusData::searchReplace() {
 
 void ColumnsPlusPlusData::searchReplaceAll() {
     std::vector<std::string> sciRepl = prepareReplace(*this);
+    if (!prepareSubstitutions(*this, sciRepl)) return;
     if (!searchRegionReady()) {
         if (!convertSelectionToSearchRegion(*this)) return;
         searchData.wrap = false;
     }
-    if (!prepareSubstitutions(*this, sciRepl)) return;
     sci.CallTipCancel();
     int count = 0;
     sci.BeginUndoAction();
