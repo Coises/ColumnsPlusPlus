@@ -92,37 +92,58 @@ void ColumnsPlusPlusData::showSearchDialog() {
                       ::searchDialogProc, reinterpret_cast<LPARAM>(this));
 }
 
-const std::wregex rxExtended(L"([^\\\\]*)(\\\\([0nrt\\\\]|b[01]{1,8}|d\\d{1,3}|o[0-7]{1,3}|u[\\da-fA-F]{1,4}|x[\\da-fA-F]{1,2}|))(.*)", std::regex::optimize);
+const std::wregex rxExtended(
+    L"([^\\\\]*)(\\\\([0nrt\\\\]|b[01]{1,8}|d\\d{1,3}|o[0-7]{1,3}|u[\\da-fA-F]{1,4}|U[\\da-fA-F]{1,6}|x[\\da-fA-F]{1,2}|))(.*)",
+    std::wregex::optimize);
 
-std::wstring expandExtendedSearchString(const std::wstring& original, UINT codepage) {
+std::string expandExtendedSearchString(const std::wstring& original, UINT codepage) {
     std::wstring s = original;
-    std::wstring r;
+    std::string r;
     while (s.length()) {
         std::wsmatch m;
         if (!std::regex_match(s, m, rxExtended)) {
-            r += s;
+            r += fromWide(s, codepage);
             break;
         }
-        r += m[1];
+        r += fromWide(m[1].str(), codepage);
         std::wstring e = m[3];
-        if (e.length() == 0) r += L'\\';
+        if (e.length() == 0) r += '\\';
         else switch (e[0]) {
-        case L'\\': r += L'\\'; break;
-        case L'0' : r += L'\0'; break;
-        case L'n' : r += L'\n'; break;
-        case L'r' : r += L'\r'; break;
-        case L't' : r += L'\t'; break;
-        case L'u' : r += static_cast<wchar_t>(std::stoi(e.substr(1), 0, 16)); break;
+        case L'\\': r += '\\'; break;
+        case L'0' : r += '\0'; break;
+        case L'n' : r += '\n'; break;
+        case L'r' : r += '\r'; break;
+        case L't' : r += '\t'; break;
+        case L'u' :
+        case L'U' :
+        {
+            int c = std::stoi(e.substr(1), 0, 16);
+            if (c < 0x10000) r += fromWide(std::wstring(1, static_cast<wchar_t>(c)), codepage);
+            else if (c > 0x10FFFF || (c >= 0xD800 && c <= 0xDFFF)) r += fromWide(L'\\' + e, codepage);
+            else {
+                wchar_t pair[3] = L"\0\0";
+                c -= 0x10000;
+                pair[0] = static_cast<wchar_t>(0xD800 | (c >> 10));
+                pair[1] = static_cast<wchar_t>(0xDC00 | (c & 0x03FF));
+                r += fromWide(pair, codepage);
+            }
+            break;
+        }
         default:
+        {
             int c = 0;
             switch (e[0]) {
-            case L'b' : c = std::stoi(e.substr(1), 0,  2); break;
-            case L'd' : c = std::stoi(e.substr(1), 0, 10); break;
-            case L'o' : c = std::stoi(e.substr(1), 0,  8); break;
-            case L'x' : c = std::stoi(e.substr(1), 0, 16); break;
+            case 'b' : c = std::stoi(e.substr(1), 0,  2); break;
+            case 'd' : c = std::stoi(e.substr(1), 0, 10); break;
+            case 'o' : c = std::stoi(e.substr(1), 0,  8); break;
+            case 'x' : c = std::stoi(e.substr(1), 0, 16); break;
             }
-            if (codepage == CP_UTF8) r += static_cast<wchar_t>(c);
-            else r += toWide(std::string(1, static_cast<char>(c)), codepage);
+            if (codepage == CP_UTF8 && c > 0x7F) {
+                r += c < 0xC0 ? '\xC2' : '\xC3';
+                r += static_cast<char>(0xBF & c);
+            }
+            else r += static_cast<char>(c);
+        }
         }
         s = m[4];
     }
@@ -511,10 +532,9 @@ std::string prepareFind(ColumnsPlusPlusData& data) {
         if (data.searchData.matchCase) searchFlags |= Scintilla::FindOption::MatchCase;
         data.sci.SetSearchFlags(searchFlags);
     }
-    return fromWide(data.searchData.mode == SearchData::Extended
-                    ? expandExtendedSearchString(data.searchData.findHistory.back(), data.sci.CodePage())
-                    : data.searchData.findHistory.back(),
-                    data.sci.CodePage());
+    return data.searchData.mode == SearchData::Extended
+        ? expandExtendedSearchString(data.searchData.findHistory.back(), data.sci.CodePage())
+        : fromWide(data.searchData.findHistory.back(), data.sci.CodePage());
 }
 
 bool doesRegexUseK(std::wstring_view r) {
@@ -525,10 +545,10 @@ std::vector<std::string> prepareReplace(ColumnsPlusPlusData& data) {
     std::vector<std::string> sciRepl;
     UINT codepage = data.sci.CodePage();
     if (data.searchData.mode != SearchData::Regex) {
-        sciRepl.push_back(fromWide(
+        sciRepl.push_back(
             data.searchData.mode == SearchData::Extended ? expandExtendedSearchString(data.searchData.replaceHistory.back(), codepage)
-                                                         : data.searchData.replaceHistory.back(),
-            codepage));
+                                                         : fromWide(data.searchData.replaceHistory.back(), codepage)
+            );
         return sciRepl;
     }
     std::string r = fromWide(data.searchData.replaceHistory.back(), codepage);
