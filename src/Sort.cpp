@@ -192,6 +192,9 @@ void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings, Rec
         capType .push_back(sortSettings.sortType);
     }
 
+    RegularExpression rx(data);
+    if (sortSettings.keyType == SortSettings::Regex) rx.find(sortSettings.regexHistory.back(), sortSettings.regexMatchCase);
+
     int lines = rs.size();
     SortSelection ss;
     std::vector<LinePointers> unsortedLinePointers;
@@ -227,8 +230,6 @@ void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings, Rec
         ss[n].vsRight = row.vsMax();
 
         if (sortSettings.keyType == SortSettings::Regex) {
-            RegularExpression rx(data);
-            rx.find(sortSettings.regexHistory.back(), sortSettings.regexMatchCase);
             if (rx.search(row.text())) {
                 for (size_t i = 0; i < capGroup.size(); ++i) {
                     std::string s = rx.str(capGroup[i]);
@@ -512,12 +513,11 @@ INT_PTR CALLBACK sortDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
                SendDlgItemMessage(hwndDlg, IDC_SORT_LOCALE_NAME, CB_SETCURSEL, 0, 0);
             }
             break;
-        default:;
         }
         break;
 
-    default:;
     }
+
     return FALSE;
 }
 
@@ -566,10 +566,8 @@ void ColumnsPlusPlusData::sortAscendingNumeric () {sortStandard(*this, SortSetti
 void ColumnsPlusPlusData::sortDescendingNumeric() {sortStandard(*this, SortSettings::Numeric, true );}
 
 void ColumnsPlusPlusData::sortCustom() {
-
     auto rs = getRectangularSelection();
     if (rs.size() < 2) return;
-
     SortInfo si(*this);
     EnumSystemLocalesEx(addLocale, LOCALE_ALL, reinterpret_cast<LPARAM>(&si), 0);
     if (DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_SORT), nppData._nppHandle, sortDialogProc, reinterpret_cast<LPARAM>(&si))) return;

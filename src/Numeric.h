@@ -164,11 +164,8 @@ public:
         LineCache& lc = cache[lcn];
         if (!lc.regValid) {
             lc.regValid = true;
+            const std::string& s = text(lcn);
             lc.reg.clear();
-            int index = selectionIndex(lcn);
-            Scintilla::Position cpMin = data.sci.SelectionNStart(index);
-            Scintilla::Position cpMax = data.sci.SelectionNEnd(index);
-            std::string s = data.sci.StringOfRange(Scintilla::Span(cpMin, cpMax));
             if (rx.search(s)) {
                 for (int j = 0; j < static_cast<int>(rx.size()); ++j) lc.reg.push_back(data.parseNumber(rx.str(j)));
                 if (response) *response = true;
