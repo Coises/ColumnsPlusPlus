@@ -51,6 +51,7 @@ static struct MenuDefinition {
     FuncItem alignLeft               = {TEXT("Align left"                         ), []() {cmdWrap(&ColumnsPlusPlusData::alignLeft             );}, 0, false, 0};
     FuncItem alignRight              = {TEXT("Align right"                        ), []() {cmdWrap(&ColumnsPlusPlusData::alignRight            );}, 0, false, 0};
     FuncItem alignNumeric            = {TEXT("Align numeric"                      ), []() {cmdWrap(&ColumnsPlusPlusData::alignNumeric          );}, 0, false, 0};
+    FuncItem alignCustom             = {TEXT("Align..."                           ), []() {cmdWrap(&ColumnsPlusPlusData::alignCustom           );}, 0, false, 0};
     FuncItem separatorSort           = {TEXT("---"                                ), 0                                                            , 0, false, 0};
     FuncItem sortAscendingBinary     = {TEXT("Sort ascending (binary)"            ), []() {cmdWrap(&ColumnsPlusPlusData::sortAscendingBinary   );}, 0, false, 0};
     FuncItem sortDescendingBinary    = {TEXT("Sort descending (binary)"           ), []() {cmdWrap(&ColumnsPlusPlusData::sortDescendingBinary  );}, 0, false, 0};

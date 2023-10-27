@@ -35,6 +35,7 @@ static const std::regex extensionsHeader("\\s*Extensions\\s*", std::regex::icase
 static const std::regex calcHeader("\\s*Calculate\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex searchHeader("\\s*Search\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex sortHeader("\\s*Sort\\s*", std::regex::icase | std::regex::optimize);
+static const std::regex alignHeader("\\s*Align\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex dataLine("\\s*(\\S+)\\s+(.*\\S)\\s*", std::regex::optimize);
 static const std::regex integerValue("[+-]?\\d{1,10}", std::regex::optimize);
 
@@ -94,7 +95,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
     int configCompat = std::stoi(match[2]);
     if (configCompat > 5) return;
 
-    enum {sectionNone, sectionLastSettings, sectionCalc, sectionSearch, sectionSort, sectionProfile, sectionExtensions} readingSection = sectionNone;
+    enum {sectionNone, sectionLastSettings, sectionCalc, sectionSearch, sectionSort, sectionAlign, sectionProfile, sectionExtensions} readingSection = sectionNone;
     std::wstring profileName;
 
     while (file) {
@@ -103,6 +104,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
         else if (std::regex_match(line, match, calcHeader        )) readingSection = sectionCalc;
         else if (std::regex_match(line, match, searchHeader      )) readingSection = sectionSearch;
         else if (std::regex_match(line, match, sortHeader        )) readingSection = sectionSort;
+        else if (std::regex_match(line, match, alignHeader       )) readingSection = sectionAlign;
         else if (std::regex_match(line, match, extensionsHeader  )) readingSection = sectionExtensions;
         else if (std::regex_match(line, match, profileHeader     )) {
             readingSection = sectionProfile;
@@ -251,6 +253,23 @@ void ColumnsPlusPlusData::loadConfiguration() {
                                                            : SortSettings::EntireColumn;
                 }
             }
+            else if (readingSection == sectionAlign) {
+                std::string setting = match[1];
+                std::string value = match[2];
+                strlwr(setting.data());
+                if      (setting == "marginright") align.marginRight = value != "0";
+                else if (setting == "matchcase"  ) align.matchCase   = value != "0";
+                else if (setting == "history"    ) align.history.push_back(decodeDelimitedString(value));
+                else if (setting == "alignon") {
+                    strlwr(value.data());
+                    align.alignOn = value == "last"  ? AlignSettings::Last
+                                  : value == "regex" ? AlignSettings::Regex
+                                                     : AlignSettings::First;
+                }
+                else if (std::regex_match(value, integerValue)) {
+                    if (setting == "margin") align.margin = std::stoi(value);
+                }
+            }
             else if (readingSection == sectionProfile) {
                 std::string setting = match[1];
                 std::string value = match[2];
@@ -396,6 +415,16 @@ void ColumnsPlusPlusData::saveConfiguration() {
                                                                          : "EntireColumn") << std::endl;
     writeDelimitedStringHistory(file, "regex", sort.regexHistory);
     writeDelimitedStringHistory(file, "keys" , sort.keygroupHistory);
+
+    file << std::endl << "Align" << std::endl << std::endl;
+
+    file << "alignOn\t" << ( align.alignOn == AlignSettings::Last  ? "Last"
+                           : align.alignOn == AlignSettings::Regex ? "Regex" 
+                                                                   : "First") << std::endl;
+    file << "matchCase\t"   << align.matchCase   << std::endl;
+    file << "margin\t"      << align.margin      << std::endl;
+    file << "marginRight\t" << align.marginRight << std::endl;
+    writeDelimitedStringHistory(file, "history", align.history);
 
     for (const auto& p : profiles) if (p.first != L"Classic" && p.first != L"General" && p.first != L"Tabular") {
         file << std::endl << "Profile\t" << fromWide(p.first, CP_UTF8) << std::endl << std::endl;

@@ -18,6 +18,7 @@
 #define IDD_SORT                        129
 #define IDD_TIME_FORMATS                131
 #define IDD_ELASTIC_PROGRESS            133
+#define IDD_ALIGN                       135
 #define IDC_LINE_UP_ALL                 1003
 #define IDC_LEADING_TABS_INDENT         1006
 #define IDC_DISABLE_FILE_SIZE           1007
@@ -205,14 +206,23 @@
 #define IDC_SEARCH_SELECTION_AUTOCLEAR  1209
 #define IDC_ELASTIC_PROGRESS_BAR        1213
 #define IDC_SYSLINK1                    1215
+#define IDC_ALIGN_BY                    1216
+#define IDC_ALIGN_FIRST                 1217
+#define IDC_ALIGN_LAST                  1218
+#define IDC_ALIGN_REGEX                 1219
+#define IDC_ALIGN_MATCH_CASE            1220
+#define IDC_ALIGN_MARGIN_EDIT           1221
+#define IDC_ALIGN_MARGIN_SPIN           1222
+#define IDC_ALIGN_MARGIN_LEFT           1223
+#define IDC_ALIGN_MARGIN_RIGHT          1225
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        135
+#define _APS_NEXT_RESOURCE_VALUE        137
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1218
+#define _APS_NEXT_CONTROL_VALUE         1225
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

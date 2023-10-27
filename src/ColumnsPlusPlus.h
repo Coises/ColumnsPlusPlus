@@ -25,6 +25,7 @@
 
 #include <windows.h>
 #include <tchar.h>
+#include <commctrl.h>
 
 #include "Host\ScintillaTypes.h"
 #include "Host\ScintillaMessages.h"
@@ -117,6 +118,24 @@ inline std::wstring updateComboHistory(HWND dialog, int control, std::vector<std
         history.push_back(s);
     }
     return s;
+}
+
+inline bool validateSpin(int& value, HWND hwndDlg, int control, const wchar_t* message) {
+    BOOL error;
+    int n = static_cast<int>(SendDlgItemMessage(hwndDlg, control, UDM_GETPOS32, 0, reinterpret_cast<LPARAM>(&error)));
+    if (error) {
+        HWND edit = reinterpret_cast<HWND>(SendDlgItemMessage(hwndDlg, control, UDM_GETBUDDY, 0, 0));
+        EDITBALLOONTIP ebt;
+        ebt.cbStruct = sizeof(EDITBALLOONTIP);
+        ebt.pszTitle = L"";
+        ebt.ttiIcon = TTI_NONE;
+        ebt.pszText = message;
+        SendMessage(edit, EM_SHOWBALLOONTIP, 0, reinterpret_cast<LPARAM>(&ebt));
+        SendMessage(hwndDlg, WM_NEXTDLGCTL, reinterpret_cast<WPARAM>(edit), TRUE);
+        return false;
+    }
+    value = n;
+    return true;
 }
 
 
@@ -231,6 +250,15 @@ public:
     bool localeIgnoreSymbols     = false;
 };
 
+class AlignSettings {
+public:
+    std::vector<std::wstring> history;
+    enum AlignOn {First, Last, Regex} alignOn = First;
+    int  margin      = 0;
+    bool marginRight = false;
+    bool matchCase   = false;
+};
+
 class TabLayoutBlock {
 public:
     Scintilla::Line firstLine, lastLine;
@@ -296,6 +324,7 @@ public:
     CsvSettings           csv;
     CalculateSettings     calc;
     SortSettings          sort;
+    AlignSettings         align;
     int  disableOverSize     = 1000;      // active if greater than zero; if negative, inactive and is negative of last used setting   
     int  disableOverLines    = 5000;      // active if greater than zero; if negative, inactive and is negative of last used setting
     int  elasticProgressTime = 2;         // maximum estimated time remaining in seconds to skip progress dialog for slow elastic tabstop operations
@@ -463,6 +492,7 @@ public:
     void alignLeft();
     void alignRight();
     void alignNumeric();
+    void alignCustom();
 
     // Configuration.cpp
 

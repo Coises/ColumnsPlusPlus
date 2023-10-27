@@ -40,21 +40,6 @@ void ColumnsPlusPlusData::showOptionsDialog() {
     }
 }
 
-int validateSpin(HWND hwndDlg, int control, const wchar_t* message) {
-    int n = static_cast<int>(SendDlgItemMessage(hwndDlg, control, UDM_GETPOS, 0, 0));
-    if (HIWORD(n)) {
-        HWND edit = reinterpret_cast<HWND>(SendDlgItemMessage(hwndDlg, control, UDM_GETBUDDY, 0, 0));
-        EDITBALLOONTIP ebt;
-        ebt.cbStruct = sizeof(EDITBALLOONTIP);
-        ebt.pszTitle = L"";
-        ebt.ttiIcon = TTI_NONE;
-        ebt.pszText = message;
-        SendMessage(edit, EM_SHOWBALLOONTIP, 0, reinterpret_cast<LPARAM>(&ebt));
-        SendMessage(hwndDlg, WM_NEXTDLGCTL, reinterpret_cast<WPARAM>(edit), TRUE);
-        return -1;
-    }
-    return n;
-}
 
 BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM) {
 
@@ -130,18 +115,19 @@ BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
             return TRUE;
         case IDOK:
         {
-            int newElasticProgressTime = validateSpin(hwndDlg, IDC_OPTIONS_ELASTIC_PROGRESS_SPIN, L"Time must be between 1 and 20 seconds.");
-            if (newElasticProgressTime < 1) return TRUE;
+            int newElasticProgressTime;
+            if (!validateSpin(newElasticProgressTime, hwndDlg, IDC_OPTIONS_ELASTIC_PROGRESS_SPIN, L"Time must be between 1 and 20 seconds.")) return TRUE;
             if (SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_ENABLED, BM_GETCHECK, 0, 0) == BST_CHECKED) {
                 int indicatorNumber = searchData.allocatedIndicator;
                 bool override = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_OVERRIDE, BM_GETCHECK, 0, 0) == BST_CHECKED;
                 if (!searchData.allocatedIndicator || override)
-                    indicatorNumber = validateSpin(hwndDlg, IDC_OPTIONS_INDICATOR_NUMBER_SPIN, L"Indicator number must be between 9 and 20.");
-                int indicatorAlpha  = validateSpin(hwndDlg, IDC_OPTIONS_INDICATOR_ALPHA_SPIN , L"Alpha transparency must be between 0 and 255.");
-                int indicatorRed    = validateSpin(hwndDlg, IDC_OPTIONS_INDICATOR_RED_SPIN   , L"Red amount must be between 0 and 255.");
-                int indicatorGreen  = validateSpin(hwndDlg, IDC_OPTIONS_INDICATOR_GREEN_SPIN , L"Green amount must be between 0 and 255.");
-                int indicatorBlue   = validateSpin(hwndDlg, IDC_OPTIONS_INDICATOR_BLUE_SPIN  , L"Blue amount must be between 0 and 255.");
-                if (indicatorNumber < 0 || indicatorAlpha < 0 || indicatorRed < 0 || indicatorGreen < 0 || indicatorBlue < 0) return TRUE;
+                    if (!validateSpin(indicatorNumber, hwndDlg, IDC_OPTIONS_INDICATOR_NUMBER_SPIN, L"Indicator number must be between 9 and 20.")) return TRUE;
+                int indicatorAlpha, indicatorRed, indicatorGreen, indicatorBlue;
+                if (  !validateSpin(indicatorAlpha , hwndDlg, IDC_OPTIONS_INDICATOR_ALPHA_SPIN , L"Alpha transparency must be between 0 and 255.")
+                   || !validateSpin(indicatorRed   , hwndDlg, IDC_OPTIONS_INDICATOR_RED_SPIN   , L"Red amount must be between 0 and 255.")
+                   || !validateSpin(indicatorGreen , hwndDlg, IDC_OPTIONS_INDICATOR_GREEN_SPIN , L"Green amount must be between 0 and 255.")
+                   || !validateSpin(indicatorBlue  , hwndDlg, IDC_OPTIONS_INDICATOR_BLUE_SPIN  , L"Blue amount must be between 0 and 255.")
+                   ) return TRUE;
                 int indicatorColor = indicatorRed | (indicatorGreen << 8) | (indicatorBlue << 16);
                 if (searchData.customAlpha != indicatorAlpha || searchData.customColor != indicatorColor) {
                     searchData.customAlpha = indicatorAlpha;
