@@ -516,6 +516,59 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
         }
         break;
 
+    case WM_NOTIFY:
+        switch (reinterpret_cast<NMHDR*>(lParam)->code) {
+        case BCN_DROPDOWN:
+        {
+            updateSearchSettings(searchData);
+            if (!updateFindHistory(*this)) return TRUE;
+            NMBCDROPDOWN& bd = *reinterpret_cast<NMBCDROPDOWN*>(lParam);
+            POINT pt;
+            pt.x = bd.rcButton.left;
+            pt.y = bd.rcButton.bottom;
+            ClientToScreen(bd.hdr.hwndFrom, &pt);
+            if (bd.hdr.idFrom == IDC_SEARCH_COUNT) {
+                HMENU pum = CreatePopupMenu();
+                AppendMenu(pum, true ? MF_STRING : MF_STRING | MF_GRAYED, 0x10, L"&Count");
+                AppendMenu(pum, MF_STRING, 0x20, L"&Select All");
+                AppendMenu(pum, MF_STRING, 0x13, L"Count &Before");
+                AppendMenu(pum, MF_STRING, 0x12, L"Count &After");
+                AppendMenu(pum, MF_STRING, 0x23, L"Select B&efore");
+                AppendMenu(pum, MF_STRING, 0x22, L"Select A&fter");
+                int choice = TrackPopupMenu(pum, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_NONOTIFY | TPM_RETURNCMD, pt.x, pt.y, 0, hwndDlg, NULL);
+                DestroyMenu(pum);
+                if (choice >= 0x20) {
+                    searchData.nullAt   = -1;
+                    searchData.findStep = -1;
+                }
+                if (choice) searchCount(choice >= 0x20, choice & 0x02, choice & 0x01);
+                syncFindButton();
+                return TRUE;
+            }
+            else if (bd.hdr.idFrom == IDC_SEARCH_REPLACE_ALL) {
+                HMENU pum = CreatePopupMenu();
+                AppendMenu(pum, MF_STRING, 1, L"&Replace All");
+                AppendMenu(pum, MF_STRING, 2, L"Replace &Before");
+                AppendMenu(pum, MF_STRING, 3, L"Replace &After");
+                if (searchData.regexCalc->replacement.size() > 1) AppendMenu(pum, MF_STRING, 4, L"&Clear counters and capture history");
+                int choice = TrackPopupMenu(pum, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_NONOTIFY | TPM_RETURNCMD, pt.x, pt.y, 0, hwndDlg, NULL);
+                DestroyMenu(pum);
+                if (choice == 4) searchData.regexCalc->clear();
+                else if (choice) {
+                    searchData.nullAt   = -1;
+                    searchData.findStep = -1;
+                    updateReplaceHistory(searchData);
+                    searchReplaceAll(choice > 1, choice == 2);
+                    syncFindButton();
+                }
+                return TRUE;
+            }
+            break;
+        }
+        default:;
+        }
+        break;
+
     default:
         break;
     
@@ -739,20 +792,21 @@ void showRange(ColumnsPlusPlusData& data, Scintilla::Position foundStart, Scinti
     data.sci.ChooseCaretX();
 }
 
-void ColumnsPlusPlusData::searchCount() {
+void ColumnsPlusPlusData::searchCount(bool select, bool partial, bool before) {
+    Scintilla::Position partialStart = partial && !before ? sci.SelectionEnd  () : 0;
+    Scintilla::Position partialEnd   = partial &&  before ? sci.SelectionStart() : sci.Length();
     if (!searchRegionReady()) {
         if (!convertSelectionToSearchRegion(*this)) return;
         searchData.wrap = false;
     }
     sci.CallTipCancel();
-    Scintilla::Position documentLength = sci.Length();
     int count = 0;
     if (searchData.mode == SearchData::Regex) {
         RegularExpression rx(*this);
         rx.find(searchData.findHistory.back(), searchData.matchCase);
         bool usesK = doesRegexUseK(searchData.findHistory.back());
         Scintilla::Position nullAt = -1;
-        for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < documentLength; cpFrom = cpTo) {
+        for (Scintilla::Position cpFrom = partialStart, cpTo; cpFrom < partialEnd; cpFrom = cpTo) {
             cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
             if (sci.IndicatorValueAt(searchData.indicator, cpFrom)) {
                 Scintilla::Position start = sci.IndicatorStart(searchData.indicator, cpFrom);
@@ -772,14 +826,17 @@ void ColumnsPlusPlusData::searchCount() {
                         else cpFrom = found + 1;
                     }
                     else cpFrom = found + length;
+                    if (found + length > partialEnd) break;
                     ++count;
+                    if (select) if (count == 1) sci.SetSel(found, found + length);
+                                           else sci.AddSelection(found + length, found);
                 }
             }
         }
     }
     else {
         std::string sciFind = prepareFind(*this);
-        for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < documentLength; cpFrom = cpTo) {
+        for (Scintilla::Position cpFrom = partialStart, cpTo; cpFrom < partialEnd; cpFrom = cpTo) {
             cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
             if (sci.IndicatorValueAt(searchData.indicator, cpFrom)) {
                 while (cpFrom < cpTo) {
@@ -787,12 +844,16 @@ void ColumnsPlusPlusData::searchCount() {
                     Scintilla::Position found = sci.SearchInTarget(sciFind);
                     if (found == -1) break;
                     if (found < -1) return showSearchError(*this, found);
-                    ++count;
                     cpFrom = sci.TargetEnd();
+                    if (cpFrom > partialEnd) break;
+                    ++count;
+                    if (select) if (count == 1) sci.SetSel(found, cpFrom);
+                                           else sci.AddSelection(cpFrom, found);
                 }
             }
         }
     }
+    if (select && count) sci.SetMainSelection(0);
     setSearchMessage(*this, count == 0 ? L"No matches found."
                           : count == 1 ? L"One match found."
                                        : std::to_wstring(count) + L" matches found.");
@@ -927,9 +988,11 @@ void ColumnsPlusPlusData::searchReplace() {
     }
 }
 
-void ColumnsPlusPlusData::searchReplaceAll() {
+void ColumnsPlusPlusData::searchReplaceAll(bool partial, bool before) {
     std::vector<std::string> sciRepl = prepareReplace(*this);
     if (!prepareSubstitutions(*this, sciRepl)) return;
+    Scintilla::Position partialStart = partial && !before ? sci.SelectionEnd  () : 0;
+    Scintilla::Position partialEnd   = partial &&  before ? sci.SelectionStart() : sci.Length();
     if (!searchRegionReady()) {
         if (!convertSelectionToSearchRegion(*this)) return;
         searchData.wrap = false;
@@ -942,7 +1005,7 @@ void ColumnsPlusPlusData::searchReplaceAll() {
         rx.find(searchData.findHistory.back(), searchData.matchCase);
         bool usesK = doesRegexUseK(searchData.findHistory.back());
         Scintilla::Position nullAt = -1;
-        for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < sci.Length(); cpFrom = cpTo) {
+        for (Scintilla::Position cpFrom = partialStart, cpTo; cpFrom < partialEnd; cpFrom = cpTo) {
             cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
             if (sci.IndicatorValueAt(searchData.indicator, cpFrom)) {
                 Scintilla::Position start = sci.IndicatorStart(searchData.indicator, cpFrom);
@@ -962,6 +1025,7 @@ void ColumnsPlusPlusData::searchReplaceAll() {
                         else cpFrom = found + 1;
                     }
                     else cpFrom = found + length;
+                    if (found + length > partialEnd) break;
                     ++count;
                     std::string r = rx.format(sciRepl.size() == 1 ? sciRepl[0] : calculateSubstitutions(*this, rx, found));
                     sci.SetTargetRange(found, found + length);
@@ -978,7 +1042,7 @@ void ColumnsPlusPlusData::searchReplaceAll() {
     }
     else {
         std::string sciFind = prepareFind(*this);
-        for (Scintilla::Position cpFrom = 0, cpTo; cpFrom < sci.Length(); cpFrom = cpTo) {
+        for (Scintilla::Position cpFrom = partialStart, cpTo; cpFrom < partialEnd; cpFrom = cpTo) {
             cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
             if (sci.IndicatorValueAt(searchData.indicator, cpFrom)) {
                 while (cpFrom < cpTo) {
@@ -986,11 +1050,14 @@ void ColumnsPlusPlusData::searchReplaceAll() {
                     Scintilla::Position found = sci.SearchInTarget(sciFind);
                     if (found == -1) break;
                     if (found < -1) return showSearchError(*this, found);
+                    cpFrom = sci.TargetEnd();
+                    if (cpFrom > partialEnd) break;
                     ++count;
-                    Scintilla::Position oldLength = sci.TargetEnd() - found;
+                    Scintilla::Position oldLength = cpFrom - found;
                     Scintilla::Position newLength = sci.ReplaceTarget(sciRepl[0]);
-                    cpFrom = found + newLength;
-                    cpTo += newLength - oldLength;
+                    cpFrom     += newLength - oldLength;
+                    cpTo       += newLength - oldLength;
+                    partialEnd += newLength - oldLength;
                     sci.SetIndicatorCurrent(searchData.indicator);
                     sci.SetIndicatorValue(1);
                     sci.IndicatorFillRange(found, newLength);

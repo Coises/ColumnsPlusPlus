@@ -535,10 +535,10 @@ public:
 
     BOOL searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     void showSearchDialog();
-    void searchCount();
+    void searchCount(bool select = false, bool partial = false, bool before = false);
     void searchFind(bool postReplace = false);
     void searchReplace();
-    void searchReplaceAll();
+    void searchReplaceAll(bool partial = false, bool before = false);
 
     // Sort.cpp
 
