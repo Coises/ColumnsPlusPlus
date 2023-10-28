@@ -7,6 +7,8 @@ Like Notepad++, Columns++ is released under the GNU General Public License (eith
 Columns++ uses the [C++ Mathematical Expression Toolkit Library
 (ExprTk)](https://github.com/ArashPartow/exprtk) by Arash Partow (https://www.partow.net/), which is released under the [MIT License](https://www.opensource.org/licenses/MIT).
 
+Columns++ uses the [Boost.Regex library](https://github.com/boostorg/regex/), which is released under the [Boost Software License, Version 1.0](https://www.boost.org/LICENSE_1_0.txt).
+
 ## Purpose
 
 Columns++ is designed to provide some helpful functions for editing text or data that is lined up visually in columns, so that you can make a rectangular selection of the column(s) you want to process.

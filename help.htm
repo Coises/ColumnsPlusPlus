@@ -53,7 +53,7 @@ main article section         {margin: 1.25rem 0 .4rem 0;}
 main article section h2      {border-style: none none solid none; border-width: 0 0 1px 0;}
 main article section h2      {margin: 0 0 .3em -6px; padding: .2em 0 .2em 6px;}
 main article section h3      {border-style: none none solid none; border-width: 0 0 1px 0;}
-main article section h3      {margin: .3em 0 .2em 0; padding: .2em 0 .1em 0; line-height: 1.2;}
+main article section h3      {margin: .75em 0 .2em 0; padding: .2em 0 .1em 0; line-height: 1.2;}
 main article h1+section      {margin-top: .75rem;}
 main article h1+p            {margin-top: .6em;}
 main article section+p       {margin-top: .75em;}
@@ -88,8 +88,8 @@ table.justAlign       {border: none; margin: 0; border-collapse: collapse;}
 table.justAlign td    {border:none; padding: 0; font: inherit;}
 table.justAlign td+td {padding: 0 0 0 1em;}
 
-ul.optionslist    {margin-top: .5em; margin-bottom: .5em;}
-ul.optionslist li {font-weight: bold;}
+ul    {margin: 0 0 .5em 0;}
+ul li {margin: .25em 0;}
 
 span.mnemonic {color: #fff; background: #000; padding: 0 .2em; border-radius: .2em; font-size: .9em; font-weight: bold; display: inline-block;}
 
@@ -143,6 +143,7 @@ window.addEventListener("load", doPageLoad);
 <a href="#purpose"      >Purpose and limitations</a>
 <a href="#elastic"      >Elastic tabstops</a>
 <a href="#rectangular"  >Rectangular selections</a>
+<a href="#regular"      >Regular expressions</a>
 <a href="#search"       >Search</a>
 <a href="#calculation"  >Calculation</a>
 <a href="#formulas"     >Formulas</a>
@@ -262,9 +263,31 @@ window.addEventListener("load", doPageLoad);
 
 </section>
 
+<section id=regular><h2>Regular expressions</h2>
+
+<p>Several commands in <strong>Columns++</strong> can use regular expressions for matching character strings. <strong>Columns++</strong> uses the same regular expression engine, <a href="https://www.boost.org/doc/libs/1_83_0/libs/regex/">Boost.Regex</a>, used in <strong>Notepad++</strong>, so the syntax and behavior are mostly the same. Some considerations unique to <strong>Columns++</strong> are described below.</p>
+
+<p>Within a rectangular selection, the selection in each row is matched independently of the surrounding text. The <strong>^</strong> assertion matches the beginning of the selection within a row, the <strong>$</strong> assertion matches the end of the selection, and lookahead and lookbehind assertions cannot examine text past the boundaries of the selection. (Lookbehind assertions in <strong>Notepad++</strong> can examine all text back to the beginning of the document, even when counting or replacing in a selection.) When using the <strong>Search in indicated region</strong> dialog, the region to be searched can be made up of one or more separate segments, each of which is searched independently. When a rectangular selection initializes the search region, each row of the selection becomes a separate segment of the search region.</p>
+
+<p>A rectangular selection enclosing a series of lines, or the entire document, is not the same as an ordinary selection encompassing the same series of lines, or the entire document. Rectangular selections do not include line endings, and each line is a separate selection when matching. This applies to search regions created from such selections for use in the <strong>Search in indicated region</strong> dialog, where it can be important to distinguish these two cases (which, unfortunately, appear the same visually).</p>
+
+<p>Matches for regular expressions using the <strong>\K</strong> directive are never replaced when performing stepwise Find and Replace in <strong>Notepad++</strong>. In the <strong>Search in indicated region</strong> dialog in <strong>Columns++</strong>, such matches can be replaced if you do not click outside the dialog between finding the match and replacing it.</p>
+
+<p>Regular expressions are matched as UTF-16 sequences for Unicode documents, and as byte sequences for other documents. (This is the same as in <strong>Notepad++</strong>.) Scintilla (the display control used in <strong>Notepad++</strong>) handles Unicode as UTF-8. When displaying Unicode documents that contain invalid UTF-8, Scintilla displays each byte that cannot be decoded as a hexadecimal code in reversed colors. When matching a regular expression, <strong>Columns++</strong> processes each of these bytes as if it were the Unicode replacement character, U+FFFD (<strong>&#xfffd;</strong>). <strong>Notepad++</strong> ignores errors in Unicode text when matching regular expressions.</p>
+
+</section>
+
 <section id=search><h2>Search</h2>
 
-<p><strong>Columns++</strong> offers the ability to find and replace within a region marked by an <em>indicator</em>. <strong>Notepad++</strong> uses several indicators, including the 1st to 5th Styles from the Search menu and the Find Mark Style used by the <strong>Mark</strong> function. <strong>Columns++</strong> lets you use any one of those six indicators, or a custom indicator, to define the region for searching. By default, if there is a rectangular or multiple selection when you begin a search, <strong>Columns++</strong> will use it to set the search region.</p>
+<p><strong>Columns++</strong> offers the ability to find and replace within a region marked by an <em>indicator</em>. <strong>Notepad++</strong> uses several indicators, including the 1st to 5th Styles from the Search menu and the Find Mark Style used by the <strong>Mark</strong> function. <strong>Columns++</strong> lets you use any one of those six indicators, or a custom indicator (the default), to define the region for searching.</p>
+
+<p>By default, if there is a rectangular selection or a multiple selection when you begin a search, <strong>Columns++</strong> will use it to set the search region. If a search region is not already set:</p>
+
+<ul>
+<li>if nothing is selected, the search region will be set to the entire document;
+<li>if an ordinary selection covering more than a single line is present, the search region will be set to that selection;
+<li>if a selection on a single line is present, <strong>Columns++</strong> will show a dialog offering to create a rectangular selection based on the current selection, from which it will then set the search region.
+</ul>
 
 <p>The <strong>Search...</strong> item on the <strong>Columns++</strong> menu opens the <strong>Search in indicated region</strong> dialog. Many of the options on this dialog are similar to the corresponding <strong>Notepad++</strong> search options. You can drag the left or right edge of this dialog to make it wider, and you can leave it open while you edit the document in other ways.</p>
 
@@ -274,45 +297,80 @@ window.addEventListener("load", doPageLoad);
 
 <p>When using regular expressions, the circumflex (<strong>^</strong>) and the dollar sign (<strong>$</strong>) match the beginning and end (respectively) of contiguous segments of the search region as well as their usual match to the beginning and ending of a line. This is particularly useful when the search region comes from a column selection, since <strong>^</strong> and <strong>$</strong> will match the left and right ends of the selection in each row.</p>
 
-<p>Look-behind assertions (<strong>(?&lt;=...)</strong> and <strong>(?&lt;!...)</strong>) examine the preceding characters without regard to region boundaries. Look-ahead assertions (<strong>(?=...)</strong> and <strong>(?!...)</strong>) do not look past the end of the contiguous segment of the search region in which they appear (e.g., for a region derived from a rectangular selection, they cannot see past the end of the selected text in each row).</p>
-
 <h3>Replace with</h3>
 
-<p>The <strong>Replace with</strong> box specifies the text, extended text or regular expression replacement for <strong>Replace</strong> and <strong>Replace All</strong> searches.</p>
+<p>The <strong>Replace with</strong> box specifies the text, extended text or regular expression replacement for search and replace operations.</p>
 
 <p>When using regular expressions, the replacement can contain formulas, specified as:
 <br><strong>(?=<em>formula</em>)</strong> or <strong>(?=<em>format</em>:<em>formula</em>)</strong>
 <br>within the replacement string; the <a href="#formulas">Formulas</a> section describes them in detail.</p>
 
+<p><em>Technical note: The results of formulas are enclosed in parentheses and substituted into the regular expression replacement string before it is processed by the regular expression engine. Ordinarily this results in expected behavior and needs no consideration by the user. However, formulas in <strong>Columns++</strong> support the <strong>return</strong> call described in section 20 of the <a href="https://github.com/ArashPartow/exprtk#readme">ExprTk documentation</a>. Using this call, it is possible to substitute an arbitrary character string; since the substitution occurs before regular expression replacement processing, characters substituted in this way will be interpreted as part of regular expression replacement. For example, </em><strong>(?=return ['$', reg(1)])</strong><em> would be replaced by the capture group the number of which is given by the first capture group.</em></p>
+
+<h3>Extended search syntax</h3>
+
+<p>The syntax for extended find and replace strings is almost the same <a href="https://npp-user-manual.org/docs/searching/#extended-search-mode">as in <strong>Notepad++</strong> searches</a>, with these exceptions:</p>
+
+<ul>
+<li><strong>\U</strong> (note the capital <strong>U</strong>) can be followed by one to six hexadecimal digits to specify any valid Unicode character.
+<li><strong>\b</strong>, <strong>\d</strong>, <strong>\o</strong> and <strong>\x</strong> specify Unicode code points in Unicode files and bytes in non-Unicode files. In <strong>Notepad++</strong> search they always specify Unicode code points.
+<li><strong>\b</strong>, <strong>\d</strong>, <strong>\o</strong>, <strong>\u</strong> and <strong>\x</strong> can be followed by any number of digits of the appropriate type up to the maximum for each (2 binary, 3 decimal, 3 octal, 4 hexadecimal and 2 hexadecimal, respectively); the first non-digit, or the maximum number of digits, terminates the sequence. In <strong>Notepad++</strong> search these sequences must contain exactly the required number of digits.
+</ul>
+
+<h3>Search actions</h3>
+
+<p>The <strong>Find</strong>, <strong>Count</strong>, <strong>Replace</strong> and <strong>Replace All</strong> buttons work like those in <strong>Notepad++</strong> search, except that they search in the indicated region, and there is no <strong>Wrap around</strong> option. Instead, <strong>Find</strong> and <strong>Replace</strong> show a message at the bottom of the dialog when the end of the search region is reached and subsequently restart from the beginning of the search region, while <strong>Count</strong> and <strong>Replace All</strong> always make use of the entire search region. The downward-pointing arrowheads on the right side of the <strong>Count</strong> and <strong>Replace All</strong> buttons open menus of additional options.</p>
+
+<p>From the <strong>Count</strong> button menu:</p>
+
+<ul>
+<li><strong>Select All</strong> creates a multiple selection including one selection for each match in the search region.
+<li><strong>Count Before</strong> counts matches in the search region preceding the selection or caret. Matches which overlap the selection or caret are not counted.
+<li><strong>Count After</strong> counts matches in the search region following the selection or caret. Matches which overlap the selection or caret are not counted.
+<li><strong>Select Before</strong> creates a multiple selection including one selection for each match in the search region preceding the selection or caret. Matches which overlap the selection or caret are not selected.
+<li><strong>Select After</strong> creates a multiple selection including one selection for each match in the search region following the selection or caret. Matches which overlap the selection or caret are not selected.
+</ul>
+
+<p>From the <strong>Replace All</strong> button menu:</p>
+
+<ul>
+<li><strong>Replace Before</strong> replaces matches in the search region preceding the selection or caret. Matches which overlap the selection or caret are not counted.
+<li><strong>Replace After</strong> replaces matches in the search region following the selection or caret. Matches which overlap the selection or caret are not counted.
+<li><strong>Clear History</strong> is shown when the <strong>Replace</strong> button has been used to make replacements using formula substitutions. Ordinarily the <strong>Replace</strong> functions will continue incrementing counters and referencing capture group and calculation history until after a <strong>Replace All/Before/After</strong> action is performed or the <strong>Replace with</strong> string is changed. This menu item clears the counters and the capture group and calculation history immediately.
+</ul>
+
 <h3>Other controls in the Search dialog</h3>
 
-<p>When you use one of the search buttons in the upper right (<strong>Find</strong>, <strong>Count</strong>, <strong>Replace</strong> or <strong>Replace All</strong>),
-the region used for the search is determined by whether a region is already defined using the selected indicator, what text you have selected, and the <strong>Auto set</strong> check box in the <strong>Selection -&gt; Region</strong> group box:</p>
+<p>When you initiate a search action, the region used for the search is determined by whether a region is already defined using the selected indicator, what is currently selected, and the <strong>Auto set</strong> check box in the <strong>Selection -&gt; Region</strong> group box:</p>
 
 <table class=optionsTable>
-<tr><th>type of selection</th><th>no search region defined</th><th>search region defined,<br><em>Auto set</em> checked</th><th>search region defined,<br><em>Auto set</em> not checked</th></tr>
+<tr><th rowspan=2></th><th colspan=2>no search region defined</th><th colspan=2>search region defined</th></tr>
+<tr><th><em>Auto set</em> checked</th><th><em>Auto set</em> not&nbsp;checked</th><th><em>Auto set</em> checked</th><th><em>Auto set</em> not&nbsp;checked</th></tr>
 <tr><th>nothing selected</th>
-<td rowspan=2><strong>Columns++</strong> will prompt you to make a rectangular selection based on the current selection or cursor position.</td>
+<td>The search region is set to the entire document.</td>
+<td><strong>Columns++</strong> will prompt you to make a rectangular selection based on the cursor position.</td>
 <td rowspan=3>The search region is not changed. Stepwise searching (<strong>Find</strong> or <strong>Replace</strong>) begins or continues from the position of the cursor or past the selection.</td>
 <td rowspan=4><p>The search region is not changed. Stepwise searching begins or continues from the position of the cursor or past the selection.</p>
 <p>For rectangular and multiple selections, the primary selection (the one containing the cursor) determines where stepwise searching begins or continues.</p></td>
 </tr>
-<tr><th>selection within a single line</th></tr>
+<tr><th>selection within a single line</th>
+<td colspan=2><strong>Columns++</strong> will prompt you to make a rectangular selection based on the current selection.</td>
+</tr>
 <tr><th>multi-line selection</th>
-<td>The search region is set to the selection.</td>
+<td colspan=2>The search region is set to the selection.</td>
 </tr>
 <tr><th>rectangular or multiple selection</th>
-<td colspan=2>The search region is set to the selection.</td>
+<td colspan=3>The search region is set to the selection.</td>
 </table>
 
 <p><strong>Backward direction</strong>, <strong>Match whole word only</strong>, <strong>Match case</strong> and the <strong>Search Mode</strong> options (<strong>Normal</strong>, <strong>Extended</strong> and <strong>Regular expression</strong>) have the same meanings as in the <strong>Notepad++</strong> search dialogs.</p>
 
 <table class=optionsTable>
 <tr><th colspan=2 class=group>Selection -&gt; Region</th></tr>
-<tr><th>Set</th><td>sets the indicated region to the current selection.</td></tr>
+<tr><th>Set</th><td>sets the indicated region to the current selection. If nothing is selected, sets the indicated region to the entire document.</td></tr>
 <tr><th>Add</th><td>adds the current selection to the indicated region.</td></tr>
 <tr><th>Remove</th><td>removes from the indicated region any text that is within the current selection.</td></tr>
-<tr><th>Auto set</th><td>Automatically sets the search region if a rectangular or multiple selection is present when one of the search buttons is clicked, as described above.</td></tr>
+<tr><th>Auto set</th><td>Automatically sets the search region if a rectangular or multiple selection is present, or if nothing is selected and no search region is set, when one of the search buttons is clicked, as described above.</td></tr>
 <tr><th>Auto clear</th><td>De-selects the current selection after it is used to set or modify the indicated region. Even if this box is not checked, if <strong>Auto set</strong> is checked, a rectangular or multiple selection will be de-selected after adding it to or removing it from an existing region to prevent the region from being set to the selection when you perform a search.</td></tr>
 <tr><th colspan=2 class=group>Indicator</th></tr>
 <tr><td>drop-down</td><td>selects which indicator is used to identify the search region.</td></tr>
@@ -430,7 +488,7 @@ Formulas in regular expression replacements are specified as:
 
 <table class=optionsTable>
 <tr><th colspan=2 class=group>Variables and functions in Search regular expression replacement formulas</th></tr>
-<tr><th>match</th><td>counting from one and including the current match, the number of times the regular expression has matched</td></tr>
+<tr><th>match</th><td>counting from one and including the current match, the number of times the regular expression has been matched and replaced (When doing stepwise find and replace, matches which were found but not replaced are not counted.)</td></tr>
 <tr><th>line</th><td>the line number in which the current match begins (within the entire document, counting from one; that is, the same as the line number shown in the left margin if line numbers are enabled in <strong>Notepad++</strong>)</td></tr>
 <tr><th>this</th><td>the numeric value of the text matched by the regular expression</td></tr>
 <tr><th>
@@ -556,13 +614,28 @@ Up to <strong><em>d</em></strong> decimal places will be shown, but no fewer tha
 
 <section id=alignment><h2>Alignment</h2>
 
-<p><strong>Align left</strong>, <strong>Align right</strong> and <strong>Align numeric</strong> process rectangular selections. The selection can be a single column, or multiple columns separated by elastic tabs. (These commands can be used on selections that include traditional fixed tabs; but the results may not be as expected, since they treat tabs as logical separators, ignoring physical positioning.) Alignment is accomplished by adding and/or removing ASCII spaces at the beginning and/or end of a column; therefore, precise right or numeric alignment is not always possible when using proportionally-spaced fonts.</p>
+<p><strong>Align left</strong>, <strong>Align right</strong>, <strong>Align numeric</strong> and <strong>Align...</strong> process rectangular selections. The selection can be a single column, or multiple columns separated by elastic tabs. (These commands can be used on selections that include traditional fixed tabs; but the results may not be as expected, since they treat tabs as logical separators, ignoring physical positioning.) Alignment is accomplished by adding and/or removing ASCII spaces at the beginning and/or end of a column; therefore, precise alignment is not always possible when using proportionally-spaced fonts.</p>
 
 <h3>Align numeric</h3>
 
 <p>Details about how numbers are recognized and interpreted are given in the section on <a href="#numberformats">Number formats</a>. The alignment of items which are not recognized as numbers is unchanged. The <strong>Decimal separator is comma</strong> item near the bottom of the <strong>Columns++</strong> menu determines whether the comma or the period is the decimal separator.</p>
 
 <p>The settings in the <a href="#timeformats">Time formats</a> dialog determine how numeric alignment proceeds when there are numbers with colons. The <strong>Numbers with one or two colons represent</strong> setting identifies which colon (days<strong>:</strong>hours, hours<strong>:</strong>minutes or minutes<strong>:</strong>seconds) is present in all numbers with colons; that colon is aligned across all lines. Numbers without colons are aligned according to the <strong>Time units: numbers with no colons represent</strong> setting, such that they line up with the position that same unit would occupy in a time-formatted number with four segments, all of which except days have two integer digits (e.g., “1:00:00:00”).</p>
+
+<h3>Custom alignment</h3>
+
+<p>The <strong>Align...</strong> command opens a dialog which allows you to specify a string of one or more characters, or a regular expression, to be aligned in the column or columns within a rectangular selection:</p>
+
+<table class=optionsTable>
+<tr><th>Align by</th><td><p>Specify a character, a string of characters, or a regular expression to be aligned in each column.</p>
+<p>Items in which this character string or regular expression does not match are not changed.</p>
+<p>Regular expression matches are aligned by the start (leftmost position) of the match. To align by some other part of the match, rewrite it using a lookbehind assertion or the <strong>\K</strong> directive. It does not matter what characters are included in the match, only the position at which it starts.</p></td></tr>
+<tr><th>First<br>Last<br>Regular&nbsp;expression</th><td>Choose whether to align using the first or the last occurrence of the <strong>Align by</strong> character or string in each row, or whether to interpret the <strong>Align by</strong> specification as a regular expression.</td></tr>
+<tr><th>Match&nbsp;case</th><td>Check to distinguish upper and lower case when the string to be matched includes letters.</td></tr>
+<tr><td colspan=2>The following settings can be useful when the column to be processed includes some lines which will not be aligned (because the <strong>Align by</strong> character, string or expression does not match). Since unmatched items are not changed, you can use the margin settings to control how the set of aligned items, taken together, is placed relative to the unmatched lines. In other situations, the default of <strong>0 Left</strong> is usually best.</td></tr>
+<tr><th>Margin</th><td>Specify number of space characters, if any, to be used as a margin between the edge of the column and the aligned items.</td></tr>
+<tr><th>Left<br>Right</th><td>Choose whether aligned items should be positioned relative to the left side or the right side of the column in which they occur. The margin is relative to this side of the column.</td></tr>
+</table>
 
 </section>
 

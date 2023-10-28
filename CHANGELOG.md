@@ -1,5 +1,21 @@
 # Columns++ for Notepad++ -- Pre-releases
 
+## Version 0.8-alpha -- October 28th, 2023
+
+* References in formulas and sort keys to regular expression capture groups beyond 9 work now.
+
+* When matching regular expressions in column selections or search regions, lookbehind assertions do not recognize any text beyond the boundary of the selection within the row or the segment of the search region in which a match is attempted. (In previous versions of Columns++, as in Notepad++, the text potentially examined by lookbehind assertions always extended to the beginning of the document.)
+
+* Changed the way Search in indicated region behaves when no region is indicated, nothing is selected and a search is initiated; if Auto set is checked (the default), the search region is set to the entire document. The old behavior (raising a dialog requesting a rectangular selection) may be obtained by unchecking Auto set.
+
+* Made some refinements in how find and replace strings in Extended search mode are processed, including fixes for potential bugs and adding \U*xxxxxx* (note: capital U) accepting up to six hexadecimal digits to specify any valid Unicode code point.
+
+* Added dropdown arrows to the Count and Replace All buttons in Search in indicated region to support additional operations: Select All, Count Before, Count After, Select Before, Select After, Replace Before, Replace After and Clear History.
+
+* Regular expressions using \K will work for incremental find and replace in Search in indicated region providing focus does not leave the dialog between finding a match and replacing it.
+
+* Added an Align... command to the Columns++ menu to support aligning column text on any character, character string or regular expression.
+
 ## Version 0.7.5-alpha  -- October 17th, 2023
 
 * When the user attempts to initiate a search with a multiple selection in which all selections are empty, show a message that a search region could not be constructed from the selection. Previous behavior was to become unresponsive, requiring the user to force-close Notepad++. Addresses issue #13.

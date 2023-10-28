@@ -550,7 +550,7 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
                 AppendMenu(pum, MF_STRING, 1, L"&Replace All");
                 AppendMenu(pum, MF_STRING, 2, L"Replace &Before");
                 AppendMenu(pum, MF_STRING, 3, L"Replace &After");
-                if (searchData.regexCalc->replacement.size() > 1) AppendMenu(pum, MF_STRING, 4, L"&Clear counters and capture history");
+                if (searchData.regexCalc->replacement.size() > 1) AppendMenu(pum, MF_STRING, 4, L"&Clear History");
                 int choice = TrackPopupMenu(pum, TPM_LEFTALIGN | TPM_TOPALIGN | TPM_NONOTIFY | TPM_RETURNCMD, pt.x, pt.y, 0, hwndDlg, NULL);
                 DestroyMenu(pum);
                 if (choice == 4) searchData.regexCalc->clear();
