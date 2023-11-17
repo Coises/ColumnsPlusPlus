@@ -168,10 +168,12 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             break;
 
         case NPPN_READY:
+            data.aboutMenuItem            = menuDefinition.about                  ._cmdID;
+            data.decimalSeparatorMenuItem = menuDefinition.decimalSeparatorIsComma._cmdID;
+            data.elasticEnabledMenuItem   = menuDefinition.elasticEnabled         ._cmdID;
+            data.getReleases();
             if (data.showOnMenuBar) data.moveMenuToMenuBar();
             startupOrShutdown = false;
-            data.elasticEnabledMenuItem = menuDefinition.elasticEnabled._cmdID;
-            data.decimalSeparatorMenuItem = menuDefinition.decimalSeparatorIsComma._cmdID;
             if (!SendMessage(data.nppData._nppHandle, NPPM_ALLOCATEINDICATOR, 1, reinterpret_cast<LPARAM>(&data.searchData.allocatedIndicator)))
                 data.searchData.allocatedIndicator = 0;
             data.searchData.customIndicator = data.searchData.forceUserIndicator || !data.searchData.allocatedIndicator ? data.searchData.userIndicator

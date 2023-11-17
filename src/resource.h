@@ -19,6 +19,7 @@
 #define IDD_TIME_FORMATS                131
 #define IDD_ELASTIC_PROGRESS            133
 #define IDD_ALIGN                       135
+#define IDD_CHECKING_FOR_UPDATES        139
 #define IDC_LINE_UP_ALL                 1003
 #define IDC_LEADING_TABS_INDENT         1006
 #define IDC_DISABLE_FILE_SIZE           1007
@@ -150,6 +151,7 @@
 #define IDC_CALCULATE_SUPPRESS_ZEROS    1135
 #define IDC_CHECK2                      1148
 #define IDC_CALCULATE_LEFT              1148
+#define IDC_OPTIONS_CONFIGURATION_CHECK 1148
 #define IDC_SORT_WHOLE_LINES            1149
 #define IDC_SORT_WITHIN_SELECTION       1150
 #define IDC_SORT_ENTIRE_COLUMN          1151
@@ -215,14 +217,20 @@
 #define IDC_ALIGN_MARGIN_SPIN           1222
 #define IDC_ALIGN_MARGIN_LEFT           1223
 #define IDC_ALIGN_MARGIN_RIGHT          1225
+#define IDC_ABOUT_NEWEST                1226
+#define IDC_ABOUT_STABLE                1227
+#define IDC_OPTIONS_UPDATE_ANY          1228
+#define IDC_OPTIONS_UPDATE_STABLE       1229
+#define IDC_OPTIONS_UPDATE_NONE         1230
+#define IDC_ABOUT_CHECK_NOW             1233
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        137
+#define _APS_NEXT_RESOURCE_VALUE        141
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1225
+#define _APS_NEXT_CONTROL_VALUE         1238
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

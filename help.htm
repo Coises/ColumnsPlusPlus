@@ -151,15 +151,16 @@ window.addEventListener("load", doPageLoad);
 <a href="#sorting"      >Sorting</a>
 <a href="#conversion"   >Conversion</a>
 <a href="#numberformats">Number formats</a>
-<a href="#options"      >Options</a></nav>
+<a href="#options"      >Options</a>
+<a href="#about"        >Help/About</a></nav>
 
 <article>
 
 <section id=introduction><h2>Introduction</h2>
 
-<p><strong>Columns++</strong> is a plugin for <a href="https://notepad-plus-plus.org/">Notepad++</a> offering various features for working with text and data arranged in columns. Like <strong>Notepad++</strong>, <strong>Columns++</strong> is released under the <a href="https://www.gnu.org/licenses/gpl.html">GNU General Public License</a> (either <a href="https://www.gnu.org/licenses/gpl-3.0.html">version 3</a> of the License, or, at your option, any later version). <strong>Columns++</strong> was first released by <a href="http://www.coises.com/">Randall Joseph Fellmy</a> in 2023; you can find the source code  on <a href="https://github.com/Coises/ColumnsPlusPlus">GitHub</a>.</p>
+<p><strong>Columns++</strong> is a plugin for <a href="https://notepad-plus-plus.org/">Notepad++</a> which offers features for working with text and data arranged in columns, including an implementation of elastic tabstops, enhanced searching and sorting, column alignment and numeric calulations. Like <strong>Notepad++</strong>, <strong>Columns++</strong> is released under the <a href="https://www.gnu.org/licenses/gpl.html">GNU General Public License</a> (either <a href="https://www.gnu.org/licenses/gpl-3.0.html">version 3</a> of the License, or, at your option, any later version). <strong>Columns++</strong> was first released by <a href="http://www.coises.com/">Randall Joseph Fellmy</a> in 2023; you can find the source code  on <a href="https://github.com/Coises/ColumnsPlusPlus">GitHub</a>.</p>
 
-<p><strong>Columns++</strong> uses the <a href="https://github.com/ArashPartow/exprtk">C++ Mathematical Expression Toolkit Library (ExprTk)</a> by <a href="https://www.partow.net/">Arash Partow</a>, which is released under the <a href="https://www.opensource.org/licenses/MIT">MIT license</a>, to implement <a href="#formulas">formulas</a>.
+<p><strong>Columns++</strong> uses the <a href="https://github.com/ArashPartow/exprtk">C++ Mathematical Expression Toolkit Library (ExprTk)</a> by <a href="https://www.partow.net/">Arash Partow</a>, which is released under the <a href="https://www.opensource.org/licenses/MIT">MIT license</a>; <a href="https://github.com/nlohmann/json">JSON for Modern C++</a> by <a href="https://nlohmann.me">Niels Lohmann</a>, which is released under the <a href="https://www.opensource.org/licenses/MIT">MIT license</a>; and the <a href="https://github.com/boostorg/regex/">Boost.Regex library</a>, which is released under the <a href="https://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.
 
 </section>
 
@@ -805,7 +806,6 @@ defines an escape character for separated values. The character following an esc
 
 <section id=options><h2>Options</h2>
 
-
 <p><strong>Options...</strong> opens a dialog that allows you to control some aspects of <strong>Columns++</strong>:
 
 <table class=optionsTable>
@@ -837,7 +837,21 @@ defines an escape character for separated values. The character following an esc
 <tr><th>Indicator number</th><td>When <strong>Override Notepad++ indicator allocation</strong> is unchecked and a <strong>Notepad++</strong> indicator allocation is available, this box shows the Scintilla indicator number allocated to <strong>Columns++</strong>. Otherwise it allows you to choose the indicator number <strong>Columns++</strong> will use.</td></tr>
 </table>
 
-<p><strong>Help/About...</strong> provides access to release/version identification, this help file, and changelog, license and source information.</p>
+<table class=optionsTable>
+<tr><th colspan=2 class=group>Check for updates and show a notification at the bottom of the Columns++ menu</th></tr>
+<tr><td colspan=2>
+<p>Columns++ can check for updates. It does this by connecting to the Internet and requesting release information from GitHub. No information about your installation is sent to GitHub. This check is done when Notepad++ loads Columns++, no more often than once every twelve hours. If Columns++ finds a release newer than the one currently installed, it adds the notice <strong>Update Available</strong> to the <strong>Help/About...</strong> entry at the bottom of the <strong>Columns++</strong> menu.</p>
+</td></tr>
+<tr><th>Show for any new release</th><td>Show a notice if a release newer than the one you have installed is found.</td></tr>
+<tr><th>Show for stable releases only</th><td>Show a notice only if a stable release newer than the one you have installed is found. Releases are generally marked stable (production-ready) after they have been released for long enough that the author believes any serious problems would have been reported.</td></tr>
+<tr><th>Do not check</th><td>Select this option if you do not want Columns++ to connect to GitHub to check for new releases.</td></tr>
+</table>
+
+</section>
+
+<section id=about><h2>Help/About</h2>
+
+<p><strong>Help/About...</strong> provides access to release/version identification, this help file, and changelog, license and source information. It also allows you to check GitHub for the newest release and the latest stable release of Columns++.</p>
 
 </section>
 

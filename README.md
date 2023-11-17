@@ -1,11 +1,13 @@
 # Columns++
 
-Columns++ is a plugin for [Notepad++](https://github.com/notepad-plus-plus/notepad-plus-plus) offering various features for working with text and data arranged in columns.
+Columns++ is a plugin for [Notepad++](https://github.com/notepad-plus-plus/notepad-plus-plus) which offers features for working with text and data arranged in columns, including an implementation of elastic tabstops, enhanced searching and sorting, column alignment and numeric calulations.
 
 Like Notepad++, Columns++ is released under the GNU General Public License (either version 3 of the License, or, at your option, any later version).
 
 Columns++ uses the [C++ Mathematical Expression Toolkit Library
 (ExprTk)](https://github.com/ArashPartow/exprtk) by Arash Partow (https://www.partow.net/), which is released under the [MIT License](https://www.opensource.org/licenses/MIT).
+
+Columns++ uses [JSON for Modern C++](https://github.com/nlohmann/json) by Niels Lohmann (https://nlohmann.me), which is released under the [MIT License](https://www.opensource.org/licenses/MIT).
 
 Columns++ uses the [Boost.Regex library](https://github.com/boostorg/regex/), which is released under the [Boost Software License, Version 1.0](https://www.boost.org/LICENSE_1_0.txt).
 
@@ -34,13 +36,9 @@ Columns++ is generally not helpful when columns do not line up visually, such as
 
 Elastic tabstops can cause loading and editing to be slow for large files. Performance can be significantly improved by avoiding proportionally-spaced fonts. By default, Elastic tabstops is automatically turned off for files over 1000 KB or 5000 lines. You can change these limits.
 
-## Status
-
-Columns++ is currently pre-release, meaning it hasn't been broadly tested, and anything can happen. For me, it's already useful; but it will remain "use at your own risk" until I have enough feedback from others to warrant more confidence.
-
 ## Installation
 
-Columns++ will not be available through the Notepad++ Plugins Manager while it is pre-release status.
+Columns++ will be available through the Notepad++ Plugins Admin interface soon. In the meantime:
 
 You can use the Quick Installer for the [latest release](https://github.com/Coises/ColumnsPlusPlus/releases/latest/) if you have Notepad++ (either 32-bit, 64-bit or both) installed in the default location(s).
 

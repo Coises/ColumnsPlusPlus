@@ -1,4 +1,10 @@
-# Columns++ for Notepad++ -- Pre-releases
+# Columns++ for Notepad++ -- Releases
+
+## Version 1.0 -- November 17th, 2023
+
+* This will be the first version submitted for inclusion in Plugins Admin.
+
+* Added ability to check GitHub for new releases of Columns++ and to show an indication on the Columns++ menu when an update is available. It is not possible to update Plugins Admin until a new version of Notepad++ is released, but this will make it easier to update manually, if desired, before the next release of Notepad++.
 
 ## Version 0.8-alpha -- October 28th, 2023
 

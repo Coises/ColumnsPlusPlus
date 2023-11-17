@@ -94,7 +94,6 @@ BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
             }
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_ELASTIC_PROGRESS_SPIN, UDM_SETRANGE, 0, MAKELPARAM(20, 1));
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_ELASTIC_PROGRESS_SPIN, UDM_SETPOS, 0, elasticProgressTime);
-
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_NUMBER_SPIN, UDM_SETRANGE, 0, MAKELPARAM( 20, 9));
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_ALPHA_SPIN , UDM_SETRANGE, 0, MAKELPARAM(255, 0));
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_RED_SPIN   , UDM_SETRANGE, 0, MAKELPARAM(255, 0));
@@ -105,6 +104,11 @@ BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_RED_SPIN   , UDM_SETPOS, 0, 255 & searchData.customColor);
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_GREEN_SPIN , UDM_SETPOS, 0, 255 & (searchData.customColor >> 8));
             SendDlgItemMessage(hwndDlg, IDC_OPTIONS_INDICATOR_BLUE_SPIN  , UDM_SETPOS, 0, 255 & (searchData.customColor >> 16));
+            switch (updateInfo.check) {
+            case UpdateInformation::NotifyAny  : CheckRadioButton(hwndDlg, IDC_OPTIONS_UPDATE_ANY, IDC_OPTIONS_UPDATE_NONE, IDC_OPTIONS_UPDATE_ANY   ); break;
+            case UpdateInformation::DoNotCheck : CheckRadioButton(hwndDlg, IDC_OPTIONS_UPDATE_ANY, IDC_OPTIONS_UPDATE_NONE, IDC_OPTIONS_UPDATE_NONE  ); break;
+            default                            : CheckRadioButton(hwndDlg, IDC_OPTIONS_UPDATE_ANY, IDC_OPTIONS_UPDATE_NONE, IDC_OPTIONS_UPDATE_STABLE); break;
+            }
             return TRUE;
         }
 
@@ -163,6 +167,9 @@ BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
             extendSingleLine = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_SINGLELINE, BM_GETCHECK, 0, 0) == BST_CHECKED;
             extendFullLines  = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_ROWS      , BM_GETCHECK, 0, 0) == BST_CHECKED;
             extendZeroWidth  = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_EXTEND_ZEROWIDTH , BM_GETCHECK, 0, 0) == BST_CHECKED;
+            updateInfo.check = SendDlgItemMessage(hwndDlg, IDC_OPTIONS_UPDATE_ANY   , BM_GETCHECK, 0, 0) == BST_CHECKED ? UpdateInformation::NotifyAny
+                             : SendDlgItemMessage(hwndDlg, IDC_OPTIONS_UPDATE_NONE  , BM_GETCHECK, 0, 0) == BST_CHECKED ? UpdateInformation::DoNotCheck
+                                                                                                                        : UpdateInformation::NotifyStable;
             EndDialog(hwndDlg, 0);
             return TRUE;
         }
@@ -199,9 +206,6 @@ BOOL ColumnsPlusPlusData::optionsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPar
         }
             break;
         }
-        break;
-
-    case WM_NOTIFY:
         break;
 
     default:

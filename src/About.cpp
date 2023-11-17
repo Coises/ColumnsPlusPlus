@@ -19,6 +19,50 @@
 #include "commctrl.h"
 #include "Shlwapi.h"
 
+
+INT_PTR CALLBACK checkingForUpdatesDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+
+    ColumnsPlusPlusData* dp;
+    if (uMsg == WM_INITDIALOG) {
+        SetWindowLongPtr(hwndDlg, DWLP_USER, lParam);
+        dp = reinterpret_cast<ColumnsPlusPlusData*>(lParam);
+    }
+    else dp = reinterpret_cast<ColumnsPlusPlusData*>(GetWindowLongPtr(hwndDlg, DWLP_USER));
+    if (!dp) return FALSE;
+    ColumnsPlusPlusData& data = *dp;
+
+    switch (uMsg) {
+
+    case WM_DESTROY:
+        return TRUE;
+
+    case WM_INITDIALOG:
+    {
+        RECT rcNpp, rcDlg;
+        GetWindowRect(data.nppData._nppHandle, &rcNpp);
+        GetWindowRect(hwndDlg, &rcDlg);
+        SetWindowPos(hwndDlg, HWND_TOP, (rcNpp.left + rcNpp.right + rcDlg.left - rcDlg.right) / 2,
+            (rcNpp.top + rcNpp.bottom + rcDlg.top - rcDlg.bottom) / 2, 0, 0, SWP_NOSIZE);
+        data.getReleases(hwndDlg);
+        return TRUE;
+    }
+
+    case WM_COMMAND:
+        switch (LOWORD(wParam)) {
+        case IDCANCEL:
+            EndDialog(hwndDlg, 1);
+            return TRUE;
+        case IDOK:
+            EndDialog(hwndDlg, 0);
+            return TRUE;
+        }
+        break;
+
+    }
+    return FALSE;
+}
+
+
 INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
     ColumnsPlusPlusData* data;
     if (uMsg == WM_INITDIALOG) {
@@ -32,6 +76,35 @@ INT_PTR CALLBACK aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
 void ColumnsPlusPlusData::showAboutDialog() {
     DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_ABOUT), nppData._nppHandle,
                    ::aboutDialogProc, reinterpret_cast<LPARAM>(this));
+}
+
+void setUpdateCommandButtonText(HWND hwndDlg, UpdateInformation& updateInfo) {
+    std::wstring s;
+    if (updateInfo.newestVersion && !updateInfo.newestURL.empty()) {
+        int v = updateInfo.newestVersion;
+        int u = v % 100;
+        if (u) s = L'.' + std::to_wstring(u);
+        v /= 100;
+        u = v % 100;
+        if (u || !s.empty()) s = L'.' + std::to_wstring(u) + s;
+        v /= 100;
+        s = L"Get version " + std::to_wstring(v / 100) + L'.' + std::to_wstring(v % 100) + s + L" from GitHub.";
+    }
+    else s = L"Get newest release from GitHub.";
+    SendDlgItemMessage(hwndDlg, IDC_ABOUT_NEWEST, BCM_SETNOTE, 0, reinterpret_cast<LPARAM>(s.data()));
+    if (updateInfo.stableVersion && !updateInfo.stableURL.empty()) {
+        s.clear();
+        int v = updateInfo.stableVersion;
+        int u = v % 100;
+        if (u) s = L'.' + std::to_wstring(u);
+        v /= 100;
+        u = v % 100;
+        if (u || !s.empty()) s = L'.' + std::to_wstring(u) + s;
+        v /= 100;
+        s = L"Get version " + std::to_wstring(v / 100) + L'.' + std::to_wstring(v % 100) + s + L" from GitHub.";
+    }
+    else s = L"Get latest stable (production) release from GitHub.";
+    SendDlgItemMessage(hwndDlg, IDC_ABOUT_STABLE, BCM_SETNOTE, 0, reinterpret_cast<LPARAM>(s.data()));
 }
 
 BOOL ColumnsPlusPlusData::aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM) {
@@ -107,11 +180,11 @@ BOOL ColumnsPlusPlusData::aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam
                     }
                 }
             }
-
             SendDlgItemMessage(hwndDlg, IDC_ABOUT_HELP, BCM_SETNOTE, 0, reinterpret_cast<LPARAM>(
                 L"Open user documentation."));
             SendDlgItemMessage(hwndDlg, IDC_ABOUT_MORE, BCM_SETNOTE, 0, reinterpret_cast<LPARAM>(
                 L"Show change log, license and source information."));
+            setUpdateCommandButtonText(hwndDlg, updateInfo);
             return TRUE;
         }
 
@@ -120,6 +193,11 @@ BOOL ColumnsPlusPlusData::aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam
         case IDCANCEL:
         case IDOK:
             EndDialog(hwndDlg, 0);
+            return TRUE;
+        case IDC_ABOUT_CHECK_NOW:
+            if (!DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_CHECKING_FOR_UPDATES), nppData._nppHandle,
+                                checkingForUpdatesDialogProc, reinterpret_cast<LPARAM>(this)))
+                setUpdateCommandButtonText(hwndDlg, updateInfo);
             return TRUE;
         case IDC_ABOUT_HELP:
             {
@@ -131,7 +209,6 @@ BOOL ColumnsPlusPlusData::aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam
             }
             EndDialog(hwndDlg, 0);
             return TRUE;
-            break;
         case IDC_ABOUT_MORE:
             {
                 auto n = SendMessage(nppData._nppHandle, NPPM_GETPLUGINHOMEPATH, 0, 0);
@@ -156,11 +233,21 @@ BOOL ColumnsPlusPlusData::aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam
             }
             EndDialog(hwndDlg, 0);
             return TRUE;
-            break;
+        case IDC_ABOUT_NEWEST:
+            ShellExecute(0, 0,
+                updateInfo.newestVersion && !updateInfo.newestURL.empty() ? toWide(updateInfo.newestURL, CP_UTF8).data()
+                                                                          : L"https://github.com/Coises/ColumnsPlusPlus/releases",
+                0, 0, SW_NORMAL);
+            EndDialog(hwndDlg, 0);
+            return TRUE;
+        case IDC_ABOUT_STABLE:
+            ShellExecute(0, 0,
+                updateInfo.stableVersion && !updateInfo.stableURL.empty() ? toWide(updateInfo.stableURL, CP_UTF8).data()
+                                                                          : L"https://github.com/Coises/ColumnsPlusPlus/releases/latest",
+                0, 0, SW_NORMAL);
+            EndDialog(hwndDlg, 0);
+            return TRUE;
         }
-        break;
-
-    default:
         break;
 
     }

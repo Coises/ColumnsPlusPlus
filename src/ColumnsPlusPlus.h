@@ -143,6 +143,17 @@ class RectangularSelection;
 
 class RegexCalc;
 
+class UpdateInformation {
+public:
+    std::string newestURL;
+    std::string stableURL;
+    long long   timestamp     = 0;
+    int         newestVersion = 0;
+    int         stableVersion = 0;
+    int         thisVersion   = 0;
+    enum Check {DoNotCheck, NotifyAny, NotifyStable} check = NotifyStable;
+};
+
 class NumericFormat {
 public:
     std::string thousands = "";    // thousands separator in current codepage (could be multibyte/utf-8), or "" for no thousands separator
@@ -312,13 +323,15 @@ public:
 
     Scintilla::ScintillaCall sci;
 
-    int elasticEnabledMenuItem;        // Menu item identifiers of items that can be toggled.
+    int aboutMenuItem;                 // Menu item identifiers of items that can be toggled or otherwise updated.
     int decimalSeparatorMenuItem;
+    int elasticEnabledMenuItem;
 
     std::map<void*       , DocumentData>       documents;
     std::map<std::wstring, ElasticTabsProfile> profiles;
     std::map<std::wstring, std::wstring>       extensionToProfile = { {L"", L"*"}, {L"*", L"*"} };
 
+    UpdateInformation     updateInfo;
     DocumentDataSettings  settings;    // these are the settings for the last active document, or else initial settings
     SearchData            searchData;  // status and settings remembered for the Find/Replace dialog
     CsvSettings           csv;
@@ -554,6 +567,10 @@ public:
 
     BOOL timeFormatsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     void showTimeFormatsDialog();
+
+    // Update.cpp
+
+    void getReleases(HWND windowToNotify = 0);
 
 };
 

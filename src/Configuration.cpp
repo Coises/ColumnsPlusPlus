@@ -36,8 +36,9 @@ static const std::regex calcHeader("\\s*Calculate\\s*", std::regex::icase | std:
 static const std::regex searchHeader("\\s*Search\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex sortHeader("\\s*Sort\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex alignHeader("\\s*Align\\s*", std::regex::icase | std::regex::optimize);
+static const std::regex updateHeader("\\s*Update\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex dataLine("\\s*(\\S+)\\s+(.*\\S)\\s*", std::regex::optimize);
-static const std::regex integerValue("[+-]?\\d{1,10}", std::regex::optimize);
+static const std::regex integerValue("[+-]?\\d{1,20}", std::regex::optimize);
 
 static std::basic_string<TCHAR> filePath;
 
@@ -95,7 +96,8 @@ void ColumnsPlusPlusData::loadConfiguration() {
     int configCompat = std::stoi(match[2]);
     if (configCompat > 5) return;
 
-    enum {sectionNone, sectionLastSettings, sectionCalc, sectionSearch, sectionSort, sectionAlign, sectionProfile, sectionExtensions} readingSection = sectionNone;
+    enum {sectionNone, sectionLastSettings, sectionCalc, sectionSearch, sectionSort, sectionAlign, sectionUpdate, sectionProfile, sectionExtensions}
+         readingSection = sectionNone;
     std::wstring profileName;
 
     while (file) {
@@ -105,6 +107,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
         else if (std::regex_match(line, match, searchHeader      )) readingSection = sectionSearch;
         else if (std::regex_match(line, match, sortHeader        )) readingSection = sectionSort;
         else if (std::regex_match(line, match, alignHeader       )) readingSection = sectionAlign;
+        else if (std::regex_match(line, match, updateHeader      )) readingSection = sectionUpdate;
         else if (std::regex_match(line, match, extensionsHeader  )) readingSection = sectionExtensions;
         else if (std::regex_match(line, match, profileHeader     )) {
             readingSection = sectionProfile;
@@ -270,6 +273,24 @@ void ColumnsPlusPlusData::loadConfiguration() {
                     if (setting == "margin") align.margin = std::stoi(value);
                 }
             }
+            else if (readingSection == sectionUpdate) {
+                std::string setting = match[1];
+                std::string value = match[2];
+                strlwr(setting.data());
+                if      (setting == "newesturl") updateInfo.newestURL = value;
+                else if (setting == "stableurl") updateInfo.stableURL = value;
+                else if (setting == "check") {
+                    strlwr(value.data());
+                    updateInfo.check = value == "any"    ? UpdateInformation::NotifyAny
+                                     : value == "none"   ? UpdateInformation::DoNotCheck
+                                                         : UpdateInformation::NotifyStable;
+                }
+                else if (std::regex_match(value, integerValue)) {
+                    if      (setting == "newestversion") updateInfo.newestVersion = std::stoi(value);
+                    else if (setting == "stableversion") updateInfo.stableVersion = std::stoi(value);
+                    else if (setting == "timestamp"    ) updateInfo.timestamp     = std::stoll(value);
+                }
+            }
             else if (readingSection == sectionProfile) {
                 std::string setting = match[1];
                 std::string value = match[2];
@@ -425,6 +446,19 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "margin\t"      << align.margin      << std::endl;
     file << "marginRight\t" << align.marginRight << std::endl;
     writeDelimitedStringHistory(file, "history", align.history);
+
+    file << std::endl << "Update" << std::endl << std::endl;
+
+    file << "check\t" << ( updateInfo.check == UpdateInformation::NotifyAny    ? "any"
+                         : updateInfo.check == UpdateInformation::DoNotCheck   ? "none" 
+                                                                               : "stable" ) << std::endl;
+    if ((updateInfo.check == UpdateInformation::NotifyAny || updateInfo.check == UpdateInformation::NotifyStable) && updateInfo.timestamp) {
+        file << "timestamp\t"     << updateInfo.timestamp     << std::endl;
+        file << "newestURL\t"     << updateInfo.newestURL     << std::endl;
+        file << "stableURL\t"     << updateInfo.stableURL     << std::endl;
+        file << "newestVersion\t" << updateInfo.newestVersion << std::endl;
+        file << "stableVersion\t" << updateInfo.stableVersion << std::endl;
+    }
 
     for (const auto& p : profiles) if (p.first != L"Classic" && p.first != L"General" && p.first != L"Tabular") {
         file << std::endl << "Profile\t" << fromWide(p.first, CP_UTF8) << std::endl << std::endl;
