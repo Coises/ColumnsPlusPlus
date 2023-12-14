@@ -23,12 +23,12 @@
 
 namespace {
 
-const std::wregex keycap(L"(?:(\\d+)(?:([ad][bln]?|[bln][ad]?)?))"
+const std::wregex keycap(L"(?:(\\d+)(?:([ad][blnw]?|[blnw][ad]?)?))"
                          L"(?:"
                              L"[,; ]*"
                              L"("
-                                 L"\\d+(?:(?:[ad][bln]?|[bln][ad]?)?)"
-                                 L"(?:[,; ]*\\d+(?:(?:[ad][bln]?|[bln][ad]?)?))*"
+                                 L"\\d+(?:(?:[ad][blnw]?|[blnw][ad]?)?)"
+                                 L"(?:[,; ]*\\d+(?:(?:[ad][blnw]?|[blnw][ad]?)?))*"
                              L")"
                          L")?"
                          , std::wregex::icase | std::wregex::optimize);
@@ -182,6 +182,7 @@ void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings, Rec
             if      (t.find_first_of(L"bB") != std::wstring::npos) capType.push_back(SortSettings::Binary );
             else if (t.find_first_of(L"lL") != std::wstring::npos) capType.push_back(SortSettings::Locale );
             else if (t.find_first_of(L"nN") != std::wstring::npos) capType.push_back(SortSettings::Numeric);
+            else if (t.find_first_of(L"wW") != std::wstring::npos) capType.push_back(SortSettings::Width  );
             else                                                   capType.push_back(sortSettings.sortType);
             s = m[3];
         }
@@ -234,6 +235,13 @@ void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings, Rec
                 for (size_t i = 0; i < capGroup.size(); ++i) {
                     std::string s = rx.str(capGroup[i]);
                     if (capType[i] == SortSettings::Numeric) ss[n].keys.emplace_back(data.parseNumber(s), capDesc[i]);
+                    else if (capType[i] == SortSettings::Width) {
+                        if (s.empty()) ss[n].keys.emplace_back(0, capDesc[i]);
+                        else {
+                            Scintilla::Position start = row.cpMin() + rx.position(capGroup[i]);
+                            ss[n].keys.emplace_back(data.unwrappedWidth(start, start + s.length()), capDesc[i]);
+                        }
+                    }
                     else {
                         if (capType[i] == SortSettings::Locale) s = getLocaleSortKey(s, codepage, options, locale);
                         ss[n].keys.emplace_back(s, capDesc[i]);
@@ -242,12 +250,24 @@ void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings, Rec
             }
         }
         else if (sortSettings.keyType == SortSettings::Tabbed) {
-            std::vector<std::string> cells;
-            cells.emplace_back(row.text());
-            for (const auto& cell : row) cells.push_back(cell.text());
+            std::vector<std::string        > cellText;
+            std::vector<Scintilla::Position> cellStart;
+            std::vector<Scintilla::Position> cellEnd;
+            cellText .emplace_back(row.text());
+            cellStart.emplace_back(row.cpMin());
+            cellEnd  .emplace_back(row.cpMax());
+            for (const auto& cell : row) {
+                cellText .push_back(cell.text());
+                cellStart.push_back(cell.start());
+                cellEnd  .push_back(cell.end());
+            }
             for (size_t i = 0; i < capGroup.size(); ++i) {
-                std::string s = capGroup[i] < cells.size() ? cells[capGroup[i]] : "";
+                std::string s = capGroup[i] < cellText.size() ? cellText[capGroup[i]] : "";
                 if (capType[i] == SortSettings::Numeric) ss[n].keys.emplace_back(data.parseNumber(s), capDesc[i]);
+                else if (capType[i] == SortSettings::Width) {
+                    if (capGroup[i] >= cellStart.size()) ss[n].keys.emplace_back(0, capDesc[i]);
+                    else ss[n].keys.emplace_back(data.unwrappedWidth(cellStart[capGroup[i]], cellEnd[capGroup[i]]), capDesc[i]);
+                }
                 else {
                     if (capType[i] == SortSettings::Locale) s = getLocaleSortKey(s, codepage, options, locale);
                     ss[n].keys.emplace_back(s, capDesc[i]);
@@ -256,6 +276,20 @@ void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings, Rec
         }
         else if (sortSettings.sortType == SortSettings::Numeric)
             for (const auto& cell : row) ss[n].keys.emplace_back(data.parseNumber(cell.trim()), sortSettings.sortDescending);
+        else if (sortSettings.sortType == SortSettings::Width) {
+            Scintilla::Position start = row.cpMin();
+            Scintilla::Position end   = row.cpMax();
+            if (sortSettings.keyType == SortSettings::IgnoreBlanks) {
+                std::string s(row.text());
+                size_t i = s.find_first_not_of("\t ");
+                if (i == std::string::npos) end = start;
+                else {
+                    end = start + s.find_last_not_of("\t ") + 1;
+                    start += i;
+                }
+            }
+            ss[n].keys.emplace_back(data.unwrappedWidth(start, end), sortSettings.sortDescending);
+        }
         else {
             std::string s(row.text());
             if (sortSettings.keyType == SortSettings::IgnoreBlanks) {
@@ -341,9 +375,10 @@ INT_PTR CALLBACK sortDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
         if (data.sort.sortDescending) CheckRadioButton(hwndDlg, IDC_SORT_ASCENDING, IDC_SORT_DESCENDING, IDC_SORT_DESCENDING);
                                  else CheckRadioButton(hwndDlg, IDC_SORT_ASCENDING, IDC_SORT_DESCENDING, IDC_SORT_ASCENDING );
         switch (data.sort.sortType) {
-        case SortSettings::Binary : CheckRadioButton(hwndDlg, IDC_SORT_BINARY, IDC_SORT_NUMERIC, IDC_SORT_BINARY ); break;
-        case SortSettings::Locale : CheckRadioButton(hwndDlg, IDC_SORT_BINARY, IDC_SORT_NUMERIC, IDC_SORT_LOCALE ); break;
-        case SortSettings::Numeric: CheckRadioButton(hwndDlg, IDC_SORT_BINARY, IDC_SORT_NUMERIC, IDC_SORT_NUMERIC); break;
+        case SortSettings::Binary : CheckRadioButton(hwndDlg, IDC_SORT_BINARY, IDC_SORT_WIDTH, IDC_SORT_BINARY ); break;
+        case SortSettings::Locale : CheckRadioButton(hwndDlg, IDC_SORT_BINARY, IDC_SORT_WIDTH, IDC_SORT_LOCALE ); break;
+        case SortSettings::Numeric: CheckRadioButton(hwndDlg, IDC_SORT_BINARY, IDC_SORT_WIDTH, IDC_SORT_NUMERIC); break;
+        case SortSettings::Width  : CheckRadioButton(hwndDlg, IDC_SORT_BINARY, IDC_SORT_WIDTH, IDC_SORT_WIDTH  ); break;
         }
         switch (data.sort.keyType) {
         case SortSettings::EntireColumn: CheckRadioButton(hwndDlg, IDC_SORT_ENTIRE_COLUMN, IDC_SORT_REGEX, IDC_SORT_ENTIRE_COLUMN); break;
@@ -463,9 +498,10 @@ INT_PTR CALLBACK sortDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
             }
             else data.sort.keyType = IsDlgButtonChecked(hwndDlg, IDC_SORT_IGNORE_BLANKS) == BST_CHECKED ? SortSettings::IgnoreBlanks
                                                                                                         : SortSettings::EntireColumn;
-            data.sort.sortType = IsDlgButtonChecked(hwndDlg, IDC_SORT_BINARY) == BST_CHECKED ? SortSettings::Binary
-                               : IsDlgButtonChecked(hwndDlg, IDC_SORT_LOCALE) == BST_CHECKED ? SortSettings::Locale
-                                                                                             : SortSettings::Numeric;
+            data.sort.sortType = IsDlgButtonChecked(hwndDlg, IDC_SORT_LOCALE ) == BST_CHECKED ? SortSettings::Locale
+                               : IsDlgButtonChecked(hwndDlg, IDC_SORT_NUMERIC) == BST_CHECKED ? SortSettings::Numeric
+                               : IsDlgButtonChecked(hwndDlg, IDC_SORT_WIDTH  ) == BST_CHECKED ? SortSettings::Width
+                                                                                              : SortSettings::Binary;
             data.sort.sortColumnSelectionOnly = IsDlgButtonChecked(hwndDlg, IDC_SORT_WITHIN_SELECTION ) == BST_CHECKED;
             data.sort.sortDescending          = IsDlgButtonChecked(hwndDlg, IDC_SORT_DESCENDING       ) == BST_CHECKED;
             data.sort.localeCaseSensitive     = IsDlgButtonChecked(hwndDlg, IDC_SORT_CASE_SENSITIVE   ) == BST_CHECKED;

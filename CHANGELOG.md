@@ -1,5 +1,9 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.0.1 -- December 14th, 2023
+
+* Added Width as an option for custom sorts; addresses Issue #15 feature request.
+
 ## Version 1.0 -- November 17th, 2023
 
 * This will be the first version submitted for inclusion in Plugins Admin.

@@ -249,7 +249,7 @@ public:
     std::vector<std::wstring> regexHistory;
     std::vector<std::wstring> keygroupHistory;
     std::wstring localeName;
-    enum SortType {Binary, Locale, Numeric                  } sortType = Binary;
+    enum SortType {Binary, Locale, Numeric, Width           } sortType = Binary;
     enum KeyType  {EntireColumn, IgnoreBlanks, Tabbed, Regex} keyType  = EntireColumn;
     bool sortColumnSelectionOnly = false;
     bool sortDescending          = false;
@@ -477,6 +477,31 @@ public:
             if (searchRegionReady() && !searchData.wrap) SetWindowText(findButton, backward ? L"Find Previous" : L"Find Next" );
                                                     else SetWindowText(findButton, backward ? L"Find Last"     : L"Find First");
         }
+    }
+
+    int unwrappedWidth(Scintilla::Position from, Scintilla::Position to) {
+        int width = 0;
+        int xLoc = sci.PointXFromPosition(from);
+        int xEnd = sci.PointXFromPosition(to);
+        if (sci.WrapMode() != Scintilla::Wrap::None && sci.WrapCount(sci.LineFromPosition(from)) > 1) {
+            int yLoc = sci.PointYFromPosition(from);
+            int yEnd = sci.PointYFromPosition(to);
+            for (Scintilla::Position next = from + 1; yLoc != yEnd; ++next) {
+                int yNext = sci.PointYFromPosition(next);
+                while (yNext == yLoc) {
+                    ++next;
+                    yNext = sci.PointYFromPosition(next);
+                }
+                width += sci.PointXFromPosition(next - 1) - xLoc;
+                char lastBeforeWrap = sci.CharacterAt(next - 1);
+                char cStringBeforeWrap[] = " ";
+                if (lastBeforeWrap) cStringBeforeWrap[0] = lastBeforeWrap;
+                width += sci.TextWidth(sci.StyleIndexAt(next - 1), cStringBeforeWrap);
+                xLoc = sci.PointXFromPosition(next);
+                yLoc = yNext;
+            }
+        }
+        return xEnd - xLoc;
     }
 
     // ColumnsPlusPlus.cpp

@@ -79,7 +79,7 @@ body #centershortlines ~ article section   {max-width: 48em;}
 
 p.subsub            {margin-left: 1.5em;}
 
-table.optionsTable        {border: none; margin: 1em 0 1em 1em; border-collapse: collapse;}
+table.optionsTable        {border: none; margin: 1em 0 1em 1em; width: calc(100% - 1em - 2px); border-collapse: collapse;}
 table.optionsTable th     {padding: .5em .5em .5em .5em; font-weight: bold;   text-align: left; vertical-align: top; border: 1px solid black;}
 table.optionsTable td     {padding: .5em .5em .5em .5em; font-weight: normal; text-align: left; vertical-align: top; border: 1px solid black;}
 table.optionsTable .group {text-align: center; background: #d0d0d0; }
@@ -662,12 +662,17 @@ Up to <strong><em>d</em></strong> decimal places will be shown, but no fewer tha
 </table>
 
 <table class=optionsTable>
+<tr><th colspan=2 class=group>Sort direction</th></tr>
+<tr><th>Ascending</th><td>Smaller numbers, narrower text, or characters earlier in the collating sequence, come first.</td></tr>
+<tr><th>Descending</th><td>Larger numbers, wider text, or characters later in the collating sequence, come first.</td></tr>
+</table>
+
+<table class=optionsTable>
 <tr><th colspan=2 class=group>Sort type</th></tr>
-<tr><th>Ascending</th><td>Smaller numbers, or characters earlier in the collating sequence, come first.</td></tr>
-<tr><th>Descending</th><td>Larger numbers, or characters later in the collating sequence, come first.</td></tr>
 <tr><th>Binary</th><td>The raw byte values of the internal representations of the selected sort strings are used as sort keys. For most purposes, this matches what you would expect from a “case sensitive” sort, with the sort order dependent on the active code page. Unicode files sort by code point.</td></tr>
 <tr><th>Locale</th><td>The sort order is defined by a Windows locale, as specified in the <strong>Locale sort details</strong> section.</td></tr>
 <tr><th>Numeric</th><td>Sort strings are interpreted as numbers, as described in the <a href="#numberformats">Number formats</a> section. Strings which can’t be interpreted as numbers sort first (whether the sort is ascending or descending). When <strong>Regular expression</strong> is selected, the regular expression is used to parse the selected text on each line; in all other cases, the text is interpreted as a sequence of tab-separated values.</td></tr>
+<tr><th>Width</th><td>The visible width of the selected sort strings are used as keys.</td></tr>
 </table>
 
 <table class=optionsTable>
@@ -680,7 +685,7 @@ Up to <strong><em>d</em></strong> decimal places will be shown, but no fewer tha
 <tr><th>Match case</th><td>When checked, the regular expression match is case sensitive; otherwise, the case of the text is ignored.</td></tr>
 <tr><th>Specify keys using capture groups</th><td>When checked, the <strong>Keys</strong> box specifies the sort sequence in terms of capture groups. When unchecked, the text matched by the regular expression is used as the sort key.</td></tr>
 <tr><th>Keys</th><td><p>A list of keys, separated by spaces, commas and/or semicolons, to be used for sorting. The major sort key is listed first, with subsequent keys having lower precedence. Each key is designated with a number. If <strong>Tabbed</strong> is selected, the number indicates a tab-separated field, numbered left to right counting from 1; 0 represents the entire selected text in the line. If <strong>Regular expression</strong> is selected, the number is the number of a capture group; 0 represents the entire match.</p>
-<p>Each sort key number may be followed (without intervening spaces) by one of the letters <strong>a</strong> or <strong>d</strong>, and/or one of the letters <strong>b</strong>, <strong>l</strong> or <strong>n</strong>. These specify <strong>a</strong>scending, <strong>d</strong>escending, <strong>b</strong>inary, <strong>l</strong>ocale and <strong>n</strong>umeric, overriding the selection in the <strong>Sort type</strong> box for the capture group or tab field to which they are appended.</p></td></tr>
+<p>Each sort key number may be followed (without intervening spaces) by one of the letters <strong>a</strong> or <strong>d</strong>, and/or one of the letters <strong>b</strong>, <strong>l</strong>, <strong>n</strong> or <strong>w</strong>. These specify <strong>a</strong>scending, <strong>d</strong>escending, <strong>b</strong>inary, <strong>l</strong>ocale, <strong>n</strong>umeric and <strong>w</strong>idth, overriding the selections in the <strong>Sort direction</strong> and/or <strong>Sort type</strong> boxes for the capture group or tab field to which they are appended.</p></td></tr>
 </table>
 
 <table class=optionsTable>

@@ -246,6 +246,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
                     strlwr(value.data());
                     sort.sortType = value == "locale"  ? SortSettings::Locale
                                   : value == "numeric" ? SortSettings::Numeric
+                                  : value == "width"   ? SortSettings::Width
                                                        : SortSettings::Binary;
                 }
                 else if (setting == "keytype") {
@@ -429,6 +430,7 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "localeIgnoreSymbols\t"    << sort.localeIgnoreSymbols           << std::endl;
     file << "sortType\t" << ( sort.sortType == SortSettings::Locale      ? "Locale"
                             : sort.sortType == SortSettings::Numeric     ? "Numeric" 
+                            : sort.sortType == SortSettings::Width       ? "Width" 
                                                                          : "Binary"      ) << std::endl;
     file << "keyType\t"  << ( sort.keyType == SortSettings::IgnoreBlanks ? "IgnoreBlanks"
                             : sort.keyType == SortSettings::Tabbed       ? "Tabbed"

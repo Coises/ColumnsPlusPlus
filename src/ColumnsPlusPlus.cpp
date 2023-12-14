@@ -116,33 +116,6 @@ INT_PTR CALLBACK elasticProgressDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
 }
 
 
-int unwrappedWidth(ColumnsPlusPlusData& data, Scintilla::Position from, Scintilla::Position to) {
-    auto& sci = data.sci;
-    int width = 0;
-    int xLoc = sci.PointXFromPosition(from);
-    int xEnd = sci.PointXFromPosition(to);
-    if (sci.WrapMode() != Scintilla::Wrap::None && sci.WrapCount(sci.LineFromPosition(from)) > 1) {
-        int yLoc = sci.PointYFromPosition(from);
-        int yEnd = sci.PointYFromPosition(to);
-        for (Scintilla::Position next = from + 1; yLoc != yEnd; ++next) {
-            int yNext = sci.PointYFromPosition(next);
-            while (yNext == yLoc) {
-                ++next;
-                yNext = sci.PointYFromPosition(next);
-            }
-            width += sci.PointXFromPosition(next - 1) - xLoc;
-            char lastBeforeWrap = sci.CharacterAt(next - 1);
-            char cStringBeforeWrap[] = " ";
-            if (lastBeforeWrap) cStringBeforeWrap[0] = lastBeforeWrap;
-            width += sci.TextWidth(sci.StyleIndexAt(next - 1), cStringBeforeWrap);
-            xLoc = sci.PointXFromPosition(next);
-            yLoc = yNext;
-        }
-    }
-    return xEnd - xLoc;
-}
-
-
 void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNeeded, Scintilla::Line lastNeeded) {
     ElasticProgressInfo epi(*this);
     epi.ddp = &dd;
@@ -245,7 +218,7 @@ bool ElasticProgressInfo::setTabstops(bool stepless) {
                 size_t tabIndex = leadingTabCount;
                 size_t from = 0;
                 for (TabLayoutBlock* tlb = &dd.tabLayouts[tlbIndex]; tabIndex < tabOffsets.size(); ++tabIndex) {
-                    int width = unwrappedWidth(data, lineStarts + from, lineStarts + tabOffsets[tabIndex]) + tabGap;
+                    int width = data.unwrappedWidth(lineStarts + from, lineStarts + tabOffsets[tabIndex]) + tabGap;
                     if (width > tlb->width) tlb->width = width;
                     size_t i = 0;
                     if (i < tlb->right.size() && tlb->right[i].lastLine < lineNum) ++i;
@@ -321,7 +294,7 @@ bool ElasticProgressInfo::analyzeTabstops() {
             TabLayoutBlock& tlb = layouts->back();
             tlb.lastLine = lineNum;
             int width = dd.assumeMonospace ? static_cast<int>(sci.CountCharacters(begin + from, begin + tab)) * digitWidth
-                                           : unwrappedWidth(data, begin + from, begin + tab);
+                                           : data.unwrappedWidth(begin + from, begin + tab);
             width += tabGap + indentSize;
             indentSize = 0;
             if (width > tlb.width) tlb.width = width;
