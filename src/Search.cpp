@@ -1,5 +1,5 @@
 // This file is part of Columns++ for Notepad++.
-// Copyright 2023 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
+// Copyright 2023, 2024 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -1030,8 +1030,9 @@ void ColumnsPlusPlusData::searchReplaceAll(bool partial, bool before) {
                     std::string r = rx.format(sciRepl.size() == 1 ? sciRepl[0] : calculateSubstitutions(*this, rx, found));
                     sci.SetTargetRange(found, found + length);
                     sci.ReplaceTarget(r);
-                    cpFrom += r.length() - length;
-                    cpTo   += r.length() - length;
+                    cpFrom     += r.length() - length;
+                    cpTo       += r.length() - length;
+                    partialEnd += r.length() - length;
                     sci.SetIndicatorCurrent(searchData.indicator);
                     sci.SetIndicatorValue(1);
                     sci.IndicatorFillRange(found, r.length());

@@ -1,5 +1,9 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.0.2 -- January 4th, 2024
+
+* **All users of versions 0.8 through 1.0.1 should update to this version as soon as possible.** This version fixes a serious bug in Search | Replace All/Before/After which can cause the entire application to hang (thus necessitating a force close of Notepad++ and loss of unsaved changes in all open tabs).
+
 ## Version 1.0.1 -- December 14th, 2023
 
 * Added Width as an option for custom sorts; addresses Issue #15 feature request.
