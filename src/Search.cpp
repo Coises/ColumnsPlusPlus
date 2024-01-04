@@ -1007,6 +1007,7 @@ void ColumnsPlusPlusData::searchReplaceAll(bool partial, bool before) {
         Scintilla::Position nullAt = -1;
         for (Scintilla::Position cpFrom = partialStart, cpTo; cpFrom < partialEnd; cpFrom = cpTo) {
             cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
+            if (cpTo <= cpFrom) break; // Safety check against indefinite loop; in principle, this shouldn't happen.
             if (sci.IndicatorValueAt(searchData.indicator, cpFrom)) {
                 Scintilla::Position start = sci.IndicatorStart(searchData.indicator, cpFrom);
                 rx.invalidate();
@@ -1045,6 +1046,7 @@ void ColumnsPlusPlusData::searchReplaceAll(bool partial, bool before) {
         std::string sciFind = prepareFind(*this);
         for (Scintilla::Position cpFrom = partialStart, cpTo; cpFrom < partialEnd; cpFrom = cpTo) {
             cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
+            if (cpTo <= cpFrom) break; // Safety check against indefinite loop; in principle, this shouldn't happen.
             if (sci.IndicatorValueAt(searchData.indicator, cpFrom)) {
                 while (cpFrom < cpTo) {
                     sci.SetTargetRange(cpFrom, cpTo);
