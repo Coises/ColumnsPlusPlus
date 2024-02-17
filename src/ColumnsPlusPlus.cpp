@@ -147,6 +147,7 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
             before = after;
         }
     }
+    sci.ChooseCaretX();
 }
 
 

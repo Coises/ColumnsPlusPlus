@@ -1,5 +1,9 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.0.3 -- February 17th, 2024
+
+* Fixed an omission that can cause odd cursor positioning when pressing arrow up or down immediately after inserting a tab when elastic tabstops is enabled.
+
 ## Version 1.0.2 -- January 4th, 2024
 
 * **All users of versions 0.8 through 1.0.1 should update to this version as soon as possible.** This version fixes a serious bug in Search | Replace All/Before/After which can cause the entire application to hang (thus necessitating a force close of Notepad++ and loss of unsaved changes in all open tabs).
