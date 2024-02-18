@@ -147,6 +147,7 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
             before = after;
         }
     }
+    sci.PointXFromPosition(0);  // This appears to clear a cache from which Scintilla may read a stale value for ChooseCaretX
     sci.ChooseCaretX();
 }
 
