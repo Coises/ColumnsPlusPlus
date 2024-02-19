@@ -23,7 +23,7 @@
 
 struct ElasticProgressInfo {
     ColumnsPlusPlusData& data;
-    DocumentData* ddp;
+    DocumentData& dd;
     Scintilla::Line firstNeeded;
     Scintilla::Line lastNeeded;
     Scintilla::Line lastMonospaceFail = -1;
@@ -32,9 +32,15 @@ struct ElasticProgressInfo {
     bool secondTime   = false;
     bool timerStarted = false;
 
+    const int dig120 = data.sci.TextWidth(STYLE_DEFAULT, std::string(120, '0').data());
+    const int tabGap = data.sci.TextWidth(STYLE_DEFAULT, std::string(dd.settings.minimumSpaceBetweenColumns, ' ').data());
+    const int tabInd = data.sci.TextWidth(STYLE_DEFAULT, 
+                       std::string(dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : data.sci.TabWidth(), ' ').data());
+    const int tabMin = dd.settings.leadingTabsIndent ? 0 : tabInd;
+
     static constexpr int stepSize = 100;
 
-    ElasticProgressInfo(ColumnsPlusPlusData& data) : data(data) {}
+    ElasticProgressInfo(ColumnsPlusPlusData& data, DocumentData& dd) : data(data), dd(dd) {}
 
     Scintilla::Line processed() const { return step * stepSize + (secondTime ? lastNeeded - firstNeeded + 1 : 0); }
     Scintilla::Line objective() const { return lastNeeded - firstNeeded + (lastMonospaceFail < 0 ? 0 : lastMonospaceFail - firstNeeded + 1); }
@@ -117,8 +123,7 @@ INT_PTR CALLBACK elasticProgressDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
 
 
 void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNeeded, Scintilla::Line lastNeeded) {
-    ElasticProgressInfo epi(*this);
-    epi.ddp = &dd;
+    ElasticProgressInfo epi(*this, dd);
     const Scintilla::Line lineCount     = sci.LineCount();
     const Scintilla::Line linesOnScreen = sci.LinesOnScreen();
     if (firstNeeded == -1) {
@@ -153,10 +158,7 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
 
 
 bool ElasticProgressInfo::setTabstops(bool stepless) {
-    auto& dd  = *ddp;
     auto& sci = data.sci;
-    const int leadingIndent = dd.blankWidth * (dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : sci.TabWidth());
-    const int tabGap        = dd.blankWidth * dd.settings.minimumSpaceBetweenColumns;
     Scintilla::Line firstToProcess = stepless ? firstNeeded : firstNeeded + step * stepSize;
     Scintilla::Line lastToProcess  = stepless ? lastNeeded  : std::min(lastNeeded, firstToProcess + stepSize - 1);
     size_t tlbIndex = 0;
@@ -173,7 +175,7 @@ bool ElasticProgressInfo::setTabstops(bool stepless) {
         std::vector<int> tabs;
         std::vector<size_t> tabOffsets;
         if (dd.settings.leadingTabsIndent) for (unsigned int i = 0; i < line.length() && line[i] == '\t'; ++i) {
-            tabs.push_back((i + 1) * leadingIndent);
+            tabs.push_back((i + 1) * tabInd);
             tabOffsets.push_back(i);
         }
         size_t leadingTabCount = tabs.size();
@@ -244,8 +246,7 @@ bool ElasticProgressInfo::setTabstops(bool stepless) {
 
 
 void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
-    ElasticProgressInfo epi(*this);
-    epi.ddp         = &dd;
+    ElasticProgressInfo epi(*this, dd);
     epi.isAnalyze   = true;
     epi.firstNeeded = 0;
     epi.lastNeeded  = sci.LineCount() - 1;
@@ -270,16 +271,11 @@ void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
 
 
 bool ElasticProgressInfo::analyzeTabstops() {
-    auto& dd  = *ddp;
     auto& sci = data.sci;
     dd.elasticAnalysisRequired   = false;
     dd.deleteWithoutLayoutChange = false;
     const Scintilla::Line firstToProcess = step * stepSize;
     const Scintilla::Line lastToProcess  = std::min(lastNeeded, firstToProcess + stepSize - 1);
-    const int digitWidth = sci.TextWidth(STYLE_DEFAULT, "0");
-    const int tabGap     = dd.blankWidth * dd.settings.minimumSpaceBetweenColumns;
-    const int tabInd     = dd.blankWidth * (dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : sci.TabWidth());
-    const int tabMin     = dd.settings.leadingTabsIndent ? 0 : tabInd;
     if (!step) dd.tabLayouts.clear();
     for (Scintilla::Line lineNum = firstToProcess; lineNum <= lastToProcess; ++lineNum) {
         Scintilla::Position begin = sci.PositionFromLine(lineNum);
@@ -295,7 +291,7 @@ bool ElasticProgressInfo::analyzeTabstops() {
             if (!layouts->size() || (!dd.settings.lineUpAll && layouts->back().lastLine < lineNum - 1)) layouts->emplace_back(lineNum, tabMin);
             TabLayoutBlock& tlb = layouts->back();
             tlb.lastLine = lineNum;
-            int width = dd.assumeMonospace ? static_cast<int>(sci.CountCharacters(begin + from, begin + tab)) * digitWidth
+            int width = dd.assumeMonospace ? static_cast<int>((sci.CountCharacters(begin + from, begin + tab) * dig120 + 60)/120)
                                            : data.unwrappedWidth(begin + from, begin + tab);
             width += tabGap + indentSize;
             indentSize = 0;
@@ -355,7 +351,6 @@ bool ColumnsPlusPlusData::findTabLayoutBlock(DocumentData& dd, Scintilla::Positi
         return false;
     }
     int tabCount = 0;
-    int indentCount = 0;
     char* p = line;
     char* tabStopBefore = line;
     if (dd.settings.leadingTabsIndent) {
@@ -365,18 +360,13 @@ bool ColumnsPlusPlusData::findTabLayoutBlock(DocumentData& dd, Scintilla::Positi
             width = -3;
             return false;
         }
-        indentCount = static_cast<int>(p - line);
-        tabStopBefore = p;
     }
     while (p = (char*)memchr(p, '\t', positionInString - p), p) {
         ++tabCount;
         ++p;
         tabStopBefore = p;
-        indentCount = 0;
     }
     width = sci.PointXFromPosition(beginLine + (tabAfter - line)) - sci.PointXFromPosition(beginLine + (tabStopBefore - line));
-    if (indentCount) width += indentCount * sci.TextWidth(STYLE_DEFAULT, " ")
-                                          * (dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : dd.tabOriginal);
     std::vector<TabLayoutBlock>* layouts = &dd.tabLayouts;
     for (int n = 0; n <= tabCount; ++n) {
         for (size_t i = 0;; ++i) /* find TabLayoutBlock at level n for line lineNum */ {
@@ -405,8 +395,6 @@ void ColumnsPlusPlusData::scnModified(const Scintilla::NotificationData* scnp) {
     if (!ddp) return;
     DocumentData& ctd = *ddp;
     if (!ctd.settings.elasticEnabled || ctd.elasticAnalysisRequired) return;
-    int blankWidth = sci.TextWidth(STYLE_DEFAULT, " ");
-    int tabGap = blankWidth * ctd.settings.minimumSpaceBetweenColumns;
     if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::InsertText)) {
         ctd.deleteWithoutLayoutChange = false;
         if (scnp->linesAdded == 0) /* Unless the number of lines is unchanged, we need full analysis. */ {
@@ -414,7 +402,7 @@ void ColumnsPlusPlusData::scnModified(const Scintilla::NotificationData* scnp) {
             int width;
             if (findTabLayoutBlock(ctd, scnp->position, scnp->length, tlb, width)) {
                 if (tlb) {
-                    width += tabGap;
+                    width += sci.TextWidth(STYLE_DEFAULT, std::string(ctd.settings.minimumSpaceBetweenColumns, ' ').data());
                     if (width > tlb->width) tlb->width = width;
                 }
                 return;
@@ -424,12 +412,16 @@ void ColumnsPlusPlusData::scnModified(const Scintilla::NotificationData* scnp) {
     else if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::BeforeDelete)) {
         TabLayoutBlock* tlb;
         int width;
-        if (findTabLayoutBlock(ctd, scnp->position, scnp->length, tlb, width) && (!tlb || width + tabGap < tlb->width)) {
-            ctd.deleteWithoutLayoutChange         = true;
-            ctd.deleteWithoutLayoutChangePosition = scnp->position;
-            ctd.deleteWithoutLayoutChangeLength   = scnp->length;
+        if (findTabLayoutBlock(ctd, scnp->position, scnp->length, tlb, width)) {
+            width += sci.TextWidth(STYLE_DEFAULT, std::string(ctd.settings.minimumSpaceBetweenColumns, ' ').data());
+            if (!tlb || width < tlb->width) {
+                ctd.deleteWithoutLayoutChange         = true;
+                ctd.deleteWithoutLayoutChangePosition = scnp->position;
+                ctd.deleteWithoutLayoutChangeLength   = scnp->length;
+                return;
+            }
         }
-        else ctd.deleteWithoutLayoutChange = false;
+        ctd.deleteWithoutLayoutChange = false;
         return;
     }
     else if (FlagSet(scnp->modificationType, Scintilla::ModificationFlags::DeleteText)) {
