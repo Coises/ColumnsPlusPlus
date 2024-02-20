@@ -52,7 +52,7 @@ void ColumnsPlusPlusData::alignRight() {
             else if (cell.isLastInRow()) r += std::string(row.vsMax() - row.vsMin() + cell.leading() + cell.trailing(), ' ') + cell.trim();
             else {
                 int padWidth = sci.PointXFromPosition(cell.end() + 1) - sci.PointXFromPosition(cell.end());
-                padWidth = (2 * padWidth + rs.blankWidth) / (2 * rs.blankWidth) - (settings.elasticEnabled ? settings.minimumSpaceBetweenColumns : 1);
+                padWidth = rs.blankCount(padWidth) - (settings.elasticEnabled ? settings.minimumSpaceBetweenColumns : 1);
                 if (padWidth < 0) padWidth = 0;
                 r += std::string(padWidth + cell.leading() + cell.trailing(), ' ') + cell.trim() + '\t';
             }
@@ -105,7 +105,7 @@ void ColumnsPlusPlusData::alignNumeric() {
             if (cLine.size() > column.size()) column.emplace_back();
             Column& cColumn = column[cLine.size() - 1];
             intptr_t width = sci.PointXFromPosition(cell.end()) - sci.PointXFromPosition(cell.start());
-            if (cell.isLastInRow()) width += rs.blankWidth * (row.vsMax() - row.vsMin());
+            if (cell.isLastInRow()) width += rs.blankWidth(row.vsMax() - row.vsMin());
             if (width > cColumn.width) cColumn.width = width;
             size_t cp = 0;
             size_t dp = 0;
@@ -158,17 +158,14 @@ void ColumnsPlusPlusData::alignNumeric() {
 
     for (Column& col : column) {
         if (col.colonExtentRight == 0) /* no time format numbers in this column */ {
-            intptr_t pad = col.width - col.decimalExtentLeft - col.decimalExtentRight;
-            col.pad = pad > 0 ? (2 * pad + rs.blankWidth) / (2 * rs.blankWidth) : (2 * pad - rs.blankWidth) / (2 * rs.blankWidth);
+            col.pad = rs.blankCount(col.width - col.decimalExtentLeft - col.decimalExtentRight);
         }
         else if (col.decimalExtentLeft == 0 && col.decimalExtentRight == 0) /* only time format numbers in this column */ {
-            intptr_t pad = col.width - col.colonExtentLeft - col.colonExtentRight;
-            col.pad = pad > 0 ? (2 * pad + rs.blankWidth) / (2 * rs.blankWidth) : (2 * pad - rs.blankWidth) / (2 * rs.blankWidth);
+            col.pad = rs.blankCount(col.width - col.colonExtentLeft - col.colonExtentRight);
         }
         else /* mixed time and non-time formats in this column */ {
-            intptr_t pad = col.width - std::max(col.colonExtentLeft , col.decimalExtentLeft  - colonDecimalOffset)
-                                     - std::max(col.colonExtentRight, col.decimalExtentRight + colonDecimalOffset);
-            col.pad = pad > 0 ? (2 * pad + rs.blankWidth) / (2 * rs.blankWidth) : (2 * pad - rs.blankWidth) / (2 * rs.blankWidth);
+            col.pad = rs.blankCount( col.width - std::max(col.colonExtentLeft , col.decimalExtentLeft  - colonDecimalOffset)
+                                               - std::max(col.colonExtentRight, col.decimalExtentRight + colonDecimalOffset) );
         } 
     }
 
@@ -215,10 +212,10 @@ void ColumnsPlusPlusData::alignNumeric() {
                         cellRight = cell.colonExtentRight;
                     }
                 }
-                r += std::string((2 * (colLeft - cellLeft) + rs.blankWidth) / (2 * rs.blankWidth), ' ');
+                r += std::string(rs.blankCount(colLeft - cellLeft), ' ');
                 r += cell.text;
                 if (j == lastCell ? notEOL : !settings.elasticEnabled)
-                    r += std::string((2 * (colRight - cellRight) + rs.blankWidth) / (2 * rs.blankWidth), ' ');
+                    r += std::string(rs.blankCount(colRight - cellRight), ' ');
             }
             else {
                 r += cell.text;
@@ -367,7 +364,7 @@ void ColumnsPlusPlusData::alignCustom() {
             if (cLine.size() > column.size()) column.emplace_back();
             Column& cColumn = column[cLine.size() - 1];
             intptr_t width = sci.PointXFromPosition(cell.end()) - sci.PointXFromPosition(cell.start());
-            if (cell.isLastInRow()) width += rs.blankWidth * (row.vsMax() - row.vsMin());
+            if (cell.isLastInRow()) width += rs.blankWidth(row.vsMax() - row.vsMin());
             if (width > cColumn.width) cColumn.width = width;
             Scintilla::Position found = -1;
             if (cell.trimLength() > 0) {
@@ -390,10 +387,10 @@ void ColumnsPlusPlusData::alignCustom() {
             cItem.extentRight = sci.PointXFromPosition(cell.right()) - cpX;
             cItem.text = cell.trim();
             if (align.margin > 0) {
-                if (align.marginRight) cItem.extentRight += align.margin * rs.blankWidth;
+                if (align.marginRight) cItem.extentRight +=  rs.blankWidth(align.margin);
                 else {
                     cItem.text.insert(0, std::string(align.margin, ' '));
-                    cItem.extentLeft += align.margin * rs.blankWidth;
+                    cItem.extentLeft += rs.blankWidth(align.margin);
                 }
             }
             if (cItem.extentLeft  > cColumn.extentLeft ) cColumn.extentLeft  = cItem.extentLeft;
@@ -413,10 +410,7 @@ void ColumnsPlusPlusData::alignCustom() {
     // column.extentLeft and .extentRight are the maximums of the extentLeft and extentRight values
     //     of all items in the column.
 
-    for (Column& col : column) {
-        intptr_t pad = col.width - col.extentLeft - col.extentRight;
-        col.pad = pad > 0 ? (2 * pad + rs.blankWidth) / (2 * rs.blankWidth) : (2 * pad - rs.blankWidth) / (2 * rs.blankWidth);
-    }
+    for (Column& col : column) col.pad = rs.blankCount(col.width - col.extentLeft - col.extentRight);
 
     // A positive pad value means once leading and trailing blanks are removed from all items in a column
     //     and the text is aligned, the result is not as wide as the original column,
@@ -441,10 +435,10 @@ void ColumnsPlusPlusData::alignCustom() {
                 colRight  = col .extentRight;
                 cellLeft  = cell.extentLeft;
                 cellRight = cell.extentRight;
-                r += std::string((2 * (colLeft - cellLeft) + rs.blankWidth) / (2 * rs.blankWidth), ' ');
+                r += std::string(rs.blankCount(colLeft - cellLeft), ' ');
                 r += cell.text;
                 if (j == lastCell ? notEOL : !settings.elasticEnabled) {
-                    intptr_t rightPad = (2 * (colRight - cellRight) + rs.blankWidth) / (2 * rs.blankWidth);
+                    intptr_t rightPad = rs.blankCount(colRight - cellRight);
                     if (align.marginRight) rightPad += align.margin;
                     else if (col.pad > 0) rightPad += col.pad;
                     r += std::string(rightPad, ' ');

@@ -642,7 +642,7 @@ private:
 public:
 
     ColumnsPlusPlusData& data;
-    const int blankWidth;
+    const int blank1440;
     const int tabWidth;
 
     RectangularSelection(ColumnsPlusPlusData& data);
@@ -651,6 +651,9 @@ public:
     int                      size()        const { return _size; }
     bool                     leftToRight() const { return _anchor.px <= _caret.px; }
     bool                     topToBottom() const { return _anchor.ln <= _caret.ln; }
+
+    int blankCount(intptr_t n) const { return static_cast<int>(n >= 0 ? (n * 2880 + blank1440) / (2 * blank1440) : (n * 2880 - blank1440) / (2 * blank1440)); }
+    int blankWidth(intptr_t n) const { return static_cast<int>(n >= 0 ? (n * blank1440 + 720) / 1440             : (n * blank1440 - 720) / 1440            ); }
 
     RectangularSelection& natural()         { _reverse = false;                return *this;}
     RectangularSelection& reverse()         { _reverse = !_reverse;            return *this;}
@@ -680,7 +683,7 @@ public:
         c.st = data.sci.PositionFromLine(c.ln);
         c.en = data.sci.LineEndPosition(c.ln);
         c.sx = data.sci.PointXFromPosition(c.st);
-        c.px = data.sci.PointXFromPosition(c.cp) - c.sx + blankWidth * static_cast<int>(c.vs);
+        c.px = data.sci.PointXFromPosition(c.cp) - c.sx + blankWidth(c.vs);
         return c;
     }
 

@@ -32,7 +32,7 @@ struct ElasticProgressInfo {
     bool secondTime   = false;
     bool timerStarted = false;
 
-    const int dig120 = data.sci.TextWidth(STYLE_DEFAULT, std::string(120, '0').data());
+    const int ch1440 = data.sci.TextWidth(STYLE_DEFAULT, std::string(1440, '0').data());
     const int tabGap = data.sci.TextWidth(STYLE_DEFAULT, std::string(dd.settings.minimumSpaceBetweenColumns, ' ').data());
     const int tabInd = data.sci.TextWidth(STYLE_DEFAULT, 
                        std::string(dd.settings.overrideTabSize ? dd.settings.minimumOrLeadingTabSize : data.sci.TabWidth(), ' ').data());
@@ -291,7 +291,7 @@ bool ElasticProgressInfo::analyzeTabstops() {
             if (!layouts->size() || (!dd.settings.lineUpAll && layouts->back().lastLine < lineNum - 1)) layouts->emplace_back(lineNum, tabMin);
             TabLayoutBlock& tlb = layouts->back();
             tlb.lastLine = lineNum;
-            int width = dd.assumeMonospace ? static_cast<int>((sci.CountCharacters(begin + from, begin + tab) * dig120 + 60)/120)
+            int width = dd.assumeMonospace ? static_cast<int>((sci.CountCharacters(begin + from, begin + tab) * ch1440 + 720)/1440)
                                            : data.unwrappedWidth(begin + from, begin + tab);
             width += tabGap + indentSize;
             indentSize = 0;
