@@ -217,7 +217,7 @@ RectangularSelection& RectangularSelection::refit(bool addLine) {
         Scintilla::Position cpMin = data.sci.SelectionNStart(i);
         Scintilla::Position vsMin = data.sci.SelectionNStartVirtualSpace(i);
         Scintilla::Position cpMax = data.sci.SelectionNEnd(i);
-        int px = data.sci.PointXFromPosition(cpMin) + static_cast<int>(vsMin) * blankWidth;
+        int px = data.sci.PointXFromPosition(cpMin) + blankWidth(vsMin);
         if (px < pxLeft) pxLeft = px;
         px = data.sci.PointXFromPosition(cpMax);
         if (px > pxRight) pxRight = px;
@@ -235,7 +235,7 @@ RectangularSelection& RectangularSelection::refit(bool addLine) {
         corner->en = data.sci.LineEndPosition(corner->ln);
         Scintilla::Position pxEnd = data.sci.PointXFromPosition(corner->en);
         corner->cp = corner->px < pxEnd ? data.positionFromLineAndPointX(corner->ln, corner->px) : corner->en;
-        corner->vs = corner->px < pxEnd ? 0 : (2 * (corner->px - pxEnd) + blankWidth) / (2 * blankWidth);
+        corner->vs = corner->px < pxEnd ? 0 : blankCount(corner->px - pxEnd);
         corner->st = data.sci.PositionFromLine(corner->ln);
         corner->sx = data.sci.PointXFromPosition(corner->st);
         corner->px -= corner->sx;
@@ -250,7 +250,7 @@ RectangularSelection& RectangularSelection::refit(bool addLine) {
 
 
 RectangularSelection::RectangularSelection(ColumnsPlusPlusData& data)
-    : data(data), blankWidth(data.sci.TextWidth(STYLE_DEFAULT, " ")), tabWidth(data.sci.TabWidth()) {
+    : data(data), blank1440(data.sci.TextWidth(STYLE_DEFAULT, std::string(1440, ' ').data())), tabWidth(data.sci.TabWidth()) {
     _mode   = data.sci.SelectionMode();
     _size   = data.sci.Selections();
     _anchor = corner(data.sci.SelectionNAnchor(0), data.sci.SelectionNAnchorVirtualSpace(0));
@@ -327,8 +327,8 @@ RectangularSelection& RectangularSelection::extend() {
             _anchor.cp    = _anchor.en;
             int pxEOL     = data.sci.PointXFromPosition(_anchor.en);
             int pxVirtual = maxExtent - pxEOL;
-            _anchor.vs    = (2 * pxVirtual + blankWidth) / (2 * blankWidth);
-            _anchor.px    = pxEOL - _anchor.sx + blankWidth * static_cast<int>(_anchor.vs);
+            _anchor.vs    = blankCount(pxVirtual);
+            _anchor.px    = pxEOL - _anchor.sx + blankWidth(_anchor.vs);
             if (choice == 5) {
                 _caret.cp = _caret.st;
                 _caret.vs = 0;
@@ -395,8 +395,8 @@ RectangularSelection& RectangularSelection::extend() {
             int extent = data.sci.PointXFromPosition(data.sci.LineEndPosition(i));
             if (extent > maxExtentAll) maxExtentAll = extent;
         }
-        Corner topRight = corner(topLeft.en, (2 * (maxExtentAll - data.sci.PointXFromPosition(topLeft.en)) + blankWidth) / (2 * blankWidth));
-        Corner bottomRight = corner(bottomLeft.en, (2 * (maxExtentAll - data.sci.PointXFromPosition(bottomLeft.en)) + blankWidth) / (2 * blankWidth));
+        Corner topRight    = corner(topLeft   .en, blankCount(maxExtentAll - data.sci.PointXFromPosition(topLeft   .en)));
+        Corner bottomRight = corner(bottomLeft.en, blankCount(maxExtentAll - data.sci.PointXFromPosition(bottomLeft.en)));
 
         Corner anchor, caret;
 
@@ -428,13 +428,13 @@ RectangularSelection& RectangularSelection::extend() {
             int ex = data.sci.PointXFromPosition(caret.en);
             if (px > ex) {
                 caret.cp = caret.en;
-                caret.vs = (2 * (px - ex) + blankWidth) / (2 * blankWidth);
+                caret.vs = blankCount(px - ex);
             }
             else {
                 caret.cp = data.positionFromLineAndPointX(caret.ln, px);
                 caret.vs = 0;
             }
-            caret.px = ex - caret.sx + blankWidth * static_cast<int>(caret.vs);
+            caret.px = ex - caret.sx + blankWidth(caret.vs);
             break;
         }
 
@@ -495,14 +495,14 @@ RectangularSelection& RectangularSelection::extend() {
             int anchorX = _anchor.px + _anchor.sx;
             if (anchorX > endX) {
                 top.cp = top.en;
-                top.vs = (2 * (anchorX - endX) + blankWidth) / (2 * blankWidth);
+                top.vs = blankCount(anchorX - endX);
             }
             else {
                 top.cp = data.positionFromLineAndPointX(top.ln, anchorX);
                 top.vs = 0;
             }
             top.sx = data.sci.PointXFromPosition(top.st);
-            top.px = anchorX - top.sx + blankWidth * static_cast<int>(top.vs);
+            top.px = anchorX - top.sx + blankWidth(top.vs);
         }
         else {
             if (choice == 5) {
@@ -524,28 +524,28 @@ RectangularSelection& RectangularSelection::extend() {
                 int caretX = _caret.px + _caret.sx;
                 if (caretX > endX) {
                     top.cp = top.en;
-                    top.vs = (2 * (caretX - endX) + blankWidth) / (2 * blankWidth);
+                    top.vs = blankCount(caretX - endX);
                 }
                 else {
                     top.cp = data.positionFromLineAndPointX(top.ln, caretX);
                     top.vs = 0;
                 }
                 top.sx = data.sci.PointXFromPosition(top.st);
-                top.px = caretX - top.sx + blankWidth * static_cast<int>(top.vs);
+                top.px = caretX - top.sx + blankWidth(top.vs);
 
             }
             int endX = data.sci.PointXFromPosition(bottom.en);
             int anchorX = _anchor.px + _anchor.sx;
             if (anchorX > endX) {
                 bottom.cp = bottom.en;
-                bottom.vs = (2 * (anchorX - endX) + blankWidth) / (2 * blankWidth);
+                bottom.vs = blankCount(anchorX - endX);
             }
             else {
                 bottom.cp = data.positionFromLineAndPointX(bottom.ln, anchorX);
                 bottom.vs = 0;
             }
             bottom.sx = data.sci.PointXFromPosition(bottom.st);
-            bottom.px = anchorX - bottom.sx + blankWidth * static_cast<int>(bottom.vs);
+            bottom.px = anchorX - bottom.sx + blankWidth(bottom.vs);
         }
         Scintilla::Position size = bottom.ln - top.ln + 1;
         if (size > std::numeric_limits<int>::max()) { _size = 0; return *this; }
@@ -597,15 +597,15 @@ RectangularSelection& RectangularSelection::extend() {
     if (end.cp != end.st) {
         int pxEOL = data.sci.PointXFromPosition(end.en);
         int pxVirtual = maxRight - pxEOL;
-        end.vs = (2 * pxVirtual + blankWidth) / (2 * blankWidth);
-        end.px = pxEOL - end.sx + blankWidth * static_cast<int>(end.vs);
+        end.vs = blankCount(pxVirtual);
+        end.px = pxEOL - end.sx + blankWidth(end.vs);
     }
     else if (_anchor.cp < _caret.cp) {
         _anchor.cp = _anchor.en;
         int pxEOL = data.sci.PointXFromPosition(_anchor.en);
         int pxVirtual = maxRight - pxEOL;
-        _anchor.vs = (2 * pxVirtual + blankWidth) / (2 * blankWidth);
-        _anchor.px = pxEOL - _anchor.sx + blankWidth * static_cast<int>(_anchor.vs);
+        _anchor.vs = blankCount(pxVirtual);
+        _anchor.px = pxEOL - _anchor.sx + blankWidth(_anchor.vs);
         _caret .st = data.sci.PositionFromLine  (_caret.ln);
         _caret .sx = data.sci.PointXFromPosition(_caret.st);
         _caret .en = data.sci.LineEndPosition   (_caret.ln);
@@ -620,8 +620,8 @@ RectangularSelection& RectangularSelection::extend() {
         _anchor.cp = _anchor.en;
         int pxEOL = data.sci.PointXFromPosition(_anchor.en);
         int pxVirtual = maxRight - pxEOL;
-        _anchor.vs = (2 * pxVirtual + blankWidth) / (2 * blankWidth);
-        _anchor.px = pxEOL - _anchor.sx + blankWidth * static_cast<int>(_anchor.vs);
+        _anchor.vs = blankCount(pxVirtual);
+        _anchor.px = pxEOL - _anchor.sx + blankWidth(_anchor.vs);
     }
 
     data.sci.SetRectangularSelectionAnchor            (_anchor.cp);

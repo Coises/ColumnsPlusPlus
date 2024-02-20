@@ -460,11 +460,9 @@ void ColumnsPlusPlusData::accumulate(bool isMean) {
             if (settings.leadingTabsIndent && prefix.length() == 0) leftPad = " ";
             leftPad += std::string(modelTabs - prefixTabs, '\t');
             size_t charsAfterLastTab = model.length() - model.find_last_of('\t') - 1;
-            size_t padTabToLeft = 0;
-            if (charsAfterLastTab > 0) {
-                int pxDifference = sci.PointXFromPosition(modelRow.cpMin()) - sci.PointXFromPosition(modelRow.cpMin() - charsAfterLastTab);
-                padTabToLeft = (2 * pxDifference + rs.blankWidth) / (2 * rs.blankWidth);
-            }
+            size_t padTabToLeft = charsAfterLastTab > 0
+                                ? rs.blankCount(sci.PointXFromPosition(modelRow.cpMin()) - sci.PointXFromPosition(modelRow.cpMin() - charsAfterLastTab))
+                                : 0;
             if (column.size() == 1) {
                 size_t space = padTabToLeft + answerRow.vsMax() - answerRow.vsMin();
                 if (space > answer.length()) leftPad += std::string(space - answer.length(), ' ');
