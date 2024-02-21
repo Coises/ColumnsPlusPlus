@@ -513,6 +513,7 @@ public:
     void bufferActivated();
     void fileClosed     (const NMHDR* nmhdr);
     void fileOpened     (const NMHDR* nmhdr);
+    void modifyAll      (const NMHDR* nmhdr);
     void scnModified    (const Scintilla::NotificationData* scnp);
     void scnUpdateUI    (const Scintilla::NotificationData* scnp);
     void scnZoom        (const Scintilla::NotificationData* scnp);

@@ -526,6 +526,35 @@ void ColumnsPlusPlusData::fileOpened(const NMHDR* nmhdr) {
 }
 
 
+void ColumnsPlusPlusData::modifyAll(const NMHDR* nmhdr) {
+    UINT_PTR bufferID = reinterpret_cast<UINT_PTR>(nmhdr->hwndFrom);
+    intptr_t position = SendMessage(nppData._nppHandle, NPPM_GETPOSFROMBUFFERID, bufferID, 0);
+    if (position < 0) return;
+    bool secondary = !!(position & 0x40000000);
+    position &= 0x3FFFFFFF;
+    intptr_t index = SendMessage(nppData._nppHandle, NPPM_GETCURRENTDOCINDEX, 0, secondary);
+    if (index < 0) return;
+    if (position == index) /* buffer is visible (notification happens, or at least can happen, after scnUpdateUI due to changes) */ {
+        activeScintilla  = secondary ? nppData._scintillaSecondHandle : nppData._scintillaMainHandle;
+        pointerScintilla = SendMessage(activeScintilla, static_cast<UINT>(Scintilla::Message::GetDirectPointer), 0, 0);
+        sci.SetFnPtr(directStatusScintilla, pointerScintilla);
+        sci.SetStatus(Scintilla::Status::Ok);
+        void* docptr = sci.DocPointer();
+        if (!documents.contains(docptr)) return;
+        DocumentData& dd = documents[docptr];
+        if (fontSpacingChange(dd)) setSpacing(dd);
+        analyzeTabstops(dd);
+        setTabstops(dd);
+        return;
+    }
+    for (auto i = documents.begin(); i != documents.end(); ++i) if (i->second.buffer == bufferID) {
+        DocumentData& dd = i->second;
+        if (dd.settings.elasticEnabled) dd.elasticAnalysisRequired = true;
+        return;
+    }
+}
+
+
 void ColumnsPlusPlusData::toggleElasticEnabled() {
     DocumentData* ddp = getDocument();
     ddp->settings.elasticEnabled = settings.elasticEnabled ^= true;

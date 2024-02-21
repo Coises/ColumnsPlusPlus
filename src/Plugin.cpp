@@ -167,6 +167,10 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             data.fileOpened(nmhdr);
             break;
 
+        case NPPN_GLOBALMODIFIED:
+            data.modifyAll(nmhdr);
+            break;
+
         case NPPN_READY:
             data.aboutMenuItem            = menuDefinition.about                  ._cmdID;
             data.decimalSeparatorMenuItem = menuDefinition.decimalSeparatorIsComma._cmdID;
