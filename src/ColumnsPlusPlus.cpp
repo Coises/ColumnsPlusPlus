@@ -246,6 +246,15 @@ bool ElasticProgressInfo::setTabstops(bool stepless) {
 
 
 void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
+    dd.elasticAnalysisRequired   = false;
+    dd.deleteWithoutLayoutChange = false;
+    dd.width24b = sci.TextWidth(STYLE_DEFAULT, "                        ");
+    dd.width24d = sci.TextWidth(STYLE_DEFAULT, "123456789012345678901234");
+    dd.width24w = sci.TextWidth(STYLE_DEFAULT, "WWWWWWWWWWWWWWWWWWWWWWWW");
+    dd.assumeMonospace = dd.settings.monospace == ElasticTabsProfile::MonospaceBest ? guessMonospaced()
+                       : dd.settings.monospace == ElasticTabsProfile::MonospaceAlways;
+    int ccsym = settings.monospaceNoMnemonics && dd.assumeMonospace ? '!' : 0;
+    if (sci.ControlCharSymbol() != ccsym) sci.SetControlCharSymbol(ccsym);
     ElasticProgressInfo epi(*this, dd);
     epi.isAnalyze   = true;
     epi.firstNeeded = 0;
@@ -272,8 +281,6 @@ void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
 
 bool ElasticProgressInfo::analyzeTabstops() {
     auto& sci = data.sci;
-    dd.elasticAnalysisRequired   = false;
-    dd.deleteWithoutLayoutChange = false;
     const Scintilla::Line firstToProcess = step * stepSize;
     const Scintilla::Line lastToProcess  = std::min(lastNeeded, firstToProcess + stepSize - 1);
     if (!step) dd.tabLayouts.clear();
@@ -414,7 +421,7 @@ void ColumnsPlusPlusData::scnModified(const Scintilla::NotificationData* scnp) {
         int width;
         if (findTabLayoutBlock(ctd, scnp->position, scnp->length, tlb, width)) {
             width += sci.TextWidth(STYLE_DEFAULT, std::string(ctd.settings.minimumSpaceBetweenColumns, ' ').data());
-            if (!tlb || width < tlb->width) {
+            if (!tlb || width < tlb->width - 1) /* a one-pixel error is possible with DirectWrite and monospace font optimization */ {
                 ctd.deleteWithoutLayoutChange         = true;
                 ctd.deleteWithoutLayoutChangePosition = scnp->position;
                 ctd.deleteWithoutLayoutChangeLength   = scnp->length;
@@ -441,11 +448,7 @@ void ColumnsPlusPlusData::scnUpdateUI(const Scintilla::NotificationData* scnp) {
     if (Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) syncFindButton();
     if (!ddp->settings.elasticEnabled) return;
     ddp->deleteWithoutLayoutChange = false;
-    if (fontSpacingChange(*ddp)) {
-        setSpacing(*ddp);
-        analyzeTabstops(*ddp);
-    }
-    else if (ddp->elasticAnalysisRequired) analyzeTabstops(*ddp);
+    if (ddp->elasticAnalysisRequired || fontSpacingChange(*ddp)) analyzeTabstops(*ddp);
     if (Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) reselectRectangularSelectionAndControlCharSymbol(*ddp, false);
     setTabstops(*ddp);
 }
@@ -455,7 +458,6 @@ void ColumnsPlusPlusData::scnZoom(const Scintilla::NotificationData* scnp) {
     DocumentData* ddp = getDocument(scnp);
     if (!ddp || !ddp->settings.elasticEnabled) return;
     ddp->deleteWithoutLayoutChange = false;
-    setSpacing(*ddp);
     analyzeTabstops(*ddp);
     setTabstops(*ddp);
 }
@@ -496,7 +498,6 @@ void ColumnsPlusPlusData::bufferActivated() {
     }
     if (settings.overrideTabSize) sci.SetTabWidth(settings.minimumOrLeadingTabSize);
     if (isNewDocument) {
-        setSpacing(dd);
         analyzeTabstops(dd);
         setTabstops(dd);
     }
@@ -526,17 +527,11 @@ void ColumnsPlusPlusData::modifyAll(const NMHDR* nmhdr) {
     position &= 0x3FFFFFFF;
     intptr_t index = SendMessage(nppData._nppHandle, NPPM_GETCURRENTDOCINDEX, 0, secondary);
     if (index < 0) return;
-    if (position == index) /* buffer is visible (notification happens, or at least can happen, after scnUpdateUI due to changes) */ {
-        activeScintilla  = secondary ? nppData._scintillaSecondHandle : nppData._scintillaMainHandle;
-        pointerScintilla = SendMessage(activeScintilla, static_cast<UINT>(Scintilla::Message::GetDirectPointer), 0, 0);
-        sci.SetFnPtr(directStatusScintilla, pointerScintilla);
-        sci.SetStatus(Scintilla::Status::Ok);
-        void* docptr = sci.DocPointer();
-        if (!documents.contains(docptr)) return;
-        DocumentData& dd = documents[docptr];
-        if (fontSpacingChange(dd)) setSpacing(dd);
-        analyzeTabstops(dd);
-        setTabstops(dd);
+    if (position == index) /* buffer is visible */ {
+        DocumentData* ddp = getDocument(secondary ? nppData._scintillaSecondHandle : nppData._scintillaMainHandle);
+        if (!ddp) return;
+        analyzeTabstops(*ddp);
+        setTabstops(*ddp);
         return;
     }
     for (auto i = documents.begin(); i != documents.end(); ++i) if (i->second.buffer == bufferID) {
@@ -557,7 +552,6 @@ void ColumnsPlusPlusData::toggleElasticEnabled() {
             sci.SetTabWidth(settings.minimumOrLeadingTabSize);
         }
         sci.SetTabIndents(0);
-        setSpacing(*ddp);
         analyzeTabstops(*ddp);
         setTabstops(*ddp);
     } else {

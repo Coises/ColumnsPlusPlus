@@ -303,7 +303,9 @@ public:
     DocumentDataSettings settings;
     std::vector<TabLayoutBlock> tabLayouts;
     UINT_PTR buffer;                              // identifier used by Notepad++ messages and notifications
-    int      blankWidth = 0;                      // the blank width at which tabLayouts were calculated; if this changes, full analysis is required
+    int      width24b = 0;                        // the widths of 24 blanks, 24 digits and 24 capital W letters
+    int      width24d = 0;                        //     at which tabLayouts were calculated;
+    int      width24w = 0;                        //     if these values change, full analysis is required
     int      tabOriginal;                         // set when buffer activated, used for restore when elasticTabsEnabled or overrideTabSize turned off
     bool     elasticAnalysisRequired = false;
     bool     deleteWithoutLayoutChange = false;
@@ -398,8 +400,8 @@ public:
         return &dd;
     }
 
-    DocumentData* getDocument(const Scintilla::NotificationData* scnp) {
-        activeScintilla = reinterpret_cast<HWND>(scnp->nmhdr.hwndFrom);
+    DocumentData* getDocument(HWND scintillaHandle) {
+        activeScintilla  = scintillaHandle;
         pointerScintilla = SendMessage(activeScintilla, static_cast<UINT>(Scintilla::Message::GetDirectPointer), 0, 0);
         sci.SetFnPtr(directStatusScintilla, pointerScintilla);
         sci.SetStatus(Scintilla::Status::Ok);  // C-interface code can ignore an error status, which would cause the C++ interface to raise an exception 
@@ -408,31 +410,28 @@ public:
         return &documents[docptr];
     }
 
+    DocumentData* getDocument(const Scintilla::NotificationData* scnp) { return getDocument(reinterpret_cast<HWND>(scnp->nmhdr.hwndFrom)); }
+
     RectangularSelection getRectangularSelection();
 
     bool fontSpacingChange(DocumentData& dd) {
-        int width = sci.TextWidth(STYLE_DEFAULT, " ");
-        if (width != dd.blankWidth) return true;
-        if (dd.settings.monospace != ElasticTabsProfile::MonospaceBest) return false;
-        return dd.assumeMonospace != guessMonospaced(width);
+        if (dd.width24b != sci.TextWidth(STYLE_DEFAULT, "                        ")) return true;
+        if (dd.width24d != sci.TextWidth(STYLE_DEFAULT, "123456789012345678901234")) return true;
+        if (dd.width24w != sci.TextWidth(STYLE_DEFAULT, "WWWWWWWWWWWWWWWWWWWWWWWW")) return true;
+        return false;
     }
 
-    bool guessMonospaced(int width = 0) {
-        if (!width) width = sci.TextWidth(STYLE_DEFAULT, " ");
-        if (sci.TextWidth(STYLE_DEFAULT, "W") != width) return false;
+    bool guessMonospaced() {
+        int width24b = sci.TextWidth(STYLE_DEFAULT, "                        ");
+        int width24w = sci.TextWidth(STYLE_DEFAULT, "WWWWWWWWWWWWWWWWWWWWWWWW");
+        if (width24b != width24w) return false;
         for (int style = 0; style < STYLE_DEFAULT; ++style)
-            if (sci.TextWidth(style, "W") != width || sci.TextWidth(style, " ") != width) return false;
+            if ( sci.TextWidth(style, "WWWWWWWWWWWWWWWWWWWWWWWW") != width24b
+              || sci.TextWidth(style, "                        ") != width24b) return false;
         for (int style = STYLE_LASTPREDEFINED + 1; style < 256; ++style)
-            if (sci.TextWidth(style, "W") != width || sci.TextWidth(style, " ") != width) return false;
+            if ( sci.TextWidth(style, "WWWWWWWWWWWWWWWWWWWWWWWW") != width24b
+              || sci.TextWidth(style, "                        ") != width24b) return false;
         return true;
-    }
-
-    void setSpacing(DocumentData& dd) {
-        dd.blankWidth      = sci.TextWidth(STYLE_DEFAULT, " ");
-        dd.assumeMonospace = dd.settings.monospace == ElasticTabsProfile::MonospaceBest ? guessMonospaced(dd.blankWidth)
-                           : dd.settings.monospace == ElasticTabsProfile::MonospaceAlways;
-        int ccsym = settings.monospaceNoMnemonics && dd.assumeMonospace ? '!' : 0;
-        if (sci.ControlCharSymbol() != ccsym) sci.SetControlCharSymbol(ccsym);
     }
 
     void reselectRectangularSelectionAndControlCharSymbol(DocumentData& dd, bool setControlCharSymbol) {
