@@ -1,5 +1,10 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.0.4 -- February 23rd, 2024
+
+* Support planned changes to notifications in Notepad++ versions greater than 8.6.4. (Columns++ has problems with Notepad++ versions 8.6.3 and 8.6.4; it is recommended to skip these versions if you use Columns++.)
+* Improved how Columns++ manages elastic tabstops layout when DirectWrite is enabled in Notepad++.
+
 ## Version 1.0.3 -- February 17th, 2024
 
 * Fixed an omission that can cause odd cursor positioning when pressing arrow up or down immediately after inserting a tab when elastic tabstops is enabled.
