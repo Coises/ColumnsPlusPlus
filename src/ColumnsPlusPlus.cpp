@@ -521,24 +521,22 @@ void ColumnsPlusPlusData::fileOpened(const NMHDR* nmhdr) {
 
 void ColumnsPlusPlusData::modifyAll(const NMHDR* nmhdr) {
     UINT_PTR bufferID = reinterpret_cast<UINT_PTR>(nmhdr->hwndFrom);
-    intptr_t position = SendMessage(nppData._nppHandle, NPPM_GETPOSFROMBUFFERID, bufferID, 0);
-    if (position < 0) return;
-    bool secondary = !!(position & 0x40000000);
-    position &= 0x3FFFFFFF;
-    intptr_t index = SendMessage(nppData._nppHandle, NPPM_GETCURRENTDOCINDEX, 0, secondary);
-    if (index < 0) return;
-    if (position == index) /* buffer is visible */ {
-        DocumentData* ddp = getDocument(secondary ? nppData._scintillaSecondHandle : nppData._scintillaMainHandle);
+    intptr_t cdi1 = SendMessage(nppData._nppHandle, NPPM_GETCURRENTDOCINDEX, 0, 0);
+    intptr_t cdi2 = SendMessage(nppData._nppHandle, NPPM_GETCURRENTDOCINDEX, 0, 1);
+    bool visible1 = cdi1 < 0 ? false : bufferID == static_cast<UINT_PTR>(SendMessage(nppData._nppHandle, NPPM_GETBUFFERIDFROMPOS, cdi1, 0));
+    bool visible2 = cdi2 < 0 ? false : bufferID == static_cast<UINT_PTR>(SendMessage(nppData._nppHandle, NPPM_GETBUFFERIDFROMPOS, cdi2, 1));
+    if (visible1 || visible2) {
+        DocumentData* ddp = getDocument(visible1 ? nppData._scintillaMainHandle : nppData._scintillaSecondHandle);
         if (!ddp) return;
         analyzeTabstops(*ddp);
         setTabstops(*ddp);
-        return;
     }
-    for (auto i = documents.begin(); i != documents.end(); ++i) if (i->second.buffer == bufferID) {
+    else for (auto i = documents.begin(); i != documents.end(); ++i) if (i->second.buffer == bufferID) {
         DocumentData& dd = i->second;
         if (dd.settings.elasticEnabled) dd.elasticAnalysisRequired = true;
-        return;
+        break;
     }
+    return;
 }
 
 
