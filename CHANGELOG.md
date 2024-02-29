@@ -1,5 +1,10 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.0.5 -- February 29th, 2024
+
+* Correction to support for the new notification planned in Notepad++ 8.6.5.
+* Fix inaccurate Convert tabs to spaces processing when elastic tabstops are used with DirectWrite enabled.
+
 ## Version 1.0.4 -- February 23rd, 2024
 
 * Support planned changes to notifications in Notepad++ versions greater than 8.6.4. (Columns++ has problems with Notepad++ versions 8.6.3 and 8.6.4; it is recommended to skip these versions if you use Columns++.)

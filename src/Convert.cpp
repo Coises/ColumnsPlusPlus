@@ -517,18 +517,17 @@ void ColumnsPlusPlusData::tabsToSpaces() {
     if (sci.SelectionEmpty()) selections.emplace_back(0, sci.Length());
     else {
         int n = sci.Selections();
-        for (int i = 0; i < n; ++i)
-            selections.emplace_back(sci.SelectionNStart(i), sci.SelectionNEnd(i));
+        for (int i = 0; i < n; ++i) selections.emplace_back(sci.SelectionNStart(i), sci.SelectionNEnd(i));
         std::sort(selections.begin(), selections.end(),
             [](const std::pair<Scintilla::Position, Scintilla::Position>& x,
-                const std::pair<Scintilla::Position, Scintilla::Position>& y) {return x.first > y.first; });
+               const std::pair<Scintilla::Position, Scintilla::Position>& y) {return x.first > y.first; });
     }
 
     Scintilla::Line firstSelectedLine = sci.LineFromPosition(selections[selections.size() - 1].first);
-    Scintilla::Line lastSelectedLine = sci.LineFromPosition(selections[0].second);
+    Scintilla::Line lastSelectedLine  = sci.LineFromPosition(selections[0].second);
     setTabstops(dd, firstSelectedLine, lastSelectedLine);
 
-    int blankWidth = sci.TextWidth(STYLE_DEFAULT, " ");
+    const int blank1440 = sci.TextWidth(STYLE_DEFAULT, std::string(1440, ' ').data());
     sci.SetSearchFlags(Scintilla::FindOption::MatchCase);
     sci.BeginUndoAction();
 
@@ -544,7 +543,7 @@ void ColumnsPlusPlusData::tabsToSpaces() {
             }
             repl += text.substr(i, j - i);
             int width = sci.PointXFromPosition(sel.first + j + 1) - sci.PointXFromPosition(sel.first + j);
-            int count = (2 * width + blankWidth) / (2 * blankWidth);
+            int count = (width * 2880 + blank1440) / (2 * blank1440);
             repl += std::string(count, ' ');
             i = j + 1;
         }
