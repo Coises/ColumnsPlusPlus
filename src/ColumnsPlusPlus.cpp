@@ -40,6 +40,9 @@ struct ElasticProgressInfo {
 
     static constexpr int stepSize = 100;
 
+    Scintilla::LineCache lineCache;
+    enum { LineCacheIgnore, LineCacheRemove, LineCacheRestore } lineCacheStatus;
+
     ElasticProgressInfo(ColumnsPlusPlusData& data, DocumentData& dd) : data(data), dd(dd) {}
 
     Scintilla::Line processed() const { return step * stepSize + (secondTime ? lastNeeded - firstNeeded + 1 : 0); }
@@ -47,6 +50,7 @@ struct ElasticProgressInfo {
 
     bool analyzeTabstops();
     bool setTabstops(bool stepless = false);
+
 };
 
 
@@ -126,6 +130,7 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
     ElasticProgressInfo epi(*this, dd);
     const Scintilla::Line lineCount     = sci.LineCount();
     const Scintilla::Line linesOnScreen = sci.LinesOnScreen();
+    epi.lineCacheStatus = sci.WrapMode() == Scintilla::Wrap::None ? ElasticProgressInfo::LineCacheIgnore : ElasticProgressInfo::LineCacheRemove;
     if (firstNeeded == -1) {
         epi.firstNeeded = sci.FirstVisibleLine();
         epi.lastNeeded  = std::min(epi.firstNeeded + linesOnScreen, lineCount - 1);
@@ -154,6 +159,7 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
     }
     sci.PointXFromPosition(0);  // This appears to clear a cache from which Scintilla may read a stale value for ChooseCaretX
     sci.ChooseCaretX();
+    if (epi.lineCacheStatus == ElasticProgressInfo::LineCacheRestore) sci.SetLayoutCache(epi.lineCache);
 }
 
 
@@ -209,6 +215,11 @@ bool ElasticProgressInfo::setTabstops(bool stepless) {
                 }
             }
             if (!unchanged) {
+                if (lineCacheStatus == LineCacheRemove) {
+                    lineCache       = sci.LayoutCache();
+                    lineCacheStatus = LineCacheRestore;
+                    sci.SetLayoutCache(Scintilla::LineCache::None);
+                }
                 sci.ClearTabStops(lineNum);
                 for (size_t i = 0; i < tabs.size(); ++i) sci.AddTabStop(lineNum, tabs[i]);
             }

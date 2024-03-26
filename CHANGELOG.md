@@ -1,5 +1,9 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.0.6 -- March 26th, 2024
+
+* Avoid display errors that could occur when editing a wrapped line containing elastic tabstops. Under certain circumstances, an empty magenta line might appear following the edited line, or text at the end of the line might not be wrapped properly.
+
 ## Version 1.0.5 -- February 29th, 2024
 
 * Correction to support for the new notification planned in Notepad++ 8.6.5.
