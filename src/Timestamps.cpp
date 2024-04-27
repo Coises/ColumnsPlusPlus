@@ -211,23 +211,23 @@ void enableFromFields(HWND hwndDlg, bool counterChanged = false) {
             enableCount = true;
         }
     }
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_UNIX            ), enableCount);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_FILE            ), enableCount);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_1900            ), enableCount);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_1904            ), enableCount);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_COUNTER_CUSTOM  ), enableCount);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_COUNTER_CUSTOM1 ), enableCount && customCount);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_COUNTER_CUSTOM2 ), enableCount && customCount);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_COUNTER_CUSTOM3 ), enableCount && customCount);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_EPOCH           ), enableCount && customCount);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_UNIT            ), enableCount && customCount);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_LEAP            ), enableCount && customCount);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_YMD             ), enableDate);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_MDY             ), enableDate);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_DMY             ), enableDate);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_DATETIME_CUSTOM ), enableDate);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_DATETIME_CUSTOM1), enableDate && customDate);
-    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_PARSE           ), enableDate && customDate);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_UNIX              ), enableCount);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_FILE              ), enableCount);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_1900              ), enableCount);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_1904              ), enableCount);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_COUNTER_CUSTOM    ), enableCount);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_COUNTER_CUSTOM1   ), enableCount && customCount);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_COUNTER_CUSTOM2   ), enableCount && customCount);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_COUNTER_CUSTOM3   ), enableCount && customCount);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_EPOCH             ), enableCount && customCount);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_UNIT              ), enableCount && customCount);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_LEAP              ), enableCount && customCount);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_DATETIME_AMBIGUOUS), enableDate);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_YMD               ), enableDate);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_MDY               ), enableDate);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_DMY               ), enableDate);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_DATETIME_CUSTOM   ), enableDate);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_PARSE             ), enableDate && customDate);
 }
 
 void enableToCounterFields(HWND hwndDlg) {
@@ -299,7 +299,7 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
                     : IDC_TIMESTAMP_TO_COUNTER_CUSTOM;
         CheckRadioButton(hwndDlg, IDC_TIMESTAMP_TO_UNIX, IDC_TIMESTAMP_TO_COUNTER_CUSTOM, radioButton);
 
-        radioButton = ts.dateFormat == L"yyyy-MM-dd HH:mm:ss"                                                ? IDC_TIMESTAMP_TO_DATE_STD
+        radioButton = ts.dateFormat == L"yyyy-MM-dd'T'HH:mm:ss.sss"                                                ? IDC_TIMESTAMP_TO_DATE_STD
                     : ts.dateFormat == localeInfo(LOCALE_SSHORTDATE) + L" " + localeInfo(LOCALE_SSHORTTIME ) ? IDC_TIMESTAMP_TO_DATE_SHORT
                     : ts.dateFormat == localeInfo(LOCALE_SLONGDATE ) + L" " + localeInfo(LOCALE_STIMEFORMAT) ? IDC_TIMESTAMP_TO_DATE_LONG
                     : IDC_TIMESTAMP_TO_DATE_CUSTOM;
@@ -430,7 +430,7 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
             enableFromFields(hwndDlg);
             break;
         case IDC_TIMESTAMP_TO_DATE_STD:
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT, L"yyyy-MM-dd HH:mm:ss");
+            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT, L"yyyy-MM-dd'T'HH:mm:ss.sss");
             EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT), FALSE);
             showExampleOutput(hwndDlg);
             break;

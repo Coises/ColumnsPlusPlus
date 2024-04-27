@@ -304,7 +304,7 @@ public:
     static constexpr int64_t  TUnit1900 =        864000000000;  // 1 day
     static constexpr int64_t  TUnit1904 =        864000000000;  // 1 day
 
-    std::wstring dateFormat = L"yyyy-MM-dd HH:mm:ss";
+    std::wstring dateFormat = L"yyyy-MM-dd'T'HH:mm:ss.sss";
     std::wstring dateParse  = L"";
     int64_t      fromEpoch  = EpochUnix;
     int64_t      fromUnit   = TUnitUnix;
