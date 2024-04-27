@@ -1,5 +1,5 @@
 // This file is part of Columns++ for Notepad++.
-// Copyright 2023 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
+// Copyright 2023, 2024 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -17,19 +17,6 @@
 #include "ColumnsPlusPlus.h"
 #include "resource.h"
 #include "commctrl.h"
-
-
-void showBalloonTip(HWND hwndDlg, int control, const std::wstring& text) {
-    HWND hControl = GetDlgItem(hwndDlg, control);
-    EDITBALLOONTIP ebt;
-    ebt.cbStruct = sizeof(EDITBALLOONTIP);
-    ebt.pszTitle = L"";
-    ebt.ttiIcon = TTI_NONE;
-    ebt.pszText = text.data();
-    SendMessage(hControl, EM_SHOWBALLOONTIP, 0, reinterpret_cast<LPARAM>(&ebt));
-    SendMessage(hwndDlg, WM_NEXTDLGCTL, reinterpret_cast<WPARAM>(hControl), TRUE);
-
-}
 
 
 INT_PTR CALLBACK csvDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {

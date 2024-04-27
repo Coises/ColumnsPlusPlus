@@ -20,6 +20,7 @@
 #define IDD_ELASTIC_PROGRESS            133
 #define IDD_ALIGN                       135
 #define IDD_CHECKING_FOR_UPDATES        139
+#define IDD_TIMESTAMP                   141
 #define IDC_LINE_UP_ALL                 1003
 #define IDC_LEADING_TABS_INDENT         1006
 #define IDC_DISABLE_FILE_SIZE           1007
@@ -81,7 +82,6 @@
 #define IDC_DEFAULT_KEEP                1076
 #define IDC_DEFAULT_DISABLE             1077
 #define IDC_DEFAULT_ENABLE              1078
-#define IDC_COMBO1                      1079
 #define IDC_DEFAULT_PROFILE             1079
 #define IDC_SEARCH_INDICATOR            1079
 #define IDC_CSV_REPLACE                 1079
@@ -97,7 +97,6 @@
 #define IDC_SELECT_RECTANGULAR_DOWN     1090
 #define IDC_SELECT_RECTANGULAR_UPRIGHT  1091
 #define IDC_SELECT_RECTANGULAR_RIGHT    1092
-#define IDC_BUTTON7                     1093
 #define IDC_SELECT_RECTANGULAR_DOWNRIGHT 1093
 #define IDC_MAKE_A_RECT                 1094
 #define IDC_SELECT_RECTANGULAR_UPLEFT   1095
@@ -132,7 +131,6 @@
 #define IDC_CSV_REPLACE_CR              1120
 #define IDC_MONOSPACED_YES              1120
 #define IDC_MONOSPACED_NO               1121
-#define IDC_CHECK1                      1122
 #define IDC_MONOSPACED_RENDER           1122
 #define IDC_OPTIONS_INDICATOR_OVERRIDE  1122
 #define IDC_CALCULATION_DECIMAL_AUTO    1122
@@ -149,7 +147,6 @@
 #define IDC_CALCULATE_TABBED            1133
 #define IDC_CALCULATE_ALIGNED           1134
 #define IDC_CALCULATE_SUPPRESS_ZEROS    1135
-#define IDC_CHECK2                      1148
 #define IDC_CALCULATE_LEFT              1148
 #define IDC_OPTIONS_CONFIGURATION_CHECK 1148
 #define IDC_SORT_WHOLE_LINES            1149
@@ -223,15 +220,53 @@
 #define IDC_OPTIONS_UPDATE_ANY          1228
 #define IDC_OPTIONS_UPDATE_STABLE       1229
 #define IDC_OPTIONS_UPDATE_NONE         1230
-#define IDC_ABOUT_CHECK_NOW             1233
+#define IDC_ABOUT_CHECK_NOW                 1233
+#define IDC_TIMESTAMP_FROM_COUNTER_ENABLE   1250
+#define IDC_TIMESTAMP_FROM_UNIX             1251
+#define IDC_TIMESTAMP_FROM_FILE             1252
+#define IDC_TIMESTAMP_FROM_1900             1253
+#define IDC_TIMESTAMP_FROM_1904             1254
+#define IDC_TIMESTAMP_FROM_COUNTER_CUSTOM   1255
+#define IDC_TIMESTAMP_FROM_COUNTER_CUSTOM1  1256
+#define IDC_TIMESTAMP_FROM_COUNTER_CUSTOM2  1257
+#define IDC_TIMESTAMP_FROM_COUNTER_CUSTOM3  1258
+#define IDC_TIMESTAMP_FROM_EPOCH            1259
+#define IDC_TIMESTAMP_FROM_UNIT             1260
+#define IDC_TIMESTAMP_FROM_LEAP             1261
+#define IDC_TIMESTAMP_FROM_DATETIME_ENABLE  1262
+#define IDC_TIMESTAMP_FROM_YMD              1263
+#define IDC_TIMESTAMP_FROM_MDY              1264
+#define IDC_TIMESTAMP_FROM_DMY              1265
+#define IDC_TIMESTAMP_FROM_DATETIME_CUSTOM  1266
+#define IDC_TIMESTAMP_FROM_DATETIME_CUSTOM1 1267
+#define IDC_TIMESTAMP_FROM_PARSE            1268
+#define IDC_TIMESTAMP_TO_UNIX               1269
+#define IDC_TIMESTAMP_TO_FILE               1270
+#define IDC_TIMESTAMP_TO_1900               1271
+#define IDC_TIMESTAMP_TO_1904               1272
+#define IDC_TIMESTAMP_TO_COUNTER_CUSTOM     1273
+#define IDC_TIMESTAMP_TO_COUNTER_CUSTOM1    1274
+#define IDC_TIMESTAMP_TO_COUNTER_CUSTOM2    1275
+#define IDC_TIMESTAMP_TO_COUNTER_CUSTOM3    1276
+#define IDC_TIMESTAMP_TO_EPOCH              1277
+#define IDC_TIMESTAMP_TO_UNIT               1278
+#define IDC_TIMESTAMP_TO_LEAP               1279
+#define IDC_TIMESTAMP_TO_COUNTER            1280
+#define IDC_TIMESTAMP_TO_DATE_STD           1281
+#define IDC_TIMESTAMP_TO_DATE_SHORT         1282
+#define IDC_TIMESTAMP_TO_DATE_LONG          1283
+#define IDC_TIMESTAMP_TO_DATE_CUSTOM        1284
+#define IDC_TIMESTAMP_TO_DATE_FORMAT        1285
+#define IDC_TIMESTAMP_TO_EXAMPLE            1286
+#define IDC_TIMESTAMP_TO_DATETIME           1287
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        141
+#define _APS_NEXT_RESOURCE_VALUE        143
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1239
+#define _APS_NEXT_CONTROL_VALUE         1290
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

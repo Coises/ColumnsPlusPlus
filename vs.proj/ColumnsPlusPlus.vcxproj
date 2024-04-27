@@ -45,6 +45,7 @@
     <ClCompile Include="..\src\Plugin.cpp" />
     <ClCompile Include="..\src\Sort.cpp" />
     <ClCompile Include="..\src\TimeFormats.cpp" />
+    <ClCompile Include="..\src\Timestamps.cpp" />
     <ClCompile Include="..\src\Update.cpp" />
   </ItemGroup>
   <ItemGroup>
