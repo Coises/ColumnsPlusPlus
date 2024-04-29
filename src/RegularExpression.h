@@ -34,6 +34,7 @@ public:
     virtual bool         search    (intptr_t from, intptr_t to, intptr_t start       )       = 0;
     virtual size_t       size      (                                                 ) const = 0;
     virtual std::string  str       (int n = 0                                        ) const = 0;
+    virtual std::string  str       (std::string_view n                               ) const = 0;
 };
 
 class RegularExpression {
@@ -52,4 +53,5 @@ public:
     virtual bool         search    (intptr_t from, intptr_t to, intptr_t start       )       {return rex->search    (from, to, start );}
     virtual size_t       size      (                                                 ) const {return rex->size      (                );}
     virtual std::string  str       (int n = 0                                        ) const {return rex->str       (n               );}
+    virtual std::string  str       (std::string_view n                               ) const {return rex->str       (n               );}
 };

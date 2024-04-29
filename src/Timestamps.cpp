@@ -16,31 +16,71 @@
 
 #include <chrono>
 #include "ColumnsPlusPlus.h"
+#include "RegularExpression.h"
 #include "resource.h"
 #include "commctrl.h"
 
 
-// int64_t toFileTime(const std::wstring& textTime) {
-//     std::wistringstream stream(textTime);
-//     std::chrono::file_clock::time_point fileTime;
-//     std::chrono::from_stream(stream, L"%F%n %T ", fileTime);
-//     if (stream.fail()) {
-//         stream.clear();
-//         stream.seekg(0);
-//         std::chrono::from_stream(stream, L" %F ", fileTime);
-//         if (stream.fail()) return std::string::npos;
-//     }
-//     if (!stream.eof()) return std::string::npos;
-//     return fileTime.time_since_epoch().count();
-// }
-
-// int64_t toFileTime(int year, int month, int day, int hour = 0, int minute = 0, int second = 0, int milliseconds = 0) {
-//     std::chrono::system_clock::time_point tpt = std::chrono::sys_days(std::chrono::year(year) / month / day)
-//         + std::chrono::hours(hour) + std::chrono::minutes(minute) + std::chrono::seconds(second) + std::chrono::milliseconds(milliseconds);
-//     return std::chrono::clock_cast<std::chrono::file_clock>(tpt).time_since_epoch().count();
-// }
-
 namespace {
+
+bool ratioToDecimal(int64_t numerator, int64_t denominator, int64_t& integer, int64_t& decimal, size_t& places) {
+    if (denominator == 0) return false;
+    if (numerator == 0) {
+        integer = 0;
+        decimal = 0;
+        places  = 0;
+        return true;
+    }
+    if (denominator == 1) {
+        integer = numerator;
+        decimal = 0;
+        places  = 0;
+        return true;
+    }
+    if (denominator == -1) {
+        integer = -numerator;
+        decimal = 0;
+        places  = 0;
+        return true;
+    }
+    int64_t quotient  = numerator / denominator;
+    int64_t remainder = numerator % denominator;
+    if (remainder == 0) {
+        integer = quotient;
+        decimal = 0;
+        places  = 0;
+        return true;
+    }
+    uint64_t den = std::abs(denominator);
+    uint64_t rem = std::abs(remainder);
+    uint64_t limit = std::numeric_limits<uint64_t>::max() / (2 * rem + 1);
+    for (uint64_t exponent = 0, power = 1; power < limit; ++exponent, power *= 10) {
+        uint64_t fraction = (rem * power) / den;
+        if (2 * ((rem * power) % den) >= den) ++fraction;
+        if (rem == 0 || ((2 * den * fraction) > (2 * rem - 1) * power && (2 * den * fraction) < (2 * rem + 1) * power)) {
+            integer = quotient;
+            decimal = fraction;
+            places  = static_cast<size_t>(exponent);
+            return true;
+        }
+    }
+    return false;
+}
+
+bool ratioToDecimal(int64_t numerator, int64_t denominator, std::string& result, char decimalSeparator = '.') {
+    int64_t integer;
+    int64_t decimal;
+    size_t  places;
+    if (!ratioToDecimal(numerator, denominator, integer, decimal, places)) return false;
+    result = std::to_string(integer);
+    if (places) {
+        result += decimalSeparator;
+        std::string f = std::to_string(decimal);
+        if (places > f.length()) result += std::string(places - f.length(), '0');
+        result += f;
+    }
+    return true;
+}
 
 int64_t utcTime(const std::wstring& textTime) {
     std::wistringstream stream(textTime);
@@ -121,7 +161,7 @@ template<class Clock> std::wstring formatTimePoint(std::chrono::time_point<Clock
             i = j;
             break;
         }
-        case L'j':
+        case L'D':
         {
             size_t j = std::min(format.find_first_not_of(L'j', i), format.length());
             s += j - i < 2 && info[8] == L'0' && info[9] == L'0' ? info.substr(10, 1) : j - i < 3 && info[8] == L'0' ? info.substr(9, 2) : info.substr(8, 3);
@@ -197,7 +237,7 @@ template<class Clock> std::wstring formatTimePoint(std::chrono::time_point<Clock
                 s += info[6] == L'0' ? L' ' + info.substr(7, 1) : info.substr(6, 2);
                 i += 2;
                 break;
-            case L'j':
+            case L'D':
                 s += info[8] == L'0' && info[9] == L'0' ? L"  " + info.substr(10, 1) : info[8] == L'0' ? L' ' + info.substr(9, 2) : info.substr(8, 3);
                 i += 2;
                 break;
@@ -241,6 +281,7 @@ template<class Clock> std::wstring formatTimePoint(std::chrono::time_point<Clock
     }
     return s;
 }
+
 
 void showExampleOutput(HWND hwndDlg) {
     const std::wstring fmt = GetDlgItemString(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT);
@@ -513,19 +554,21 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
 
 
 struct ParsingInformation {
-    const TimestampSettings& ts;
+    ColumnsPlusPlusData&     data;
     const std::wstring       locale;
     const intptr_t           action;
     wchar_t*                 names      = 0;
     size_t                   nameLength = 0;
-    ParsingInformation(const intptr_t action, const TimestampSettings& ts, const std::wstring locale = L"");
+    unsigned int             codepage   = 0;
+    ParsingInformation(ColumnsPlusPlusData& data, const intptr_t action, const std::wstring locale = L"");
     ~ParsingInformation() { if (names) delete[] names; }
-    bool parseGenericDateText(const std::wstring s, int64_t& counter) const;
+    bool parseGenericDateText(const std::string_view source, int64_t& counter) const;
+    bool parsePatternDateText(const std::string_view source, int64_t& counter) const;
 };
 
 
-ParsingInformation::ParsingInformation(const intptr_t action, const TimestampSettings& ts, const std::wstring locale)
-    : action(action), ts(ts), locale(locale) {
+ParsingInformation::ParsingInformation(ColumnsPlusPlusData& data, const intptr_t action, const std::wstring locale)
+    : data(data), action(action), locale(locale) {
     const std::wstring nameList[38] = {
         localeInfo(LOCALE_SABBREVMONTHNAME1 , locale),
         localeInfo(LOCALE_SABBREVMONTHNAME2 , locale),
@@ -571,12 +614,16 @@ ParsingInformation::ParsingInformation(const intptr_t action, const TimestampSet
     nameLength = maxlen + 1;
     names = new wchar_t[38 * nameLength];
     for (int i = 0; i < 38; ++i) wcscpy(names + i * nameLength, nameList[i].data());
+    codepage = data.sci.CodePage();
 }
 
 
-bool ParsingInformation::parseGenericDateText(const std::wstring s, int64_t& counter) const {
+bool ParsingInformation::parseGenericDateText(const std::string_view source, int64_t& counter) const {
 
-    if (!ts.enableFromDatetime && ts.datePriority == TimestampSettings::DatePriority::custom) return false;
+    const TimestampSettings& ts = data.timestamps;
+    const std::wstring s = toWide(source, codepage);
+
+    if (!ts.enableFromDatetime || ts.datePriority == TimestampSettings::DatePriority::custom) return false;
 
     std::vector<std::wstring> aToken;
     std::vector<std::wstring> nToken;
@@ -607,7 +654,7 @@ bool ParsingInformation::parseGenericDateText(const std::wstring s, int64_t& cou
                                           aToken[i].data(), static_cast<int>(aToken[i].length()), 
                                           names + 36 * nameLength, aToken[i].length() == 1 ? 1 : -1, 0, 0, 0))
             ampm = ampm == -1 ? 0 : -2;
-        if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
+        else if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
                                           aToken[i].data(), static_cast<int>(aToken[i].length()),
                                           names + 37 * nameLength, aToken[i].length() == 1 ? 1 : -1, 0, 0, 0))
             ampm = ampm == -1 ? 12 : -2;
@@ -622,54 +669,156 @@ bool ParsingInformation::parseGenericDateText(const std::wstring s, int64_t& cou
     if (aMonth == -2 || ampm == -2) return false;
     if (aMonth > 0 ? (nToken.size() < 2 || nToken.size() > 6) : (nToken.size() < 3 && nToken.size() > 7) ) return false;
 
-    std::wstring dt;
-    size_t timeToken = 3;
+    int    nYear    = 0;
+    int    nMonth   = 0;
+    int    nDay     = 0;
+    size_t tToken   = 3;
+
     if (aMonth > 0) {
-        timeToken = 2;
-        if (nToken[0].length() > 3 && nToken[1].length() < 3) dt = nToken[0] + L'-' + std::to_wstring(aMonth) + L'-' + nToken[1];
-        else if (nToken[0].length() < 3 && nToken[1].length() > 3) dt = nToken[1] + L'-' + std::to_wstring(aMonth) + L'-' + nToken[0];
-        else if (ts.datePriority == TimestampSettings::DatePriority::ymd) dt = nToken[0] + L'-' + std::to_wstring(aMonth) + L'-' + nToken[1];
-        else                                                                      dt = nToken[1] + L'-' + std::to_wstring(aMonth) + L'-' + nToken[0];
-    }
-    else if (nToken[0].length() > 3 && nToken[1].length() < 3 && nToken[2].length() < 3) {
-        dt = nToken[0] + L'-' + nToken[1] + L'-' + nToken[2];
-    }
-    else if (nToken[0].length() < 3 && nToken[1].length() > 3 && nToken[2].length() < 3) {
-        dt = nToken[1] + L'-' + nToken[0] + L'-' + nToken[2];
-    }
-    else if (nToken[0].length() < 3 && nToken[1].length() < 3 && nToken[2].length() > 3) {
-        if (ts.datePriority == TimestampSettings::DatePriority::dmy) dt = nToken[2] + L'-' + nToken[1] + L'-' + nToken[0];
-        else                                                                 dt = nToken[2] + L'-' + nToken[0] + L'-' + nToken[1];
+        tToken = 2;
+        nMonth = aMonth;
+        if      (nToken[0].length() > 3 && nToken[1].length() < 3       ) { nYear = stoi(nToken[0]); nDay = stoi(nToken[1]); }
+        else if (nToken[0].length() < 3 && nToken[1].length() > 3       ) { nYear = stoi(nToken[1]); nDay = stoi(nToken[0]); }
+        else if (ts.datePriority == TimestampSettings::DatePriority::ymd) { nYear = stoi(nToken[0]); nDay = stoi(nToken[1]); }
+        else                                                              { nYear = stoi(nToken[1]); nDay = stoi(nToken[0]); }
     }
     else {
-        if (ts.datePriority == TimestampSettings::DatePriority::dmy) dt = nToken[2] + L'-' + nToken[1] + L'-' + nToken[0];
-        else if (ts.datePriority == TimestampSettings::DatePriority::mdy) dt = nToken[2] + L'-' + nToken[0] + L'-' + nToken[1];
-        else                                                                      dt = nToken[0] + L'-' + nToken[1] + L'-' + nToken[2];
+        if (nToken[0].length() > 2 && nToken[1].length() < 3 && nToken[2].length() < 3) {
+            nYear  = stoi(nToken[0]);
+            nMonth = stoi(nToken[1]);
+            nDay   = stoi(nToken[2]);
+        }
+        else if (nToken[0].length() < 3 && nToken[1].length() > 2 && nToken[2].length() < 3) {
+            nYear  = stoi(nToken[1]);
+            if (ts.datePriority == TimestampSettings::DatePriority::dmy) { nMonth = stoi(nToken[2]); nDay = stoi(nToken[0]); }
+            else                                                         { nMonth = stoi(nToken[0]); nDay = stoi(nToken[2]); }
+        }
+        else if (nToken[0].length() < 3 && nToken[1].length() < 3 && nToken[2].length() > 2) {
+            nYear  = stoi(nToken[2]);
+            if (ts.datePriority == TimestampSettings::DatePriority::dmy) { nMonth = stoi(nToken[1]); nDay = stoi(nToken[0]); }
+            else                                                         { nMonth = stoi(nToken[0]); nDay = stoi(nToken[1]); }
+        }
+        else if (ts.datePriority == TimestampSettings::DatePriority::ymd) { nYear = stoi(nToken[0]); nMonth = stoi(nToken[1]); nDay = stoi(nToken[2]); }
+        else if (ts.datePriority == TimestampSettings::DatePriority::mdy) { nYear = stoi(nToken[2]); nMonth = stoi(nToken[0]); nDay = stoi(nToken[1]); }
+        else                                                              { nYear = stoi(nToken[2]); nMonth = stoi(nToken[1]); nDay = stoi(nToken[0]); }
     }
-    if (nToken.size() > timeToken) {
-        dt += L' ' + (ampm >= 0 ? std::to_wstring(stoi(nToken[timeToken]) % 12 + ampm) : nToken[timeToken]);
-        dt += nToken.size() > timeToken + 1 ? L':' + nToken[timeToken + 1] : L":00";
-        dt += nToken.size() > timeToken + 2 ? L':' + nToken[timeToken + 2] : L":00";
-        if (nToken.size() > timeToken + 3) dt += L'.' + nToken[timeToken + 3];
-    }
-    else dt += L" 00:00:00";
-    std::wistringstream stream(dt);
-    if (action == IDC_TIMESTAMP_TO_DATETIME || ts.toLeap) {
-        std::chrono::utc_clock::time_point tp;
-        std::chrono::from_stream(stream, L"%F%n%T", tp);
-        if (stream.fail()) return false;
-        else counter = tp.time_since_epoch().count();
-    }
-    else {
-        std::chrono::system_clock::time_point tp;
-        std::chrono::from_stream(stream, L"%F%n%T", tp);
-        if (stream.fail()) return false;
-        else counter = tp.time_since_epoch().count();
+    std::chrono::year_month_day ymd = std::chrono::sys_days(std::chrono::year(nYear) / nMonth / nDay);
+    if (!ymd.ok()) return false;
+
+    int64_t ticks = 0;
+    if (tToken < nToken.size()) {
+        ticks = 36000000000 * (ampm >= 0 ? stoi(nToken[tToken]) % 12 + ampm : stoi(nToken[tToken]));
+        if (tToken + 1 < nToken.size()) {
+            ticks += 600000000i64 * stoi(nToken[tToken + 1]);
+            if (tToken + 2 < nToken.size()) {
+                ticks += 10000000i64 * stoi(nToken[tToken + 2]);
+                if (tToken + 3 < nToken.size()) ticks += stoi((nToken[tToken + 3] + L"000000").substr(0, 7));
+            }
+        }
     }
 
-return true;
+    if (action == IDC_TIMESTAMP_TO_DATETIME || ts.toLeap) {
+        std::chrono::utc_clock::time_point tp = std::chrono::clock_cast<std::chrono::utc_clock>(std::chrono::sys_days(ymd));
+        counter = tp.time_since_epoch().count() + ticks;
+    }
+    else {
+        std::chrono::system_clock::time_point tp = std::chrono::sys_days(ymd);
+        counter = tp.time_since_epoch().count() + ticks;
+    }
+
+    return true;
 
 }
+
+
+bool ParsingInformation::parsePatternDateText(const std::string_view source, int64_t& counter) const {
+
+    RegularExpression rx(data);
+    rx.find(data.timestamps.dateParse);
+    if (!rx.can_search()) return false;
+    if (!rx.search(source)) return false;
+    std::string year    = rx.str("Y");
+    std::string doy     = rx.str("D");
+    std::string month   = rx.str("M");
+    std::string dom     = rx.str("d");
+    std::string hour12  = rx.str("h");
+    std::string hour24  = rx.str("H");
+    std::string minute  = rx.str("m");
+    std::string seconds = rx.str("s");
+    std::string ampm    = rx.str("t");
+    if (year.empty()) return false;
+    if (doy.empty() && (month.empty() || dom.empty())) return false;
+    if (!doy.empty() && !(month.empty() && dom.empty())) return false;
+    if (!hour24.empty() && !(hour12.empty() && ampm.empty())) return false;
+    try {
+
+        std::chrono::sys_days date;
+        int nYear = stoi(year);
+        if (year.length() == 2) nYear += nYear < 50 ? 2000 : 1900;
+        if (doy.empty()) {
+            int nMonth = 0;
+            if (month.find_first_not_of("0123456789 ") == std::string::npos) nMonth = stoi(month);
+            else {
+                std::wstring wMonth = toWide(month, codepage);
+                while (nMonth < 36 && CSTR_EQUAL != CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
+                    wMonth.data(), static_cast<int>(wMonth.length()),
+                    names + nMonth * nameLength, -1, 0, 0, 0))
+                    ++nMonth;
+                if (nMonth < 36) nMonth = (nMonth % 12) + 1;
+            }
+            if (nMonth < 1 || nMonth > 12) return false;
+            int nDom = stoi(dom);
+            if (nDom < 1 || nDom > 31) return false;
+            std::chrono::year_month_day ymd = std::chrono::year(nYear) / nMonth / nDom;
+            if (!ymd.ok()) return false;
+            date = std::chrono::sys_days(ymd);
+        }
+        else date = std::chrono::sys_days(std::chrono::year(nYear) / 1 / 1) + std::chrono::days(stoi(doy) - 1);
+
+        int64_t ticks = hour24.empty() ? 0 : 36000000000i64 * stoi(hour24);
+        if (!hour12.empty()) ticks += 36000000000i64 * (stoi(hour12) % 12);
+        if (!ampm.empty()) {
+            std::wstring wampm = toWide(ampm, codepage);
+            if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
+                                              wampm.data(), static_cast<int>(wampm.length()),
+                                              names + 37 * nameLength, wampm.length() == 1 ? 1 : -1, 0, 0, 0))
+                ticks += 432000000000i64;
+            else if (CSTR_EQUAL != CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
+                                              wampm.data(), static_cast<int>(wampm.length()),
+                                              names + 36 * nameLength, wampm.length() == 1 ? 1 : -1, 0, 0, 0))
+                return false;
+        }
+        if (!minute.empty()) ticks += 600000000i64 * stoi(minute);
+        if (!seconds.empty()) {
+            size_t p = seconds.find_first_not_of("0123456789 ");
+            if (p == std::string::npos || (seconds[p] != '.' && seconds[p] != ',')) ticks += 10000000i64 * stoi(seconds);
+            else {
+                ticks += 10000000i64 * stoi(seconds.substr(0, p - 1));
+                try {
+                     ticks += stoi((seconds.substr(p + 1) + "0000000").substr(0, 7));
+                }
+                catch (...) {}
+            }
+        }
+
+        if (action == IDC_TIMESTAMP_TO_DATETIME || data.timestamps.toLeap) {
+            std::chrono::utc_clock::time_point tp = std::chrono::clock_cast<std::chrono::utc_clock>(date);
+            counter = tp.time_since_epoch().count() + ticks;
+        }
+        else {
+            std::chrono::system_clock::time_point tp = date;
+            counter = tp.time_since_epoch().count() + ticks;
+        }
+
+        return true;
+
+    }
+    catch (...) {
+        return false;
+    }
+
+}
+
 
 }
 
@@ -691,7 +840,7 @@ void ColumnsPlusPlusData::convertTimestamps() {
             std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(timestamps.toEpoch))
         ).time_since_epoch().count();
 
-    ParsingInformation pi(action, timestamps);
+    ParsingInformation pi(*this, action);
     unsigned int codepage = sci.CodePage();
 
 
@@ -710,6 +859,10 @@ void ColumnsPlusPlusData::convertTimestamps() {
 //            if (columnNumber >= column.size()) column.emplace_back();
 //            Column& col = column[columnNumber];
 //            ++columnNumber;
+            if (!cell.trimLength()) {
+                r += cell.text() + cell.terminator();
+                continue;
+            }
             std::string source = cell.trim();
             int64_t counter = 0;
 
@@ -722,36 +875,20 @@ void ColumnsPlusPlusData::convertTimestamps() {
                 }
             }
 
-            bool sourceIsDateTime  = false;
-            if (!sourceIsCounter && timestamps.enableFromDatetime) {
-                std::wstring dt = toWide(source, codepage);
-                if (timestamps.datePriority == TimestampSettings::DatePriority::custom) {
-                    std::wistringstream stream(dt);
-                    if (action == IDC_TIMESTAMP_TO_DATETIME || timestamps.toLeap) {
-                        std::chrono::utc_clock::time_point tp;
-                        std::chrono::from_stream(stream, timestamps.dateParse.data(), tp);
-                        counter = tp.time_since_epoch().count();
-                    }
-                    else {
-                        std::chrono::system_clock::time_point tp;
-                        std::chrono::from_stream(stream, timestamps.dateParse.data(), tp);
-                        counter = tp.time_since_epoch().count();
-                    }
-                    if (!stream.fail()) sourceIsDateTime = true;
+            if (!sourceIsCounter) {
+                if ( !timestamps.enableFromDatetime ||
+                     (timestamps.datePriority == TimestampSettings::DatePriority::custom ? !pi.parsePatternDateText(source, counter)
+                                                                                         : !pi.parseGenericDateText(source, counter)) ) {
+                    r += cell.text() + cell.terminator();
+                    continue;
                 }
-                else sourceIsDateTime = pi.parseGenericDateText(dt, counter);
             }
 
-            if (!sourceIsCounter && !sourceIsDateTime) {
-                r += cell.text() + cell.terminator();
-                continue;
-            }
-
-            std::wstring s;
             if (action == IDC_TIMESTAMP_TO_DATETIME) {
-                s = !sourceIsCounter || timestamps.fromLeap
+                std::wstring s = !sourceIsCounter || timestamps.fromLeap
                     ? formatTimePoint(std::chrono::utc_clock   ::time_point(std::chrono::utc_clock   ::duration(counter)), timestamps.dateFormat)
                     : formatTimePoint(std::chrono::system_clock::time_point(std::chrono::system_clock::duration(counter)), timestamps.dateFormat);
+                r += fromWide(s, codepage) + cell.terminator();
             }
             else {
                 if (sourceIsCounter && timestamps.fromLeap != timestamps.toLeap) {
@@ -763,22 +900,10 @@ void ColumnsPlusPlusData::convertTimestamps() {
                              std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(counter))
                              ).time_since_epoch().count();
                 }
-                s = timestamps.toUnit <= 1                       ? std::format(L"{0}", counter - toEpoch)
-                  : (counter - toEpoch) % timestamps.toUnit == 0 ? std::format(L"{0}", (counter - toEpoch) / timestamps.toUnit)
-                  : timestamps.toUnit <=           10            ? std::format(L"{0:.1f}" , static_cast<double>(counter - toEpoch) / timestamps.toUnit)
-                  : timestamps.toUnit <=          100            ? std::format(L"{0:.2f}" , static_cast<double>(counter - toEpoch) / timestamps.toUnit)
-                  : timestamps.toUnit <=         1000            ? std::format(L"{0:.3f}" , static_cast<double>(counter - toEpoch) / timestamps.toUnit)
-                  : timestamps.toUnit <=        10000            ? std::format(L"{0:.4f}" , static_cast<double>(counter - toEpoch) / timestamps.toUnit)
-                  : timestamps.toUnit <=       100000            ? std::format(L"{0:.5f}" , static_cast<double>(counter - toEpoch) / timestamps.toUnit)
-                  : timestamps.toUnit <=      1000000            ? std::format(L"{0:.6f}" , static_cast<double>(counter - toEpoch) / timestamps.toUnit)
-                  : timestamps.toUnit <=     10000000            ? std::format(L"{0:.7f}" , static_cast<double>(counter - toEpoch) / timestamps.toUnit)
-                  : timestamps.toUnit <=    100000000            ? std::format(L"{0:.8f}" , static_cast<double>(counter - toEpoch) / timestamps.toUnit)
-                  : timestamps.toUnit <=   1000000000            ? std::format(L"{0:.9f}" , static_cast<double>(counter - toEpoch) / timestamps.toUnit)
-                  : timestamps.toUnit <=  10000000000            ? std::format(L"{0:.10f}", static_cast<double>(counter - toEpoch) / timestamps.toUnit)
-                  : timestamps.toUnit <= 100000000000            ? std::format(L"{0:.11f}", static_cast<double>(counter - toEpoch) / timestamps.toUnit)
-                                                                 : std::format(L"{0:.12f}", static_cast<double>(counter - toEpoch) / timestamps.toUnit);
+                std::string s;
+                if (ratioToDecimal(counter - toEpoch, timestamps.toUnit, s)) r += s + cell.terminator();
+                                                                        else r += cell.text() + cell.terminator();
             }
-            r += fromWide(s, codepage) + cell.terminator();
         }
         if (r != row.text()) row.replace(r);
     }
