@@ -51,20 +51,16 @@ bool ratioToDecimal(int64_t numerator, int64_t denominator, int64_t& integer, in
         places  = 0;
         return true;
     }
-    uint64_t den = std::abs(denominator);
-    uint64_t rem = std::abs(remainder);
-    uint64_t limit = std::numeric_limits<uint64_t>::max() / (2 * rem + 1);
-    for (uint64_t exponent = 0, power = 1; power < limit; ++exponent, power *= 10) {
-        uint64_t fraction = (rem * power) / den;
-        if (2 * ((rem * power) % den) >= den) ++fraction;
-        if (rem == 0 || ((2 * den * fraction) > (2 * rem - 1) * power && (2 * den * fraction) < (2 * rem + 1) * power)) {
-            integer = quotient;
-            decimal = fraction;
-            places  = static_cast<size_t>(exponent);
-            return true;
-        }
-    }
-    return false;
+
+    double divisor  = static_cast<double>(std::abs(denominator));
+    double fraction = static_cast<double>(remainder) / divisor;
+    double power    = 1;
+    size_t exponent = 0;
+    for (; exponent < 15 && remainder != static_cast<int64_t>(std::round(std::round(fraction * power) * divisor / power)); ++exponent, power *= 10);
+    integer = quotient;
+    decimal = static_cast<int64_t>(std::round(fraction * power));
+    places = exponent;
+    return true;
 }
 
 bool ratioToDecimal(int64_t numerator, int64_t denominator, std::string& result, char decimalSeparator = '.') {
@@ -79,6 +75,46 @@ bool ratioToDecimal(int64_t numerator, int64_t denominator, std::string& result,
         if (places > f.length()) result += std::string(places - f.length(), '0');
         result += f;
     }
+    return true;
+}
+
+bool stringToCounter(const std::string& source, int64_t& counter, int64_t unit, char dsep) {
+    std::string integer, decimal;
+    size_t pos = source.find_first_not_of(' ');
+    if (pos == std::string::npos) return false;
+    if (source[pos] == '-') {
+        integer = "-";
+        ++pos;
+    }
+    else if (source[pos] == '+') ++pos;
+    for (; pos < source.length(); ++pos) {
+        const char ch = source[pos];
+        if (ch == dsep) break;
+        if (ch >= '0' && ch <= '9') {
+            integer += ch;
+            continue;
+        }
+        if (ch == ' ' || ch == '.' || ch == ',' || ch == '\'') continue;
+        return false;
+    }
+    if (pos >= source.length()) {
+        counter = std::stoi(integer) * unit;
+        return true;
+    }
+    ++pos;
+    double power = 1;
+    for (; pos < source.length(); ++pos) {
+        const char ch = source[pos];
+        if (ch == dsep) return false;
+        if (ch >= '0' && ch <= '9') {
+            decimal += ch;
+            power *= 10;
+            continue;
+        }
+        if (ch == ' ' || ch == '.' || ch == ',' || ch == '\'') continue;
+        return false;
+    }
+    counter = std::stoi(integer) * unit + static_cast<int64_t>(std::round(std::stod(decimal) * static_cast<double>(unit) / power));
     return true;
 }
 
@@ -841,54 +877,48 @@ void ColumnsPlusPlusData::convertTimestamps() {
         ).time_since_epoch().count();
 
     ParsingInformation pi(*this, action);
-    unsigned int codepage = sci.CodePage();
 
+    struct Replacement {
+        std::string text;
+        std::string term;
+        size_t left = 0;
+    };
 
-//    struct Column {
-//        int width = 0;
-//    };
-//    std::vector<Column> column;
+    std::vector<std::vector<Replacement>> replacements;
 
-    sci.BeginUndoAction();
+    rs.natural();
 
     for (auto row : rs) {
-        std::string r;
-//        size_t columnNumber = 0;
+
+        auto& replaceLine = replacements.emplace_back();
+
         for (const auto& cell : row) {
 
-//            if (columnNumber >= column.size()) column.emplace_back();
-//            Column& col = column[columnNumber];
-//            ++columnNumber;
-            if (!cell.trimLength()) {
-                r += cell.text() + cell.terminator();
-                continue;
-            }
+            if (!cell.textLength() && cell.terminator().empty()) continue;
+
+            auto& replaceCell = replaceLine.emplace_back();
+            replaceCell.text = cell.text();
+            replaceCell.term = cell.terminator();
+
+            if (!cell.trimLength()) continue;
+
             std::string source = cell.trim();
             int64_t counter = 0;
 
             bool sourceIsCounter  = false;
-            if (timestamps.enableFromCounter && source.find_first_not_of("0123456789., '") == std::string::npos) {
-                auto [value, dp, ts] = parseNumber(source);
-                if (isfinite(value)) {
-                    counter = static_cast<int64_t>(value * timestamps.fromUnit) + fromEpoch;
-                    sourceIsCounter = true;
-                }
+            if (timestamps.enableFromCounter && stringToCounter(source, counter, timestamps.fromUnit, settings.decimalSeparatorIsComma ? ',' : '.')) {
+                counter += fromEpoch;
+                sourceIsCounter = true;
             }
-
-            if (!sourceIsCounter) {
-                if ( !timestamps.enableFromDatetime ||
+            else if ( !timestamps.enableFromDatetime ||
                      (timestamps.datePriority == TimestampSettings::DatePriority::custom ? !pi.parsePatternDateText(source, counter)
-                                                                                         : !pi.parseGenericDateText(source, counter)) ) {
-                    r += cell.text() + cell.terminator();
-                    continue;
-                }
-            }
+                                                                                         : !pi.parseGenericDateText(source, counter)) ) continue;
 
             if (action == IDC_TIMESTAMP_TO_DATETIME) {
                 std::wstring s = !sourceIsCounter || timestamps.fromLeap
                     ? formatTimePoint(std::chrono::utc_clock   ::time_point(std::chrono::utc_clock   ::duration(counter)), timestamps.dateFormat)
                     : formatTimePoint(std::chrono::system_clock::time_point(std::chrono::system_clock::duration(counter)), timestamps.dateFormat);
-                r += fromWide(s, codepage) + cell.terminator();
+                replaceCell.text = fromWide(s, pi.codepage);
             }
             else {
                 if (sourceIsCounter && timestamps.fromLeap != timestamps.toLeap) {
@@ -901,9 +931,21 @@ void ColumnsPlusPlusData::convertTimestamps() {
                              ).time_since_epoch().count();
                 }
                 std::string s;
-                if (ratioToDecimal(counter - toEpoch, timestamps.toUnit, s)) r += s + cell.terminator();
-                                                                        else r += cell.text() + cell.terminator();
+                if (!ratioToDecimal(counter - toEpoch, timestamps.toUnit, s, settings.decimalSeparatorIsComma ? ',' : '.')) continue;
+                replaceCell.text = s;
+                size_t n = s.find_first_of(settings.decimalSeparatorIsComma ? ',' : '.');
+                replaceCell.left = n == std::string::npos ? s.length() : n;
             }
+
+        }
+    }
+
+    sci.BeginUndoAction();
+
+    for (auto row : rs) {
+        std::string r;
+        for (const auto& repl : replacements[row.index]) {
+            r += repl.text + repl.term;
         }
         if (r != row.text()) row.replace(r);
     }
