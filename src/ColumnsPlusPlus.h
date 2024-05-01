@@ -109,8 +109,14 @@ inline std::wstring GetDlgItemString(HWND hwndDlg, int item) {
     return s;
 }
 
-inline void showBalloonTip(HWND hwndDlg, int control, const std::wstring& text) {
+inline void showBalloonTip(HWND hwndDlg, int control, const std::wstring& text, bool combobox = false) {
     HWND hControl = GetDlgItem(hwndDlg, control);
+    if (combobox) {
+        COMBOBOXINFO cbi;
+        cbi.cbSize = sizeof(COMBOBOXINFO);
+        GetComboBoxInfo(hControl, &cbi);
+        hControl = cbi.hwndItem;
+    }
     EDITBALLOONTIP ebt;
     ebt.cbStruct = sizeof(EDITBALLOONTIP);
     ebt.pszTitle = L"";
@@ -304,17 +310,23 @@ public:
     static constexpr int64_t  TUnit1900 =        864000000000;  // 1 day
     static constexpr int64_t  TUnit1904 =        864000000000;  // 1 day
 
-    std::wstring dateFormat = L"yyyy-MM-dd'T'HH:mm:ss.sss";
-    std::wstring dateParse  = L"";
-    int64_t      fromEpoch  = EpochUnix;
-    int64_t      fromUnit   = TUnitUnix;
-    int64_t      toEpoch    = EpochUnix;
-    int64_t      toUnit     = TUnitUnix;
-    enum class DatePriority { custom, ymd, mdy, dmy } datePriority = DatePriority::ymd;
-    bool enableFromCounter  = true;
-    bool enableFromDatetime = true;
-    bool fromLeap           = false;
-    bool toLeap             = false;
+    enum class CounterType  { custom, Unix, File, Ex00, Ex04 };
+    enum class DatePriority { custom, ymd, mdy, dmy };
+
+    std::vector<std::wstring> dateParse;
+
+    std::wstring dateFormat         = L"yyyy-MM-dd'T'HH:mm:ss.sss";
+    int64_t      fromEpoch          = EpochUnix;
+    int64_t      fromUnit           = TUnitUnix;
+    int64_t      toEpoch            = EpochUnix;
+    int64_t      toUnit             = TUnitUnix;
+    CounterType  fromCounter        = CounterType::Unix;
+    CounterType  toCounter          = CounterType::Unix;
+    DatePriority datePriority       = DatePriority::ymd;
+    bool         enableFromCounter  = true;
+    bool         enableFromDatetime = true;
+    bool         fromLeap           = false;
+    bool         toLeap             = false;
 
 };
 
