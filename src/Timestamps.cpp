@@ -323,10 +323,34 @@ template<class Clock> std::wstring formatTimePoint(std::chrono::time_point<Clock
 }
 
 
+std::wstring getPicture(TimestampSettings::DateFormat dateFormat, const std::wstring& datePicture) {
+    if (dateFormat == TimestampSettings::DateFormat::iso8601    ) return L"yyyy-MM-dd'T'HH:mm:ss.sss";
+    if (dateFormat == TimestampSettings::DateFormat::localeShort) return localeInfo(LOCALE_SSHORTDATE) + L" " + localeInfo(LOCALE_SSHORTTIME );
+    if (dateFormat == TimestampSettings::DateFormat::localeLong ) return localeInfo(LOCALE_SLONGDATE ) + L" " + localeInfo(LOCALE_STIMEFORMAT);
+    return datePicture;
+}
+
+std::wstring getPicture(const TimestampSettings& ts) {
+    if (ts.datePicture.empty()) return getPicture(ts.dateFormat, L"");
+    return getPicture(ts.dateFormat, ts.datePicture.back());
+}
+
+
+TimestampSettings::DateFormat dialogDateFormat(HWND hwndDlg) {
+    if (IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_TO_DATE_STD  )) return TimestampSettings::DateFormat::iso8601;
+    if (IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_TO_DATE_SHORT)) return TimestampSettings::DateFormat::localeShort;
+    if (IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_TO_DATE_LONG )) return TimestampSettings::DateFormat::localeLong;
+                                                                  return TimestampSettings::DateFormat::custom;
+}
+
+std::wstring getPicture(HWND hwndDlg) {
+    return getPicture(dialogDateFormat(hwndDlg), GetDlgItemString(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT));
+}
+
 void showExampleOutput(HWND hwndDlg) {
-    const std::wstring fmt = GetDlgItemString(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT);
-    std::chrono::system_clock::time_point tp = std::chrono::sys_days(std::chrono::year(1972) / 4 / 3)
-        + std::chrono::hours(13) + std::chrono::minutes(28) + std::chrono::seconds(7) + std::chrono::milliseconds(135);
+    const std::wstring fmt = getPicture(hwndDlg);
+    std::chrono::system_clock::time_point tp = std::chrono::sys_days(std::chrono::year(1991) / 9 / 6)
+        + std::chrono::hours(14) + std::chrono::minutes(5) + std::chrono::seconds(7) + std::chrono::milliseconds(135);
     std::wstring s = formatTimePoint(tp, fmt);
     SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_EXAMPLE, s.data());
 }
@@ -401,86 +425,44 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
                                         (rcNpp.top + rcNpp.bottom + rcDlg.top - rcDlg.bottom) / 2, 0, 0, SWP_NOSIZE);
 
         TimestampSettings& ts = data.timestamps;
+        int radioButton;
+        
+        radioButton = ts.fromCounter.type == TimestampSettings::CounterType::Unix ? IDC_TIMESTAMP_FROM_UNIX
+                    : ts.fromCounter.type == TimestampSettings::CounterType::File ? IDC_TIMESTAMP_FROM_FILE
+                    : ts.fromCounter.type == TimestampSettings::CounterType::Ex00 ? IDC_TIMESTAMP_FROM_1900
+                    : ts.fromCounter.type == TimestampSettings::CounterType::Ex04 ? IDC_TIMESTAMP_FROM_1904
+                    : IDC_TIMESTAMP_FROM_COUNTER_CUSTOM;
+        CheckRadioButton(hwndDlg, IDC_TIMESTAMP_FROM_UNIX, IDC_TIMESTAMP_FROM_COUNTER_CUSTOM, radioButton);
+        SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_EPOCH, std::format(L"{0:%F} {0:%T}", timePoint(ts.fromCounter.custom.epoch)).data());
+        SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_UNIT , std::format(L"{0:.7f}", static_cast<long double>(ts.fromCounter.custom.unit)*1e-7).data());
+        CheckDlgButton(hwndDlg, IDC_TIMESTAMP_FROM_LEAP , ts.fromCounter.custom.leap ? BST_CHECKED : BST_UNCHECKED);
 
-        switch (data.timestamps.fromCounter) {
-        case TimestampSettings::CounterType::Unix:
-            CheckRadioButton(hwndDlg, IDC_TIMESTAMP_FROM_UNIX, IDC_TIMESTAMP_FROM_COUNTER_CUSTOM, IDC_TIMESTAMP_FROM_UNIX);
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_EPOCH, L"1970-01-01 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_UNIT , L"1.0000000");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_FROM_LEAP , BST_UNCHECKED);
-            break;
-        case TimestampSettings::CounterType::File:
-            CheckRadioButton(hwndDlg, IDC_TIMESTAMP_FROM_UNIX, IDC_TIMESTAMP_FROM_COUNTER_CUSTOM, IDC_TIMESTAMP_FROM_FILE);
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_EPOCH, L"1601-01-01 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_UNIT, L"0.0000001");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_FROM_LEAP, BST_CHECKED);
-            break;
-        case TimestampSettings::CounterType::Ex00:
-            CheckRadioButton(hwndDlg, IDC_TIMESTAMP_FROM_UNIX, IDC_TIMESTAMP_FROM_COUNTER_CUSTOM, IDC_TIMESTAMP_FROM_1900);
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_EPOCH, L"1899-12-30 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_UNIT, L"86400.0000000");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_FROM_LEAP, BST_UNCHECKED);
-            break;
-        case TimestampSettings::CounterType::Ex04:
-            CheckRadioButton(hwndDlg, IDC_TIMESTAMP_FROM_UNIX, IDC_TIMESTAMP_FROM_COUNTER_CUSTOM, IDC_TIMESTAMP_FROM_1904);
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_EPOCH, L"1904-01-01 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_UNIT, L"86400.0000000");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_FROM_LEAP, BST_UNCHECKED);
-            break;
-        default:
-            CheckRadioButton(hwndDlg, IDC_TIMESTAMP_FROM_UNIX, IDC_TIMESTAMP_FROM_COUNTER_CUSTOM, IDC_TIMESTAMP_FROM_COUNTER_CUSTOM);
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_EPOCH, std::format(L"{0:%F} {0:%T}", timePoint(ts.fromEpoch)).data());
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_UNIT , std::format(L"{0:.7f}", static_cast<long double>(ts.fromUnit)*1e-7).data());
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_FROM_LEAP , ts.fromLeap ? BST_CHECKED : BST_UNCHECKED);
-        }
-
-        switch (data.timestamps.toCounter) {
-        case TimestampSettings::CounterType::Unix:
-            CheckRadioButton(hwndDlg, IDC_TIMESTAMP_TO_UNIX, IDC_TIMESTAMP_TO_COUNTER_CUSTOM, IDC_TIMESTAMP_TO_UNIX);
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_EPOCH, L"1970-01-01 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_UNIT , L"1.0000000");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_TO_LEAP , BST_UNCHECKED);
-            break;
-        case TimestampSettings::CounterType::File:
-            CheckRadioButton(hwndDlg, IDC_TIMESTAMP_TO_UNIX, IDC_TIMESTAMP_TO_COUNTER_CUSTOM, IDC_TIMESTAMP_TO_FILE);
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_EPOCH, L"1601-01-01 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_UNIT, L"0.0000001");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_TO_LEAP, BST_CHECKED);
-            break;
-        case TimestampSettings::CounterType::Ex00:
-            CheckRadioButton(hwndDlg, IDC_TIMESTAMP_TO_UNIX, IDC_TIMESTAMP_TO_COUNTER_CUSTOM, IDC_TIMESTAMP_TO_1900);
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_EPOCH, L"1899-12-30 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_UNIT, L"86400.0000000");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_TO_LEAP, BST_UNCHECKED);
-            break;
-        case TimestampSettings::CounterType::Ex04:
-            CheckRadioButton(hwndDlg, IDC_TIMESTAMP_TO_UNIX, IDC_TIMESTAMP_TO_COUNTER_CUSTOM, IDC_TIMESTAMP_TO_1904);
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_EPOCH, L"1904-01-01 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_UNIT, L"86400.0000000");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_TO_LEAP, BST_UNCHECKED);
-            break;
-        default:
-            CheckRadioButton(hwndDlg, IDC_TIMESTAMP_TO_UNIX, IDC_TIMESTAMP_TO_COUNTER_CUSTOM, IDC_TIMESTAMP_TO_COUNTER_CUSTOM);
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_EPOCH, std::format(L"{0:%F} {0:%T}", timePoint(ts.toEpoch)).data());
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_UNIT , std::format(L"{0:.7f}", static_cast<long double>(ts.toUnit)*1e-7).data());
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_TO_LEAP , ts.toLeap ? BST_CHECKED : BST_UNCHECKED);
-        }
+        radioButton = ts.toCounter.type == TimestampSettings::CounterType::Unix ? IDC_TIMESTAMP_TO_UNIX
+                    : ts.toCounter.type == TimestampSettings::CounterType::File ? IDC_TIMESTAMP_TO_FILE
+                    : ts.toCounter.type == TimestampSettings::CounterType::Ex00 ? IDC_TIMESTAMP_TO_1900
+                    : ts.toCounter.type == TimestampSettings::CounterType::Ex04 ? IDC_TIMESTAMP_TO_1904
+                    : IDC_TIMESTAMP_TO_COUNTER_CUSTOM;
+        CheckRadioButton(hwndDlg, IDC_TIMESTAMP_TO_UNIX, IDC_TIMESTAMP_TO_COUNTER_CUSTOM, radioButton);
+        SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_EPOCH, std::format(L"{0:%F} {0:%T}", timePoint(ts.toCounter.custom.epoch)).data());
+        SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_UNIT , std::format(L"{0:.7f}", static_cast<long double>(ts.toCounter.custom.unit)*1e-7).data());
+        CheckDlgButton(hwndDlg, IDC_TIMESTAMP_TO_LEAP , ts.toCounter.custom.leap ? BST_CHECKED : BST_UNCHECKED);
 
         CheckDlgButton(hwndDlg, IDC_TIMESTAMP_FROM_COUNTER_ENABLE , ts.enableFromCounter  ? BST_CHECKED : BST_UNCHECKED);
         CheckDlgButton(hwndDlg, IDC_TIMESTAMP_FROM_DATETIME_ENABLE, ts.enableFromDatetime ? BST_CHECKED : BST_UNCHECKED);
-        SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT      , ts.dateFormat.data());
         for (const auto& s : ts.dateParse) SendDlgItemMessage(hwndDlg, IDC_TIMESTAMP_FROM_PARSE, CB_INSERTSTRING, 0, reinterpret_cast<LPARAM>(s.data()));
         SendDlgItemMessage(hwndDlg, IDC_TIMESTAMP_FROM_PARSE, CB_SETCURSEL, 0, 0);
+        for (const auto& s : ts.datePicture) SendDlgItemMessage(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT, CB_INSERTSTRING, 0, reinterpret_cast<LPARAM>(s.data()));
+        SendDlgItemMessage(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT, CB_SETCURSEL, 0, 0);
 
-        int radioButton = ts.datePriority == TimestampSettings::DatePriority::ymd ? IDC_TIMESTAMP_FROM_YMD
-                        : ts.datePriority == TimestampSettings::DatePriority::mdy ? IDC_TIMESTAMP_FROM_MDY
-                        : ts.datePriority == TimestampSettings::DatePriority::dmy ? IDC_TIMESTAMP_FROM_DMY
-                        : IDC_TIMESTAMP_FROM_DATETIME_CUSTOM;
+        radioButton = ts.datePriority == TimestampSettings::DatePriority::ymd ? IDC_TIMESTAMP_FROM_YMD
+                    : ts.datePriority == TimestampSettings::DatePriority::mdy ? IDC_TIMESTAMP_FROM_MDY
+                    : ts.datePriority == TimestampSettings::DatePriority::dmy ? IDC_TIMESTAMP_FROM_DMY
+                    : IDC_TIMESTAMP_FROM_DATETIME_CUSTOM;
         CheckRadioButton(hwndDlg, IDC_TIMESTAMP_FROM_YMD, IDC_TIMESTAMP_FROM_DATETIME_CUSTOM, radioButton);
 
-        radioButton = ts.dateFormat == L"yyyy-MM-dd'T'HH:mm:ss.sss"                                          ? IDC_TIMESTAMP_TO_DATE_STD
-                    : ts.dateFormat == localeInfo(LOCALE_SSHORTDATE) + L" " + localeInfo(LOCALE_SSHORTTIME ) ? IDC_TIMESTAMP_TO_DATE_SHORT
-                    : ts.dateFormat == localeInfo(LOCALE_SLONGDATE ) + L" " + localeInfo(LOCALE_STIMEFORMAT) ? IDC_TIMESTAMP_TO_DATE_LONG
+        radioButton = ts.dateFormat == TimestampSettings::DateFormat::iso8601     ? IDC_TIMESTAMP_TO_DATE_STD
+                    : ts.dateFormat == TimestampSettings::DateFormat::localeShort ? IDC_TIMESTAMP_TO_DATE_SHORT
+                    : ts.dateFormat == TimestampSettings::DateFormat::localeLong  ? IDC_TIMESTAMP_TO_DATE_LONG
                     : IDC_TIMESTAMP_TO_DATE_CUSTOM;
         CheckRadioButton(hwndDlg, IDC_TIMESTAMP_TO_DATE_STD, IDC_TIMESTAMP_TO_DATE_CUSTOM, radioButton);
         EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT), radioButton == IDC_TIMESTAMP_TO_DATE_CUSTOM);
@@ -515,10 +497,10 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
                                                                : IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_FROM_MDY) ? TimestampSettings::DatePriority::mdy
                                                                : IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_FROM_DMY) ? TimestampSettings::DatePriority::dmy
                                                                : TimestampSettings::DatePriority::custom;
-            uint64_t     fromEpoch = data.timestamps.fromEpoch;
-            uint64_t     fromUnit  = data.timestamps.fromUnit;
-            uint64_t     toEpoch   = data.timestamps.toEpoch;
-            uint64_t     toUnit    = data.timestamps.toUnit;
+            uint64_t     fromEpoch = data.timestamps.fromCounter.custom.epoch;
+            uint64_t     fromUnit  = data.timestamps.fromCounter.custom.unit;
+            uint64_t     toEpoch   = data.timestamps.toCounter.custom.epoch;
+            uint64_t     toUnit    = data.timestamps.toCounter.custom.unit;
             std::wstring dateParse = data.timestamps.dateParse.empty() ? std::wstring() : data.timestamps.dateParse[0];
             if (enableFromCounter && fromCounter == TimestampSettings::CounterType::custom) {
                 fromEpoch = utcTime(GetDlgItemString(hwndDlg, IDC_TIMESTAMP_FROM_EPOCH));
@@ -560,11 +542,11 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
             data.timestamps.enableFromCounter  = enableFromCounter;
             data.timestamps.enableFromDatetime = enableFromDatetime;
             if (enableFromCounter) {
-                data.timestamps.fromCounter = fromCounter;
+                data.timestamps.fromCounter.type = fromCounter;
                 if (fromCounter == TimestampSettings::CounterType::custom) {
-                    data.timestamps.fromEpoch = fromEpoch;
-                    data.timestamps.fromUnit  = fromUnit;
-                    data.timestamps.fromLeap  = IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_FROM_LEAP);
+                    data.timestamps.fromCounter.custom.epoch = fromEpoch;
+                    data.timestamps.fromCounter.custom.unit  = fromUnit;
+                    data.timestamps.fromCounter.custom.leap  = IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_FROM_LEAP);
                 }
             }
             if (enableFromDatetime) {
@@ -572,72 +554,26 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
                 if (datePriority == TimestampSettings::DatePriority::custom) updateComboHistory(hwndDlg, IDC_TIMESTAMP_FROM_PARSE, data.timestamps.dateParse);
             }
             if (LOWORD(wParam) == IDC_TIMESTAMP_TO_COUNTER) {
-                data.timestamps.toCounter = toCounter;
+                data.timestamps.toCounter.type = toCounter;
                 if (toCounter == TimestampSettings::CounterType::custom) {
-                    data.timestamps.toEpoch = toEpoch;
-                    data.timestamps.toUnit  = toUnit;
-                    data.timestamps.toLeap  = IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_TO_LEAP);
+                    data.timestamps.toCounter.custom.epoch = toEpoch;
+                    data.timestamps.toCounter.custom.unit  = toUnit;
+                    data.timestamps.toCounter.custom.leap  = IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_TO_LEAP);
                 }
             }
-            else data.timestamps.dateFormat = GetDlgItemString(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT);
+            else {
+                data.timestamps.dateFormat = dialogDateFormat(hwndDlg);
+                if (data.timestamps.dateFormat == TimestampSettings::DateFormat::custom)
+                    updateComboHistory(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT, data.timestamps.datePicture);
+            }
             EndDialog(hwndDlg, LOWORD(wParam));
             return TRUE;
         }
         case IDC_TIMESTAMP_FROM_UNIX:
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_EPOCH, L"1970-01-01 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_UNIT , L"1.0000000");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_FROM_LEAP , BST_UNCHECKED);
-            enableFromFields(hwndDlg);
-            break;
         case IDC_TIMESTAMP_FROM_FILE:
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_EPOCH, L"1601-01-01 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_UNIT , L"0.0000001");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_FROM_LEAP , BST_CHECKED);
-            enableFromFields(hwndDlg);
-            break;
         case IDC_TIMESTAMP_FROM_1900:
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_EPOCH, L"1899-12-30 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_UNIT , L"86400.0000000");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_FROM_LEAP , BST_UNCHECKED);
-            enableFromFields(hwndDlg);
-            break;
         case IDC_TIMESTAMP_FROM_1904:
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_EPOCH, L"1904-01-01 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_FROM_UNIT , L"86400.0000000");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_FROM_LEAP , BST_UNCHECKED);
-            enableFromFields(hwndDlg);
-            break;
-        case IDC_TIMESTAMP_FROM_COUNTER_ENABLE:
         case IDC_TIMESTAMP_FROM_COUNTER_CUSTOM:
-            enableFromFields(hwndDlg, true);
-            break;
-        case IDC_TIMESTAMP_TO_UNIX:
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_EPOCH, L"1970-01-01 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_UNIT , L"1.0000000");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_TO_LEAP , BST_UNCHECKED);
-            enableToCounterFields(hwndDlg);
-            break;
-        case IDC_TIMESTAMP_TO_FILE:
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_EPOCH, L"1601-01-01 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_UNIT , L"0.0000001");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_TO_LEAP , BST_CHECKED);
-            enableToCounterFields(hwndDlg);
-            break;
-        case IDC_TIMESTAMP_TO_1900:
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_EPOCH, L"1899-12-30 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_UNIT , L"86400.0000000");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_TO_LEAP , BST_UNCHECKED);
-            enableToCounterFields(hwndDlg);
-            break;
-        case IDC_TIMESTAMP_TO_1904:
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_EPOCH, L"1904-01-01 00:00:00.0000000");
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_UNIT , L"86400.0000000");
-            CheckDlgButton(hwndDlg, IDC_TIMESTAMP_TO_LEAP , BST_UNCHECKED);
-            enableToCounterFields(hwndDlg);
-            break;
-        case IDC_TIMESTAMP_TO_COUNTER_CUSTOM:
-            enableToCounterFields(hwndDlg);
-            break;
         case IDC_TIMESTAMP_FROM_YMD:
         case IDC_TIMESTAMP_FROM_MDY:
         case IDC_TIMESTAMP_FROM_DMY:
@@ -645,23 +581,25 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
         case IDC_TIMESTAMP_FROM_DATETIME_ENABLE:
             enableFromFields(hwndDlg);
             break;
+        case IDC_TIMESTAMP_FROM_COUNTER_ENABLE:
+            enableFromFields(hwndDlg, true);
+            break;
+        case IDC_TIMESTAMP_TO_UNIX:
+        case IDC_TIMESTAMP_TO_FILE:
+        case IDC_TIMESTAMP_TO_1900:
+        case IDC_TIMESTAMP_TO_1904:
+        case IDC_TIMESTAMP_TO_COUNTER_CUSTOM:
+            enableToCounterFields(hwndDlg);
+            break;
         case IDC_TIMESTAMP_TO_DATE_STD:
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT, L"yyyy-MM-dd'T'HH:mm:ss.sss");
-            EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT), FALSE);
-            showExampleOutput(hwndDlg);
-            break;
         case IDC_TIMESTAMP_TO_DATE_SHORT:
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT, (localeInfo(LOCALE_SSHORTDATE) + L" " + localeInfo(LOCALE_SSHORTTIME)).data());
-            EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT), FALSE);
-            showExampleOutput(hwndDlg);
-            break;
         case IDC_TIMESTAMP_TO_DATE_LONG:
-            SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT, (localeInfo(LOCALE_SLONGDATE) + L" " + localeInfo(LOCALE_STIMEFORMAT)).data());
             EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT), FALSE);
             showExampleOutput(hwndDlg);
             break;
         case IDC_TIMESTAMP_TO_DATE_CUSTOM:
             EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT), TRUE);
+            showExampleOutput(hwndDlg);
             break;
         case IDC_TIMESTAMP_TO_DATE_FORMAT:
             showExampleOutput(hwndDlg);
@@ -838,7 +776,7 @@ bool ParsingInformation::parseGenericDateText(const std::string_view source, int
         }
     }
 
-    if (action == IDC_TIMESTAMP_TO_DATETIME || ts.toLeap) {
+    if (action == IDC_TIMESTAMP_TO_DATETIME || ts.toCounter.spec().leap) {
         std::chrono::utc_clock::time_point tp = std::chrono::clock_cast<std::chrono::utc_clock>(std::chrono::sys_days(ymd));
         counter = tp.time_since_epoch().count() + ticks;
     }
@@ -924,7 +862,7 @@ bool ParsingInformation::parsePatternDateText(const std::string_view source, int
             }
         }
 
-        if (action == IDC_TIMESTAMP_TO_DATETIME || data.timestamps.toLeap) {
+        if (action == IDC_TIMESTAMP_TO_DATETIME || data.timestamps.toCounter.spec().leap) {
             std::chrono::utc_clock::time_point tp = std::chrono::clock_cast<std::chrono::utc_clock>(date);
             counter = tp.time_since_epoch().count() + ticks;
         }
@@ -952,62 +890,17 @@ void ColumnsPlusPlusData::convertTimestamps() {
     auto action = DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_TIMESTAMP), nppData._nppHandle, ::timestampsDialogProc, reinterpret_cast<LPARAM>(this));
     if (!action) return;
 
-    switch (timestamps.fromCounter) {
-    case TimestampSettings::CounterType::Unix:
-        timestamps.fromEpoch = TimestampSettings::EpochUnix;
-        timestamps.fromUnit  = TimestampSettings::TUnitUnix;
-        timestamps.fromLeap  = false;
-        break;
-    case TimestampSettings::CounterType::File:
-        timestamps.fromEpoch = TimestampSettings::EpochFile;
-        timestamps.fromUnit  = TimestampSettings::TUnitFile;
-        timestamps.fromLeap  = true;
-        break;
-    case TimestampSettings::CounterType::Ex00:
-        timestamps.fromEpoch = TimestampSettings::Epoch1900;
-        timestamps.fromUnit  = TimestampSettings::TUnit1900;
-        timestamps.fromLeap  = false;
-        break;
-    case TimestampSettings::CounterType::Ex04:
-        timestamps.fromEpoch = TimestampSettings::Epoch1904;
-        timestamps.fromUnit  = TimestampSettings::TUnit1904;
-        timestamps.fromLeap  = false;
-        break;
-    default: ;
-    }
+    TimestampSettings::CounterSpec fromCounter = timestamps.fromCounter.spec();
+    TimestampSettings::CounterSpec toCounter   = timestamps.toCounter  .spec();
 
-    switch (timestamps.toCounter) {
-    case TimestampSettings::CounterType::Unix:
-        timestamps.toEpoch = TimestampSettings::EpochUnix;
-        timestamps.toUnit  = TimestampSettings::TUnitUnix;
-        timestamps.toLeap  = false;
-        break;
-    case TimestampSettings::CounterType::File:
-        timestamps.toEpoch = TimestampSettings::EpochFile;
-        timestamps.toUnit  = TimestampSettings::TUnitFile;
-        timestamps.toLeap  = true;
-        break;
-    case TimestampSettings::CounterType::Ex00:
-        timestamps.toEpoch = TimestampSettings::Epoch1900;
-        timestamps.toUnit  = TimestampSettings::TUnit1900;
-        timestamps.toLeap  = false;
-        break;
-    case TimestampSettings::CounterType::Ex04:
-        timestamps.toEpoch = TimestampSettings::Epoch1904;
-        timestamps.toUnit  = TimestampSettings::TUnit1904;
-        timestamps.toLeap  = false;
-        break;
-    default: ;
-    }
-
-    int64_t fromEpoch = !timestamps.enableFromCounter || timestamps.fromLeap ? timestamps.fromEpoch
+    int64_t fromEpoch = !timestamps.enableFromCounter || fromCounter.leap ? fromCounter.epoch
         : std::chrono::clock_cast<std::chrono::system_clock>(
-            std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(timestamps.fromEpoch))
+            std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(fromCounter.epoch))
         ).time_since_epoch().count();
 
-    int64_t toEpoch = action == IDC_TIMESTAMP_TO_DATETIME || timestamps.toLeap ? timestamps.toEpoch
+    int64_t toEpoch = action == IDC_TIMESTAMP_TO_DATETIME || toCounter.leap ? toCounter.epoch
         : std::chrono::clock_cast<std::chrono::system_clock>(
-            std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(timestamps.toEpoch))
+            std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(toCounter.epoch))
         ).time_since_epoch().count();
 
     ParsingInformation pi(*this, action);
@@ -1045,24 +938,24 @@ void ColumnsPlusPlusData::convertTimestamps() {
             int64_t counter = 0;
 
             bool sourceIsCounter  = false;
-            if (timestamps.enableFromCounter && stringToCounter(source, counter, timestamps.fromUnit, settings.decimalSeparatorIsComma ? ',' : '.')) {
+            if (timestamps.enableFromCounter && stringToCounter(source, counter, fromCounter.unit, settings.decimalSeparatorIsComma ? ',' : '.')) {
                 counter += fromEpoch;
                 sourceIsCounter = true;
-                if (timestamps.fromCounter == TimestampSettings::CounterType::Ex00 && counter < -22039776000000000) counter += TimestampSettings::TUnit1900;
+                if (timestamps.fromCounter.type == TimestampSettings::CounterType::Ex00 && counter < -22039776000000000) counter += fromCounter.unit;
             }
             else if ( !timestamps.enableFromDatetime ||
                      (timestamps.datePriority == TimestampSettings::DatePriority::custom ? !pi.parsePatternDateText(source, counter)
                                                                                          : !pi.parseGenericDateText(source, counter)) ) continue;
 
             if (action == IDC_TIMESTAMP_TO_DATETIME) {
-                std::wstring s = !sourceIsCounter || timestamps.fromLeap
-                    ? formatTimePoint(std::chrono::utc_clock   ::time_point(std::chrono::utc_clock   ::duration(counter)), timestamps.dateFormat)
-                    : formatTimePoint(std::chrono::system_clock::time_point(std::chrono::system_clock::duration(counter)), timestamps.dateFormat);
+                std::wstring s = !sourceIsCounter || fromCounter.leap
+                    ? formatTimePoint(std::chrono::utc_clock   ::time_point(std::chrono::utc_clock   ::duration(counter)), getPicture(timestamps))
+                    : formatTimePoint(std::chrono::system_clock::time_point(std::chrono::system_clock::duration(counter)), getPicture(timestamps));
                 replaceCell.text = fromWide(s, pi.codepage);
             }
             else {
-                if (sourceIsCounter && timestamps.fromLeap != timestamps.toLeap) {
-                    counter = timestamps.toLeap
+                if (sourceIsCounter && fromCounter.leap != toCounter.leap) {
+                    counter = toCounter.leap
                         ? std::chrono::clock_cast<std::chrono::utc_clock>(
                              std::chrono::system_clock::time_point(std::chrono::system_clock::duration(counter))
                              ).time_since_epoch().count()
@@ -1070,9 +963,9 @@ void ColumnsPlusPlusData::convertTimestamps() {
                              std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(counter))
                              ).time_since_epoch().count();
                 }
-                if (timestamps.toCounter == TimestampSettings::CounterType::Ex00 && counter < -22039776000000000) counter -= TimestampSettings::TUnit1900;
+                if (timestamps.toCounter.type == TimestampSettings::CounterType::Ex00 && counter < -22039776000000000) counter -= toCounter.unit;
                 std::string s;
-                if (!ratioToDecimal(counter - toEpoch, timestamps.toUnit, s, settings.decimalSeparatorIsComma ? ',' : '.')) continue;
+                if (!ratioToDecimal(counter - toEpoch, toCounter.unit, s, settings.decimalSeparatorIsComma ? ',' : '.')) continue;
                 replaceCell.text = s;
                 size_t n = s.find_first_of(settings.decimalSeparatorIsComma ? ',' : '.');
                 replaceCell.left = n == std::string::npos ? s.length() : n;

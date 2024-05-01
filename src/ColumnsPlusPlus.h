@@ -301,32 +301,39 @@ public:
 class TimestampSettings {
 public:
 
-    static constexpr int64_t  EpochFile = -116444736000000000;  // 1601-01-01 as a utc time in 100 ns ticks
-    static constexpr int64_t  EpochUnix =                   0;  // 1970-01-01
-    static constexpr int64_t  Epoch1900 =  -22091616000000000;  // 1899-12-30
-    static constexpr int64_t  Epoch1904 =  -20828448000000000;  // 1904-01-01
-    static constexpr int64_t  TUnitFile =                   1;  // 100 ns in 100ns ticks
-    static constexpr int64_t  TUnitUnix =            10000000;  // 1 second
-    static constexpr int64_t  TUnit1900 =        864000000000;  // 1 day
-    static constexpr int64_t  TUnit1904 =        864000000000;  // 1 day
-
     enum class CounterType  { custom, Unix, File, Ex00, Ex04 };
     enum class DatePriority { custom, ymd, mdy, dmy };
+    enum class DateFormat   { custom, iso8601, localeLong, localeShort };
 
+    struct CounterSpec {
+        int64_t epoch = 0;
+        int64_t unit  = 10000000;
+        bool    leap  = false;
+    };
+
+    struct Counter {
+        CounterSpec custom;
+        CounterType type = CounterType::Unix;
+        const CounterSpec spec() const {
+            switch (type) {
+            case TimestampSettings::CounterType::Unix: return { 0                  ,     10000000, false };  // 1970-01-01, 1 second
+            case TimestampSettings::CounterType::File: return { -116444736000000000,            1, true  };  // 1601-01-01, 100 ns
+            case TimestampSettings::CounterType::Ex00: return { -22091616000000000 , 864000000000, false };  // 1899-12-30, 1 day
+            case TimestampSettings::CounterType::Ex04: return { -20828448000000000 , 864000000000, false };  // 1904-01-01, 1 day
+            }
+            return custom;
+        }
+    };
+
+    Counter fromCounter;
+    Counter toCounter;
     std::vector<std::wstring> dateParse;
+    std::vector<std::wstring> datePicture;
 
-    std::wstring dateFormat         = L"yyyy-MM-dd'T'HH:mm:ss.sss";
-    int64_t      fromEpoch          = EpochUnix;
-    int64_t      fromUnit           = TUnitUnix;
-    int64_t      toEpoch            = EpochUnix;
-    int64_t      toUnit             = TUnitUnix;
-    CounterType  fromCounter        = CounterType::Unix;
-    CounterType  toCounter          = CounterType::Unix;
     DatePriority datePriority       = DatePriority::ymd;
+    DateFormat   dateFormat         = DateFormat::iso8601;
     bool         enableFromCounter  = true;
     bool         enableFromDatetime = true;
-    bool         fromLeap           = false;
-    bool         toLeap             = false;
 
 };
 
