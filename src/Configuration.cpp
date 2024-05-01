@@ -1,5 +1,5 @@
 // This file is part of Columns++ for Notepad++.
-// Copyright 2023 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
+// Copyright 2023, 2024 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -36,6 +36,7 @@ static const std::regex calcHeader("\\s*Calculate\\s*", std::regex::icase | std:
 static const std::regex searchHeader("\\s*Search\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex sortHeader("\\s*Sort\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex alignHeader("\\s*Align\\s*", std::regex::icase | std::regex::optimize);
+static const std::regex timestampsHeader("\\s*Timestamps\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex updateHeader("\\s*Update\\s*", std::regex::icase | std::regex::optimize);
 static const std::regex dataLine("\\s*(\\S+)\\s+(.*\\S)\\s*", std::regex::optimize);
 static const std::regex integerValue("[+-]?\\d{1,20}", std::regex::optimize);
@@ -96,7 +97,8 @@ void ColumnsPlusPlusData::loadConfiguration() {
     int configCompat = std::stoi(match[2]);
     if (configCompat > 5) return;
 
-    enum {sectionNone, sectionLastSettings, sectionCalc, sectionSearch, sectionSort, sectionAlign, sectionUpdate, sectionProfile, sectionExtensions}
+    enum { sectionNone, sectionLastSettings, sectionCalc, sectionSearch, sectionSort, sectionAlign, sectionTimestamps, 
+           sectionUpdate, sectionProfile, sectionExtensions }
          readingSection = sectionNone;
     std::wstring profileName;
 
@@ -107,6 +109,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
         else if (std::regex_match(line, match, searchHeader      )) readingSection = sectionSearch;
         else if (std::regex_match(line, match, sortHeader        )) readingSection = sectionSort;
         else if (std::regex_match(line, match, alignHeader       )) readingSection = sectionAlign;
+        else if (std::regex_match(line, match, timestampsHeader  )) readingSection = sectionTimestamps;
         else if (std::regex_match(line, match, updateHeader      )) readingSection = sectionUpdate;
         else if (std::regex_match(line, match, extensionsHeader  )) readingSection = sectionExtensions;
         else if (std::regex_match(line, match, profileHeader     )) {
@@ -272,6 +275,53 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 }
                 else if (std::regex_match(value, integerValue)) {
                     if (setting == "margin") align.margin = std::stoi(value);
+                }
+            }
+            else if (readingSection == sectionTimestamps) {
+                std::string setting = match[1];
+                std::string value = match[2];
+                strlwr(setting.data());
+                if      (setting == "fromcounter") timestamps.enableFromCounter       = value != "0";
+                else if (setting == "fromdate"   ) timestamps.enableFromDatetime      = value != "0";
+                else if (setting == "fromleap"   ) timestamps.fromCounter.custom.leap = value != "0";
+                else if (setting == "toleap"     ) timestamps.toCounter  .custom.leap = value != "0";
+                else if (setting == "parse"      ) timestamps.dateParse  .push_back(decodeDelimitedString(value));
+                else if (setting == "picture"    ) timestamps.datePicture.push_back(decodeDelimitedString(value));
+                else if (setting == "fromtype") {
+                    strlwr(value.data());
+                    timestamps.fromCounter.type = value == "unix" ? TimestampSettings::CounterType::Unix
+                                                : value == "file" ? TimestampSettings::CounterType::File
+                                                : value == "1900" ? TimestampSettings::CounterType::Ex00
+                                                : value == "1904" ? TimestampSettings::CounterType::Ex04
+                                                                  : TimestampSettings::CounterType::custom;
+                }
+                else if (setting == "totype") {
+                    strlwr(value.data());
+                    timestamps.toCounter.type = value == "unix" ? TimestampSettings::CounterType::Unix
+                                              : value == "file" ? TimestampSettings::CounterType::File
+                                              : value == "1900" ? TimestampSettings::CounterType::Ex00
+                                              : value == "1904" ? TimestampSettings::CounterType::Ex04
+                                                                : TimestampSettings::CounterType::custom;
+                }
+                else if (setting == "priority") {
+                    strlwr(value.data());
+                    timestamps.datePriority = value == "ymd" ? TimestampSettings::DatePriority::ymd
+                                            : value == "mdy" ? TimestampSettings::DatePriority::mdy
+                                            : value == "dmy" ? TimestampSettings::DatePriority::dmy
+                                                             : TimestampSettings::DatePriority::custom;
+                }
+                else if (setting == "format") {
+                    strlwr(value.data());
+                    timestamps.dateFormat = value == "iso"   ? TimestampSettings::DateFormat::iso8601
+                                          : value == "short" ? TimestampSettings::DateFormat::localeShort
+                                          : value == "long"  ? TimestampSettings::DateFormat::localeLong
+                                                             : TimestampSettings::DateFormat::custom;
+                }
+                else if (std::regex_match(value, integerValue)) {
+                    if (setting == "fromepoch") timestamps.fromCounter.custom.epoch = std::stoll(value);
+                    if (setting == "fromunit" ) timestamps.fromCounter.custom.unit  = std::stoll(value);
+                    if (setting == "toepoch"  ) timestamps.toCounter  .custom.epoch = std::stoll(value);
+                    if (setting == "tounit"   ) timestamps.toCounter  .custom.unit  = std::stoll(value);
                 }
             }
             else if (readingSection == sectionUpdate) {
@@ -448,6 +498,37 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "margin\t"      << align.margin      << std::endl;
     file << "marginRight\t" << align.marginRight << std::endl;
     writeDelimitedStringHistory(file, "history", align.history);
+
+    file << std::endl << "Timestamps" << std::endl << std::endl;
+
+    file << "fromCounter\t" << timestamps.enableFromCounter        << std::endl;
+    file << "fromDate\t"    << timestamps.enableFromDatetime       << std::endl;
+    file << "fromEpoch\t"   << timestamps.fromCounter.custom.epoch << std::endl;
+    file << "fromUnit\t"    << timestamps.fromCounter.custom.unit  << std::endl;
+    file << "fromLeap\t"    << timestamps.fromCounter.custom.leap  << std::endl;
+    file << "toEpoch\t"     << timestamps.toCounter.custom.epoch   << std::endl;
+    file << "toUnit\t"      << timestamps.toCounter.custom.unit    << std::endl;
+    file << "toLeap\t"      << timestamps.toCounter.custom.leap    << std::endl;
+    file << "fromType\t"    << ( timestamps.fromCounter.type == TimestampSettings::CounterType::Unix ? "Unix"
+                               : timestamps.fromCounter.type == TimestampSettings::CounterType::File ? "File"
+                               : timestamps.fromCounter.type == TimestampSettings::CounterType::Ex00 ? "1900"
+                               : timestamps.fromCounter.type == TimestampSettings::CounterType::Ex04 ? "1904"
+                                                                                                     : "custom") << std::endl;
+    file << "toType\t"      << ( timestamps.toCounter.type   == TimestampSettings::CounterType::Unix ? "Unix"
+                               : timestamps.toCounter.type   == TimestampSettings::CounterType::File ? "File"
+                               : timestamps.toCounter.type   == TimestampSettings::CounterType::Ex00 ? "1900"
+                               : timestamps.toCounter.type   == TimestampSettings::CounterType::Ex04 ? "1904"
+                                                                                                     : "custom") << std::endl;
+    file << "priority\t"    << ( timestamps.datePriority     == TimestampSettings::DatePriority::ymd ? "ymd"
+                               : timestamps.datePriority     == TimestampSettings::DatePriority::mdy ? "mdy"
+                               : timestamps.datePriority     == TimestampSettings::DatePriority::dmy ? "dmy"
+                                                                                                     : "custom") << std::endl;
+    file << "format\t"      << ( timestamps.dateFormat       == TimestampSettings::DateFormat::iso8601     ? "iso"
+                               : timestamps.dateFormat       == TimestampSettings::DateFormat::localeShort ? "short"
+                               : timestamps.dateFormat       == TimestampSettings::DateFormat::localeLong  ? "long"
+                                                                                                           : "custom") << std::endl;
+    writeDelimitedStringHistory(file, "parse"  , timestamps.dateParse  );
+    writeDelimitedStringHistory(file, "picture", timestamps.datePicture);
 
     file << std::endl << "Update" << std::endl << std::endl;
 
