@@ -47,7 +47,7 @@ static struct MenuDefinition {
     FuncItem addNumbers              = {TEXT("Add numbers..."                     ), []() {cmdWrap(&ColumnsPlusPlusData::addNumbers            );}, 0, false, 0};
     FuncItem averageNumbers          = {TEXT("Average numbers..."                 ), []() {cmdWrap(&ColumnsPlusPlusData::averageNumbers        );}, 0, false, 0};
     FuncItem calculate               = {TEXT("Calculate..."                       ), []() {cmdWrap(&ColumnsPlusPlusData::calculate             );}, 0, false, 0};
-    FuncItem convertTimestamps       = {TEXT("Convert timestamps..."              ), []() {cmdWrap(&ColumnsPlusPlusData::convertTimestamps     );}, 0, false, 0};
+    FuncItem timestamps              = {TEXT("Timestamps..."                      ), []() {cmdWrap(&ColumnsPlusPlusData::convertTimestamps     );}, 0, false, 0};
     FuncItem separatorAlign          = {TEXT("---"                                ), 0                                                            , 0, false, 0};
     FuncItem alignLeft               = {TEXT("Align left"                         ), []() {cmdWrap(&ColumnsPlusPlusData::alignLeft             );}, 0, false, 0};
     FuncItem alignRight              = {TEXT("Align right"                        ), []() {cmdWrap(&ColumnsPlusPlusData::alignRight            );}, 0, false, 0};
