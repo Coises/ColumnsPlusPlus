@@ -622,6 +622,8 @@ Up to <strong><em>d</em></strong> decimal places will be shown, but no fewer tha
 
 <p><strong>From counter</strong> processing may be enabled or disabled using the check box at the top left of the section. When enabled, this section controls the interpretation of any items in the selection which consist of a single number. The number is treated as a counter representing elapsed time. The starting point is called the <em>epoch</em> and the length of time represented by an increase of one in the counter is called the <em>unit</em>.
 
+<p><em>Note: As with other</em> <strong>Columns++</strong> <em>commands, numbers to be recognized as counters can include spaces, apostrophes and either commas or periods (whichever is not selected as the decimal separator). If your data contains date and time formats that are separated only by these characters (for example, <tt>12.10.1980</tt> if</em> <strong>Decimal separator is comma</strong> <em>is selected), be sure to disable the</em> <strong>From counter</strong> <em>section. You can leave it enabled if all your date and time formatted data uses separators that would disqualify the entries as numbers.</em></p>
+
 <table class=optionsTable>
 <tr><th>Unix time</th><td><p>a common timestamp counter, for which the epoch is January 1st, 1970 and the unit is one second. Unix time does not count leap seconds.</p></td></tr>
 <tr><th>Windows filetime</th><td><p>the timestamp format used to store creation, modification and access dates of files in Windows. Its epoch in January 1st, 1601 and its unit is 100 nanoseconds. Windows filetime counts leap seconds.</p></td></tr>
@@ -652,7 +654,7 @@ Up to <strong><em>d</em></strong> decimal places will be shown, but no fewer tha
 <tr><th>t</th><td>am or pm (may be a single letter or the designator for the current locale)</td></tr>
 </table>
 <p>The groups <strong>y</strong> and either <strong>D</strong> or both <strong>M</strong> and <strong>d</strong> must match and provide valid values for the parse to succeed.</p>
-<p><strong>Example</strong>: Suppose you have entries of the form <tt>2018.113t14.08</tt> representing 14:08 on the 113th day of 2018. You could use <strong>(?&lt;y&gt;\d+)\.(?&lt;D&gt;\d+)t(?&lt;H&gt;\d+)\.(?&lt;m&gt;\d+)</strong> to parse them.</p>
+<p><strong>Example</strong>: Suppose you have entries of the form <tt>2018.113t14.08</tt> representing 14:08 on the 113th day of 2018; you could use <strong style="white-space: nowrap;">(?&lt;y&gt;\d+)\.(?&lt;D&gt;\d+)t(?&lt;H&gt;\d+)\.(?&lt;m&gt;\d+)</strong> to parse them.</p>
 </td></tr>
 </table>
 
@@ -664,9 +666,9 @@ Up to <strong><em>d</em></strong> decimal places will be shown, but no fewer tha
 <p>The <strong>To Date/Time</strong> button closes the dialog and converts timestamps to the specified date and time format. An example of a date and time formatted as specified is shown just above the button. </p>
 
 <table class=optionsTable>
-<tr><th>ISO 8601</th><td><p>Format dates and times according to the ISO 8601 standard.</td></tr>
-<tr><th>Locale short</th><td><p>Use the short date and short time formats from Windows regional settings, separated by a space.<br><em>Note: Windows formats cannot render dates before January 1st, 1601.</em></p></td></tr>
-<tr><th>Locale long</th><td><p>Use the long date and long time formats from Windows regional settings, separated by a space.<br><em>Note: Windows formats cannot render dates before January 1st, 1601.</em></p></td></tr>
+<tr><th>ISO 8601</th><td><p>Format the date and time according to the ISO 8601 standard; equivalent to specifying <strong style="white-space: nowrap;">yyyy-MM-dd'T'HH:mm:ss.sss</strong> as a custom picture.</td></tr>
+<tr><th>Locale short</th><td><p>Use the short date and short time formats from Windows regional settings, separated by a space.<br><em>Note: Windows locale formats cannot render dates before January 1st, 1601.</em></p></td></tr>
+<tr><th>Locale long</th><td><p>Use the long date and long time formats from Windows regional settings, separated by a space.<br><em>Note: Windows locale formats cannot render dates before January 1st, 1601.</em></p></td></tr>
 <tr><th>Custom</th><td><p>Use the specified picture to format the date and time. The picture format is similar to that used for specifying date and time formats in Windows settings:</p>
 <table class=optionsTable>
 <tr><th>yy</th><td>two-digit year</td></tr>

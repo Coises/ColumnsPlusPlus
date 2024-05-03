@@ -375,7 +375,7 @@ template<class Clock> std::wstring formatTimePoint(std::chrono::time_point<Clock
         case L'T':
         {
             size_t j = std::min(picture.find_first_not_of(L'T', i), picture.length());
-            size_t k = info[12] == L'0' && info[13] < L'2' ? 0 : 1;
+            size_t k = info.substr(12,2) < L"12" ? 0 : 1;
             if (j - i == 1) s += localeWords.ampm[k][0];
             else s += localeWords.ampm[k];
             i = j;
@@ -384,7 +384,7 @@ template<class Clock> std::wstring formatTimePoint(std::chrono::time_point<Clock
         case L't':
         {
             size_t j = std::min(picture.find_first_not_of(L't', i), picture.length());
-            size_t k = info[12] == L'0' && info[13] < L'2' ? 0 : 1;
+            size_t k = info.substr(12, 2) < L"12" ? 0 : 1;
             if (j - i == 1) s += static_cast<wchar_t>(std::tolower(localeWords.ampm[k][0]));
             else for (auto c : localeWords.ampm[k]) s += static_cast<wchar_t>(std::tolower(c));
             i = j;
@@ -739,15 +739,28 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
 
 struct ParsingInformation {
     ColumnsPlusPlusData& data;
+    RegularExpression    rx;
     const std::wstring   locale;
     const intptr_t       action;
     LocaleWords          localeWords;
     unsigned int         codepage   = 0;
-    ParsingInformation(ColumnsPlusPlusData& data, const intptr_t action, const std::wstring locale = L"")
-        : data(data), locale(locale), action(action), localeWords(locale), codepage(data.sci.CodePage()) {}
+    ParsingInformation(ColumnsPlusPlusData& data, const intptr_t action, const std::wstring locale = L"");
+    bool parseDateText       (const std::string_view source, int64_t& counter);
     bool parseGenericDateText(const std::string_view source, int64_t& counter) const;
-    bool parsePatternDateText(const std::string_view source, int64_t& counter) const;
+    bool parsePatternDateText(const std::string_view source, int64_t& counter);
 };
+
+ParsingInformation::ParsingInformation(ColumnsPlusPlusData& data, const intptr_t action, const std::wstring locale)
+        : data(data), rx(data), locale(locale), action(action), localeWords(locale), codepage(data.sci.CodePage()) {
+    if (data.timestamps.enableFromDatetime && data.timestamps.datePriority == TimestampSettings::DatePriority::custom)
+        rx.find(data.timestamps.dateParse.back(), true);
+}
+
+bool ParsingInformation::parseDateText(const std::string_view source, int64_t& counter) {
+    if (!data.timestamps.enableFromDatetime) return false;
+    return data.timestamps.datePriority == TimestampSettings::DatePriority::custom ? parsePatternDateText(source, counter)
+                                                                                   : parseGenericDateText(source, counter);
+}
 
 
 bool ParsingInformation::parseGenericDateText(const std::string_view source, int64_t& counter) const {
@@ -788,7 +801,7 @@ bool ParsingInformation::parseGenericDateText(const std::string_view source, int
             ampm = ampm == -1 ? 0 : -2;
         else if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
                                           aToken[i].data(), static_cast<int>(aToken[i].length()),
-                                          localeWords.ampm[0].data(), aToken[i].length() == 1 ? 1 : -1, 0, 0, 0))
+                                          localeWords.ampm[1].data(), aToken[i].length() == 1 ? 1 : -1, 0, 0, 0))
             ampm = ampm == -1 ? 12 : -2;
         for (int j = 0; j < 12; ++j) {
             if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
@@ -874,11 +887,9 @@ bool ParsingInformation::parseGenericDateText(const std::string_view source, int
 }
 
 
-bool ParsingInformation::parsePatternDateText(const std::string_view source, int64_t& counter) const {
+bool ParsingInformation::parsePatternDateText(const std::string_view source, int64_t& counter) {
 
     if (data.timestamps.dateParse.empty()) return false;
-    RegularExpression rx(data);
-    rx.find(data.timestamps.dateParse.back());
     if (!rx.can_search()) return false;
     if (!rx.search(source)) return false;
     std::string year    = rx.str("y");
@@ -929,11 +940,11 @@ bool ParsingInformation::parsePatternDateText(const std::string_view source, int
             std::wstring wampm = toWide(ampm, codepage);
             if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
                                               wampm.data(), static_cast<int>(wampm.length()),
-                                              localeWords.ampm[0].data(), wampm.length() == 1 ? 1 : -1, 0, 0, 0))
+                                              localeWords.ampm[1].data(), wampm.length() == 1 ? 1 : -1, 0, 0, 0))
                 ticks += 432000000000i64;
             else if (CSTR_EQUAL != CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
                                               wampm.data(), static_cast<int>(wampm.length()),
-                                              localeWords.ampm[1].data(), wampm.length() == 1 ? 1 : -1, 0, 0, 0))
+                                              localeWords.ampm[0].data(), wampm.length() == 1 ? 1 : -1, 0, 0, 0))
                 return false;
         }
         if (!minute.empty()) ticks += 600000000i64 * stoi(minute);
@@ -1030,9 +1041,7 @@ void ColumnsPlusPlusData::convertTimestamps() {
                 sourceIsCounter = true;
                 if (timestamps.fromCounter.type == TimestampSettings::CounterType::Ex00 && counter < -22039776000000000) counter += fromCounter.unit;
             }
-            else if ( !timestamps.enableFromDatetime ||
-                     (timestamps.datePriority == TimestampSettings::DatePriority::custom ? !pi.parsePatternDateText(source, counter)
-                                                                                         : !pi.parseGenericDateText(source, counter)) ) continue;
+            else if (!pi.parseDateText(source, counter)) continue;
 
             if (action == IDC_TIMESTAMP_TO_DATETIME) {
                 std::wstring s = !sourceIsCounter || fromCounter.leap
