@@ -184,10 +184,11 @@ struct LocaleWords {
     std::vector<std::wstring> dayAbbrev;
     std::vector<std::wstring> dayOfWeek;
     std::vector<std::wstring> ampm;
+    const std::wstring locale;
     size_t fullMax = 0;
     size_t geniMax = 0;
     size_t weekMax = 0;
-    LocaleWords(const std::wstring locale = L"") {
+    LocaleWords(const std::wstring locale = L"") : locale(locale) {
         abbrMonth.resize(12);
         fullMonth.resize(12);
         geniMonth.resize(12);
@@ -270,7 +271,7 @@ template<class Clock> std::wstring getWindowsDateTimeFormat(std::chrono::time_po
     if (n < 3) return L"";
     std::wstring date(n - 1, 0);
     GetDateFormatEx(locale.empty() ? LOCALE_NAME_USER_DEFAULT : locale.data(), longForm ? DATE_LONGDATE : DATE_SHORTDATE, &st, 0, date.data(), n, 0);
-    std::wstring timeFormat = localeInfo(longForm ? LOCALE_STIMEFORMAT :LOCALE_SSHORTTIME);
+    std::wstring timeFormat = localeInfo(longForm ? LOCALE_STIMEFORMAT : LOCALE_SSHORTTIME, locale);
     n = GetTimeFormatEx(locale.empty() ? LOCALE_NAME_USER_DEFAULT : locale.data(), 0, &st, timeFormat.data(), 0, 0);
     if (n < 3) return L"";
     std::wstring time(n - 1, 0);
@@ -287,9 +288,9 @@ template<class Clock> std::wstring formatTimePoint(std::chrono::time_point<Clock
     case TimestampSettings::DateFormat::iso8601:
         return std::format(L"{0:%F}T{0:%T}", std::chrono::time_point_cast<std::chrono::milliseconds>(timePoint));
     case TimestampSettings::DateFormat::localeShort:
-        return getWindowsDateTimeFormat(timePoint, false);
+        return getWindowsDateTimeFormat(timePoint, false, localeWords.locale);
     case TimestampSettings::DateFormat::localeLong:
-        return getWindowsDateTimeFormat(timePoint, true);
+        return getWindowsDateTimeFormat(timePoint, true, localeWords.locale);
     }
 
     std::wstring info = std::format(L"{0:%Y}{0:%m}{0:%d}{0:%j}{0:%w}{0:%H}{0:%I}{0:%M}{0:%S}", timePoint);
@@ -460,6 +461,140 @@ template<class Clock> std::wstring formatTimePoint(std::chrono::time_point<Clock
 }
 
 
+// class for enumerating locales and time zones and for communicating between the command routine and the dialog procedure
+
+class TimestampsCommon {
+
+public:
+
+    struct Locale {
+        std::wstring name;
+        std::wstring language;
+        std::wstring country;
+    };
+
+    struct TimeZone {
+        const std::chrono::time_zone* tz;
+        std::wstring continent;
+        std::wstring city;
+    };
+
+    ColumnsPlusPlusData& data;
+    std::map<std::wstring, std::map<std::wstring, Locale>> locales;
+    std::map<std::wstring, std::map<std::wstring, TimeZone>> zones;
+    std::wstring fromLocale, toLocale;
+    const std::chrono::time_zone* fromZone = 0;
+    const std::chrono::time_zone* toZone   = 0;
+
+    TimestampsCommon(ColumnsPlusPlusData& data) : data(data) {
+        EnumSystemLocalesEx(addLocale, LOCALE_NEUTRALDATA | LOCALE_SUPPLEMENTAL | LOCALE_WINDOWS, reinterpret_cast<LPARAM>(this), 0);
+        try {
+            for (const auto& tz : std::chrono::get_tzdb().zones) {
+                const std::wstring s = toWide(tz.name().data(), CP_UTF8);
+                size_t p = s.find_first_of(L'/');
+                if (p > 0 && p < s.length() - 1) {
+                    TimeZone timeZone{ &tz, s.substr(0, p), s.substr(p + 1) };
+                    zones[timeZone.continent][timeZone.city] = timeZone;
+                }
+            }
+            const std::chrono::time_zone* current = std::chrono::get_tzdb().current_zone();
+            if (fromZone == 0) fromZone = current;
+            if (toZone   == 0) toZone   = current;
+        }
+        catch (...) {}
+    }
+
+    void initializeDialogLanguagesAndLocales(HWND hwndDlg, const std::wstring& locale, int cbLanguage, int cbLocale) {
+        for (const auto& s : locales)
+            SendDlgItemMessage(hwndDlg, cbLanguage, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s.first.data()));
+        std::wstring localeName = locale;
+        if (localeName.empty()) {
+            int n = GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SNAME, 0, 0);
+            localeName.resize(n - 1);
+            GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SNAME, localeName.data(), n);
+        }
+        int nLanguage = GetLocaleInfoEx(localeName.data(), LOCALE_SLOCALIZEDLANGUAGENAME, 0, 0);
+        if (nLanguage) {
+            std::wstring language(nLanguage - 1, 0);
+            GetLocaleInfoEx(localeName.data(), LOCALE_SLOCALIZEDLANGUAGENAME, language.data(), nLanguage);
+            auto n = SendDlgItemMessage(hwndDlg, cbLanguage, CB_FINDSTRINGEXACT,
+                static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(language.data()));
+            if (n != CB_ERR) {
+                SendDlgItemMessage(hwndDlg, cbLanguage, CB_SETCURSEL, n, 0);
+                for (const auto& s : locales[language]) {
+                    std::wstring x = s.first + L"  -  " + s.second.country;
+                    n = SendDlgItemMessage(hwndDlg, cbLocale, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(x.data()));
+                    if (s.first == localeName) SendDlgItemMessage(hwndDlg, cbLocale, CB_SETCURSEL, n, 0);
+                }
+            }
+        }
+    }
+
+    void initializeDialogTimeZones(HWND hwndDlg, const std::chrono::time_zone* timeZone, int cbRegion, int cbZone) {
+        for (const auto& s : zones)
+            SendDlgItemMessage(hwndDlg, cbRegion, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s.first.data()));
+        std::wstring continent, city;
+        if (timeZone) {
+            std::wstring cc = toWide(timeZone->name(), CP_UTF8);
+            size_t p = cc.find_first_of(L'/');
+            if (p > 0 && p < cc.length() - 1) {
+                continent = cc.substr(0, p);
+                city = cc.substr(p + 1);
+            }
+            auto n = SendDlgItemMessage(hwndDlg, cbRegion, CB_FINDSTRINGEXACT,
+                static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(continent.data()));
+            if (n != CB_ERR) {
+                SendDlgItemMessage(hwndDlg, cbRegion, CB_SETCURSEL, n, 0);
+                for (const auto& s : zones[continent]) {
+                    n = SendDlgItemMessage(hwndDlg, cbZone, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s.first.data()));
+                    if (s.first == city) SendDlgItemMessage(hwndDlg, cbZone, CB_SETCURSEL, n, 0);
+                }
+            }
+        }
+    }
+
+    void updateDialogLocales(HWND hwndDlg, int cbLanguage, int cbLocale) {
+        SendDlgItemMessage(hwndDlg, cbLocale, CB_RESETCONTENT, 0, 0);
+        std::wstring language = GetDlgItemString(hwndDlg, cbLanguage);
+        for (const auto& s : locales[language]) {
+            std::wstring x = s.first + L"  -  " + s.second.country;
+            SendDlgItemMessage(hwndDlg, cbLocale, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(x.data()));
+        }
+        SendDlgItemMessage(hwndDlg, cbLocale, CB_SETCURSEL, 0, 0);
+    }
+
+    void updateDialogTimeZones(HWND hwndDlg, int cbRegion, int cbZone) {
+        SendDlgItemMessage(hwndDlg, cbZone, CB_RESETCONTENT, 0, 0);
+        std::wstring region = GetDlgItemString(hwndDlg, cbRegion);
+        for (const auto& s : zones[region]) {
+            SendDlgItemMessage(hwndDlg, cbZone, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s.first.data()));
+        }
+        SendDlgItemMessage(hwndDlg, cbZone, CB_SETCURSEL, 0, 0);
+    }
+
+private:
+
+    static BOOL CALLBACK addLocale(LPWSTR pStr, DWORD, LPARAM lparam) {
+        TimestampsCommon& si = *reinterpret_cast<TimestampsCommon*>(lparam);
+        int nLanguage = GetLocaleInfoEx(pStr, LOCALE_SLOCALIZEDLANGUAGENAME, 0, 0);
+        int nCountry = GetLocaleInfoEx(pStr, LOCALE_SLOCALIZEDCOUNTRYNAME, 0, 0);
+        TimestampsCommon::Locale locale;
+        locale.name = pStr;
+        if (nLanguage) {
+            locale.language.resize(nLanguage - 1);
+            GetLocaleInfoEx(pStr, LOCALE_SLOCALIZEDLANGUAGENAME, locale.language.data(), nLanguage);
+        }
+        if (nCountry) {
+            locale.country.resize(nCountry - 1);
+            GetLocaleInfoEx(pStr, LOCALE_SLOCALIZEDCOUNTRYNAME, locale.country.data(), nCountry);
+        }
+        si.locales[locale.language][locale.name] = locale;
+        return TRUE;
+    }
+
+};
+
+
 // some helper routines for the dialog procedure
 
 TimestampSettings::DateFormat dialogDateFormat(HWND hwndDlg) {
@@ -469,10 +604,21 @@ TimestampSettings::DateFormat dialogDateFormat(HWND hwndDlg) {
                                                                   return TimestampSettings::DateFormat::custom;
 }
 
+const std::wstring dialogFromLocale(HWND hwndDlg) {
+    std::wstring locale = GetDlgItemString(hwndDlg, IDC_TIMESTAMP_FROM_LOCALE);
+    return locale.substr(0, locale.find(L"  -  "));
+}
+
+const std::wstring dialogToLocale(HWND hwndDlg) {
+    std::wstring locale = GetDlgItemString(hwndDlg, IDC_TIMESTAMP_TO_LOCALE);
+    return locale.substr(0, locale.find(L"  -  "));
+}
+
 void showExampleOutput(HWND hwndDlg) {
     std::chrono::system_clock::time_point tp = std::chrono::sys_days(std::chrono::year(1991) / 9 / 6)
         + std::chrono::hours(14) + std::chrono::minutes(5) + std::chrono::seconds(7) + std::chrono::milliseconds(135);
-    std::wstring s = formatTimePoint(tp, dialogDateFormat(hwndDlg), GetDlgItemString(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT), LocaleWords());
+    std::wstring s = formatTimePoint(tp, dialogDateFormat(hwndDlg), GetDlgItemString(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT),
+                                     LocaleWords(dialogToLocale(hwndDlg)));
     SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_EXAMPLE, s.data());
 }
 
@@ -525,14 +671,15 @@ void enableToCounterFields(HWND hwndDlg) {
 
 INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
 
-    ColumnsPlusPlusData* pData = 0;
+    TimestampsCommon* tscp = 0;
     if (uMsg == WM_INITDIALOG) {
         SetWindowLongPtr(hwndDlg, DWLP_USER, lParam);
-        pData = reinterpret_cast<ColumnsPlusPlusData*>(lParam);
+        tscp = reinterpret_cast<TimestampsCommon*>(lParam);
     }
-    else pData = reinterpret_cast<ColumnsPlusPlusData*>(GetWindowLongPtr(hwndDlg, DWLP_USER));
-    if (!pData) return TRUE;
-    ColumnsPlusPlusData& data = *pData;
+    else tscp = reinterpret_cast<TimestampsCommon*>(GetWindowLongPtr(hwndDlg, DWLP_USER));
+    if (!tscp) return TRUE;
+    TimestampsCommon&    tsc  = *tscp;
+    ColumnsPlusPlusData& data = tsc.data;
 
     switch (uMsg) {
 
@@ -589,6 +736,11 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
                     : IDC_TIMESTAMP_TO_DATE_CUSTOM;
         CheckRadioButton(hwndDlg, IDC_TIMESTAMP_TO_DATE_STD, IDC_TIMESTAMP_TO_DATE_CUSTOM, radioButton);
         EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT), radioButton == IDC_TIMESTAMP_TO_DATE_CUSTOM);
+
+        tsc.initializeDialogLanguagesAndLocales(hwndDlg, tsc.fromLocale, IDC_TIMESTAMP_FROM_LANGUAGE, IDC_TIMESTAMP_FROM_LOCALE);
+        tsc.initializeDialogLanguagesAndLocales(hwndDlg, tsc.toLocale  , IDC_TIMESTAMP_TO_LANGUAGE  , IDC_TIMESTAMP_TO_LOCALE  );
+        tsc.initializeDialogTimeZones(hwndDlg, tsc.fromZone, IDC_TIMESTAMP_FROM_REGION, IDC_TIMESTAMP_FROM_TIMEZONE);
+        tsc.initializeDialogTimeZones(hwndDlg, tsc.toZone  , IDC_TIMESTAMP_TO_REGION  , IDC_TIMESTAMP_TO_TIMEZONE  );
 
         enableFromFields(hwndDlg);
         enableToCounterFields(hwndDlg);
@@ -689,6 +841,8 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
                 if (data.timestamps.dateFormat == TimestampSettings::DateFormat::custom)
                     updateComboHistory(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT, data.timestamps.datePicture);
             }
+            tsc.fromLocale = dialogFromLocale(hwndDlg);
+            tsc.toLocale   = dialogToLocale  (hwndDlg);
             EndDialog(hwndDlg, LOWORD(wParam));
             return TRUE;
         }
@@ -727,6 +881,29 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
         case IDC_TIMESTAMP_TO_DATE_FORMAT:
             showExampleOutput(hwndDlg);
             break;
+        case IDC_TIMESTAMP_FROM_LANGUAGE:
+            if (HIWORD(wParam) == CBN_SELCHANGE) {
+                tsc.updateDialogLocales(hwndDlg, IDC_TIMESTAMP_FROM_LANGUAGE, IDC_TIMESTAMP_FROM_LOCALE);
+            }
+            break;
+        case IDC_TIMESTAMP_TO_LANGUAGE:
+            if (HIWORD(wParam) == CBN_SELCHANGE) {
+                tsc.updateDialogLocales(hwndDlg, IDC_TIMESTAMP_TO_LANGUAGE, IDC_TIMESTAMP_TO_LOCALE);
+            }
+            break;
+        case IDC_TIMESTAMP_FROM_REGION:
+            if (HIWORD(wParam) == CBN_SELCHANGE) {
+                tsc.updateDialogTimeZones(hwndDlg, IDC_TIMESTAMP_FROM_REGION, IDC_TIMESTAMP_FROM_TIMEZONE);
+            }
+            break;
+        case IDC_TIMESTAMP_TO_REGION:
+            if (HIWORD(wParam) == CBN_SELCHANGE) {
+                tsc.updateDialogTimeZones(hwndDlg, IDC_TIMESTAMP_TO_REGION, IDC_TIMESTAMP_TO_TIMEZONE);
+            }
+            break;
+        case IDC_TIMESTAMP_TO_LOCALE:
+            if (HIWORD(wParam) == CBN_SELCHANGE) showExampleOutput(hwndDlg);
+            break;
         }
         break;
     }
@@ -735,7 +912,7 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
 }
 
 
-// a helper class for the main routine
+// helper classes and functions for the main routine
 
 struct ParsingInformation {
     ColumnsPlusPlusData& data;
@@ -748,6 +925,7 @@ struct ParsingInformation {
     bool parseDateText       (const std::string_view source, int64_t& counter);
     bool parseGenericDateText(const std::string_view source, int64_t& counter) const;
     bool parsePatternDateText(const std::string_view source, int64_t& counter);
+    bool isParseDivider      (wchar_t c) const;
 };
 
 ParsingInformation::ParsingInformation(ColumnsPlusPlusData& data, const intptr_t action, const std::wstring locale)
@@ -760,6 +938,13 @@ bool ParsingInformation::parseDateText(const std::string_view source, int64_t& c
     if (!data.timestamps.enableFromDatetime) return false;
     return data.timestamps.datePriority == TimestampSettings::DatePriority::custom ? parsePatternDateText(source, counter)
                                                                                    : parseGenericDateText(source, counter);
+}
+
+bool ParsingInformation::isParseDivider(wchar_t c) const {
+    static const std::wstring nonAsciiDividers =
+        L"\u2012\u2013\u2212\uFE63\uFF0D\u00A0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F";
+    if (c < 128) return !isalnum(c);
+    return (nonAsciiDividers.find_first_of(c) != std::wstring::npos);
 }
 
 
@@ -780,13 +965,13 @@ bool ParsingInformation::parseGenericDateText(const std::string_view source, int
             nToken.push_back(s.substr(i, j - i));
             i = j;
         }
-        else if (iswalpha(s[i])) {
+        else if (isParseDivider(s[i])) ++i;
+        else {
             size_t j = i + 1;
-            while (j < s.length() && iswalpha(s[j])) ++j;
+            while (j < s.length() && !iswdigit(s[j]) && !isParseDivider(s[j])) ++j;
             aToken.push_back(s.substr(i, j - i));
             i = j;
         }
-        else ++i;
     }
 
     if (nToken.size() < 2 || nToken.size() > 7 || aToken.size() + nToken.size() < 3) return false;
@@ -978,14 +1163,17 @@ bool ParsingInformation::parsePatternDateText(const std::string_view source, int
 
 }
 
-}
+} // end unnamed namespace
+
 
 void ColumnsPlusPlusData::convertTimestamps() {
 
     auto rs = getRectangularSelection();
     if (!rs.size()) return;
 
-    auto action = DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_TIMESTAMP), nppData._nppHandle, ::timestampsDialogProc, reinterpret_cast<LPARAM>(this));
+    TimestampsCommon tsc(*this);
+
+    auto action = DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_TIMESTAMP), nppData._nppHandle, ::timestampsDialogProc, reinterpret_cast<LPARAM>(&tsc));
     if (!action) return;
 
     TimestampSettings::CounterSpec fromCounter = timestamps.fromCounter.spec();
@@ -1001,7 +1189,8 @@ void ColumnsPlusPlusData::convertTimestamps() {
             std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(toCounter.epoch))
         ).time_since_epoch().count();
 
-    ParsingInformation pi(*this, action);
+    ParsingInformation pi(*this, action, tsc.fromLocale);
+    const LocaleWords& lw = tsc.toLocale == tsc.fromLocale ? pi.localeWords : LocaleWords(tsc.toLocale);
 
     struct Replacement {
         std::string text;
@@ -1045,12 +1234,12 @@ void ColumnsPlusPlusData::convertTimestamps() {
 
             if (action == IDC_TIMESTAMP_TO_DATETIME) {
                 std::wstring s = !sourceIsCounter || fromCounter.leap
-                    ? formatTimePoint(std::chrono::utc_clock   ::time_point(std::chrono::utc_clock   ::duration(counter)), timestamps.dateFormat,
+                    ? formatTimePoint(std::chrono::utc_clock   ::time_point(std::chrono::utc_clock::duration(counter)), timestamps.dateFormat,
                                                                             timestamps.datePicture.empty() ? std::wstring() : timestamps.datePicture.back(),
-                                                                            pi.localeWords)
+                                                                            lw)
                     : formatTimePoint(std::chrono::system_clock::time_point(std::chrono::system_clock::duration(counter)), timestamps.dateFormat,
                                                                             timestamps.datePicture.empty() ? std::wstring() : timestamps.datePicture.back(),
-                                                                            pi.localeWords);
+                                                                            lw);
                 replaceCell.text = fromWide(s, pi.codepage);
             }
             else {
