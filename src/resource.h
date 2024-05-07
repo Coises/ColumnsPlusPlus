@@ -240,14 +240,14 @@
 #define IDC_TIMESTAMP_FROM_DMY                1266
 #define IDC_TIMESTAMP_FROM_DATETIME_CUSTOM    1267
 #define IDC_TIMESTAMP_FROM_PARSE              1268
-#define IDC_TIMESTAMP_FROM_LANGUAGE           1269
-#define IDC_TIMESTAMP_FROM_LOCALE             1270
-#define IDC_TIMESTAMP_FROM_REGION             1271
-#define IDC_TIMESTAMP_FROM_TIMEZONE           1272
-#define IDC_TIMESTAMP_TO_LANGUAGE             1273
-#define IDC_TIMESTAMP_TO_LOCALE               1274
-#define IDC_TIMESTAMP_TO_REGION               1275
-#define IDC_TIMESTAMP_TO_TIMEZONE             1276
+#define IDC_TIMESTAMP_TZLOCALE_ENABLE         1269
+#define IDC_TIMESTAMP_FROM_REGION             1270
+#define IDC_TIMESTAMP_FROM_TIMEZONE           1271
+#define IDC_TIMESTAMP_TZLOCALE_ARROW          1272
+#define IDC_TIMESTAMP_TO_REGION               1273
+#define IDC_TIMESTAMP_TO_TIMEZONE             1274
+#define IDC_TIMESTAMP_LANGUAGE                1275
+#define IDC_TIMESTAMP_LOCALE                  1276
 #define IDC_TIMESTAMP_TO_UNIX                 1277
 #define IDC_TIMESTAMP_TO_FILE                 1278
 #define IDC_TIMESTAMP_TO_1900                 1279
@@ -274,7 +274,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        143
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1298
+#define _APS_NEXT_CONTROL_VALUE         1299
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

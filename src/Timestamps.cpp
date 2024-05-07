@@ -1,5 +1,5 @@
 // This file is part of Columns++ for Notepad++.
-// Copyright 2023, 2024 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
+// Copyright 2024 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -14,118 +14,14 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-#include <chrono>
-#include "ColumnsPlusPlus.h"
-#include "RegularExpression.h"
+#include "Timestamps.h"
 #include "resource.h"
 #include "commctrl.h"
 
 
 namespace {
 
-// manipulating 64-bit integers
-
-bool ratioToDecimal(int64_t numerator, int64_t denominator, int64_t& integer, int64_t& decimal, size_t& places) {
-    if (denominator == 0) return false;
-    if (numerator == 0) {
-        integer = 0;
-        decimal = 0;
-        places  = 0;
-        return true;
-    }
-    if (denominator == 1) {
-        integer = numerator;
-        decimal = 0;
-        places  = 0;
-        return true;
-    }
-    if (denominator == -1) {
-        integer = -numerator;
-        decimal = 0;
-        places  = 0;
-        return true;
-    }
-    int64_t quotient  = numerator / denominator;
-    int64_t remainder = std::abs(numerator % denominator);
-    if (remainder == 0) {
-        integer = quotient;
-        decimal = 0;
-        places  = 0;
-        return true;
-    }
-
-    double divisor  = static_cast<double>(std::abs(denominator));
-    double fraction = static_cast<double>(remainder) / divisor;
-    double power    = 1;
-    size_t exponent = 0;
-    for (; exponent < 15 && remainder != static_cast<int64_t>(std::round(std::round(fraction * power) * divisor / power)); ++exponent, power *= 10);
-    integer = quotient;
-    decimal = static_cast<int64_t>(std::round(fraction * power));
-    places = exponent;
-    return true;
-}
-
-bool ratioToDecimal(int64_t numerator, int64_t denominator, std::string& result, char decimalSeparator = '.') {
-    int64_t integer;
-    int64_t decimal;
-    size_t  places;
-    if (!ratioToDecimal(numerator, denominator, integer, decimal, places)) return false;
-    result = std::to_string(integer);
-    if (places) {
-        result += decimalSeparator;
-        std::string f = std::to_string(decimal);
-        if (places > f.length()) result += std::string(places - f.length(), '0');
-        result += f;
-    }
-    return true;
-}
-
-bool stringToCounter(const std::string& source, int64_t& counter, int64_t unit, char dsep) {
-    try {
-        std::string integer, decimal;
-        bool negative = false;
-        size_t pos = source.find_first_not_of(' ');
-        if (pos == std::string::npos) return false;
-        if (source[pos] == '-') {
-            negative = true;
-            ++pos;
-        }
-        else if (source[pos] == '+') ++pos;
-        for (; pos < source.length(); ++pos) {
-            const char ch = source[pos];
-            if (ch == dsep) break;
-            if (ch >= '0' && ch <= '9') {
-                integer += ch;
-                continue;
-            }
-            if (ch == ' ' || ch == '.' || ch == ',' || ch == '\'') continue;
-            return false;
-        }
-        if (pos >= source.length()) counter = std::stoll(integer) * unit;
-        else {
-            ++pos;
-            double power = 1;
-            for (; pos < source.length(); ++pos) {
-                const char ch = source[pos];
-                if (ch == dsep) return false;
-                if (ch >= '0' && ch <= '9') {
-                    decimal += ch;
-                    power *= 10;
-                    continue;
-                }
-                if (ch == ' ' || ch == '.' || ch == ',' || ch == '\'') continue;
-                return false;
-            }
-            counter = std::stoll(integer) * unit + static_cast<int64_t>(std::round(std::stod(decimal) * static_cast<double>(unit) / power));
-        }
-        if (negative) counter = -counter;
-        return true;
-    }
-    catch (...) { return false; }
-}
-
-
-// convenient utc_clock::time_point functions
+// helper routines for the dialog procedure
 
 int64_t utcTime(const std::wstring& textTime) {
     std::wistringstream stream(textTime);
@@ -155,448 +51,6 @@ std::chrono::utc_clock::time_point timePoint(int64_t t) {
     return std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(t));
 }
 
-
-// Windows locale information
-
-std::wstring localeInfo(LCTYPE info, std::wstring locale = L"") {
-    int n = GetLocaleInfoEx(locale.empty() ? LOCALE_NAME_USER_DEFAULT : locale.data(), info, 0, 0);
-    if (n < 2) return L"";
-    std::wstring result(n - 1, 0);
-    return GetLocaleInfoEx(locale.empty() ? LOCALE_NAME_USER_DEFAULT : locale.data(), info, result.data(), n) ? result : L"";
-}
-
-std::wstring localeGenetiveMonth(WORD month, std::wstring locale = L"") {
-    SYSTEMTIME st;
-    st.wYear  = 1970;
-    st.wMonth = month;
-    st.wDay   = 10;
-    int n = GetDateFormatEx(locale.empty() ? LOCALE_NAME_USER_DEFAULT : locale.data(), 0, &st, L"ddMMMM", 0, 0, 0);
-    if (n < 3) return L"";
-    std::wstring answer(n - 1, 0);
-    GetDateFormatEx(locale.empty() ? LOCALE_NAME_USER_DEFAULT : locale.data(), 0, &st, L"ddMMMM", answer.data(), n, 0);
-    return answer.substr(2);
-}
-
-struct LocaleWords {
-    std::vector<std::wstring> abbrMonth;
-    std::vector<std::wstring> fullMonth;
-    std::vector<std::wstring> geniMonth;
-    std::vector<std::wstring> dayAbbrev;
-    std::vector<std::wstring> dayOfWeek;
-    std::vector<std::wstring> ampm;
-    const std::wstring locale;
-    size_t fullMax = 0;
-    size_t geniMax = 0;
-    size_t weekMax = 0;
-    LocaleWords(const std::wstring locale = L"") : locale(locale) {
-        abbrMonth.resize(12);
-        fullMonth.resize(12);
-        geniMonth.resize(12);
-        dayAbbrev.resize( 7);
-        dayOfWeek.resize( 7);
-        ampm     .resize( 2);
-        abbrMonth[ 0] = localeInfo(LOCALE_SABBREVMONTHNAME1 , locale);
-        abbrMonth[ 1] = localeInfo(LOCALE_SABBREVMONTHNAME2 , locale);
-        abbrMonth[ 2] = localeInfo(LOCALE_SABBREVMONTHNAME3 , locale);
-        abbrMonth[ 3] = localeInfo(LOCALE_SABBREVMONTHNAME4 , locale);
-        abbrMonth[ 4] = localeInfo(LOCALE_SABBREVMONTHNAME5 , locale);
-        abbrMonth[ 5] = localeInfo(LOCALE_SABBREVMONTHNAME6 , locale);
-        abbrMonth[ 6] = localeInfo(LOCALE_SABBREVMONTHNAME7 , locale);
-        abbrMonth[ 7] = localeInfo(LOCALE_SABBREVMONTHNAME8 , locale);
-        abbrMonth[ 8] = localeInfo(LOCALE_SABBREVMONTHNAME9 , locale);
-        abbrMonth[ 9] = localeInfo(LOCALE_SABBREVMONTHNAME10, locale);
-        abbrMonth[10] = localeInfo(LOCALE_SABBREVMONTHNAME11, locale);
-        abbrMonth[11] = localeInfo(LOCALE_SABBREVMONTHNAME12, locale);
-        fullMonth[ 0] = localeInfo(LOCALE_SMONTHNAME1 , locale);
-        fullMonth[ 1] = localeInfo(LOCALE_SMONTHNAME2 , locale);
-        fullMonth[ 2] = localeInfo(LOCALE_SMONTHNAME3 , locale);
-        fullMonth[ 3] = localeInfo(LOCALE_SMONTHNAME4 , locale);
-        fullMonth[ 4] = localeInfo(LOCALE_SMONTHNAME5 , locale);
-        fullMonth[ 5] = localeInfo(LOCALE_SMONTHNAME6 , locale);
-        fullMonth[ 6] = localeInfo(LOCALE_SMONTHNAME7 , locale);
-        fullMonth[ 7] = localeInfo(LOCALE_SMONTHNAME8 , locale);
-        fullMonth[ 8] = localeInfo(LOCALE_SMONTHNAME9 , locale);
-        fullMonth[ 9] = localeInfo(LOCALE_SMONTHNAME10, locale);
-        fullMonth[10] = localeInfo(LOCALE_SMONTHNAME11, locale);
-        fullMonth[11] = localeInfo(LOCALE_SMONTHNAME12, locale);
-        geniMonth[ 0] = localeGenetiveMonth( 1, locale);
-        geniMonth[ 1] = localeGenetiveMonth( 2, locale);
-        geniMonth[ 2] = localeGenetiveMonth( 3, locale);
-        geniMonth[ 3] = localeGenetiveMonth( 4, locale);
-        geniMonth[ 4] = localeGenetiveMonth( 5, locale);
-        geniMonth[ 5] = localeGenetiveMonth( 6, locale);
-        geniMonth[ 6] = localeGenetiveMonth( 7, locale);
-        geniMonth[ 7] = localeGenetiveMonth( 8, locale);
-        geniMonth[ 8] = localeGenetiveMonth( 9, locale);
-        geniMonth[ 9] = localeGenetiveMonth(10, locale);
-        geniMonth[10] = localeGenetiveMonth(11, locale);
-        geniMonth[11] = localeGenetiveMonth(12, locale);
-        dayAbbrev[ 0] = localeInfo(LOCALE_SABBREVDAYNAME7, locale);
-        dayAbbrev[ 1] = localeInfo(LOCALE_SABBREVDAYNAME1, locale);
-        dayAbbrev[ 2] = localeInfo(LOCALE_SABBREVDAYNAME2, locale);
-        dayAbbrev[ 3] = localeInfo(LOCALE_SABBREVDAYNAME3, locale);
-        dayAbbrev[ 4] = localeInfo(LOCALE_SABBREVDAYNAME4, locale);
-        dayAbbrev[ 5] = localeInfo(LOCALE_SABBREVDAYNAME5, locale);
-        dayAbbrev[ 6] = localeInfo(LOCALE_SABBREVDAYNAME6, locale);
-        dayOfWeek[ 0] = localeInfo(LOCALE_SDAYNAME7, locale);
-        dayOfWeek[ 1] = localeInfo(LOCALE_SDAYNAME1, locale);
-        dayOfWeek[ 2] = localeInfo(LOCALE_SDAYNAME2, locale);
-        dayOfWeek[ 3] = localeInfo(LOCALE_SDAYNAME3, locale);
-        dayOfWeek[ 4] = localeInfo(LOCALE_SDAYNAME4, locale);
-        dayOfWeek[ 5] = localeInfo(LOCALE_SDAYNAME5, locale);
-        dayOfWeek[ 6] = localeInfo(LOCALE_SDAYNAME6, locale);
-        ampm[0] = localeInfo(LOCALE_SAM, locale);
-        ampm[1] = localeInfo(LOCALE_SPM, locale);
-        for (const std::wstring& s : fullMonth) if (s.length() > fullMax) fullMax = s.length();
-        for (const std::wstring& s : geniMonth) if (s.length() > geniMax) geniMax = s.length();
-        for (const std::wstring& s : dayOfWeek) if (s.length() > weekMax) weekMax = s.length();
-    }
-};
-
-template<class Clock> std::wstring getWindowsDateTimeFormat(std::chrono::time_point<Clock> timePoint, bool longForm, std::wstring locale = L"") {
-    auto tp_seconds = std::chrono::round<std::chrono::seconds>(timePoint);
-    auto sctp = std::chrono::clock_cast<std::chrono::system_clock>(tp_seconds);
-    std::chrono::year_month_day ymd = std::chrono::floor<std::chrono::days>(sctp);
-    int secs = static_cast<int>(sctp.time_since_epoch().count() % 86400);
-    SYSTEMTIME st;
-    st.wYear         = static_cast<WORD>(int     (ymd.year ()));
-    st.wMonth        = static_cast<WORD>(unsigned(ymd.month()));
-    st.wDay          = static_cast<WORD>(unsigned(ymd.day  ()));
-    st.wDayOfWeek    = static_cast<WORD>(unsigned(std::chrono::weekday(ymd).c_encoding()));
-    st.wHour         = static_cast<WORD>(secs / 3600);
-    st.wMinute       = static_cast<WORD>((secs % 3600) / 60);
-    st.wSecond       = static_cast<WORD>(secs % 60);
-    st.wMilliseconds = 0;
-    int n = GetDateFormatEx(locale.empty() ? LOCALE_NAME_USER_DEFAULT : locale.data(), longForm ? DATE_LONGDATE : DATE_SHORTDATE, &st, 0, 0, 0, 0);
-    if (n < 3) return L"";
-    std::wstring date(n - 1, 0);
-    GetDateFormatEx(locale.empty() ? LOCALE_NAME_USER_DEFAULT : locale.data(), longForm ? DATE_LONGDATE : DATE_SHORTDATE, &st, 0, date.data(), n, 0);
-    std::wstring timeFormat = localeInfo(longForm ? LOCALE_STIMEFORMAT : LOCALE_SSHORTTIME, locale);
-    n = GetTimeFormatEx(locale.empty() ? LOCALE_NAME_USER_DEFAULT : locale.data(), 0, &st, timeFormat.data(), 0, 0);
-    if (n < 3) return L"";
-    std::wstring time(n - 1, 0);
-    GetTimeFormatEx(locale.empty() ? LOCALE_NAME_USER_DEFAULT : locale.data(), 0, &st, timeFormat.data(), time.data(), n);
-    return date + L" " + time;
-}
-
-
-// std::chrono::time_point to wide string using format/picture information
-
-template<class Clock> std::wstring formatTimePoint(std::chrono::time_point<Clock> timePoint, TimestampSettings::DateFormat format,
-                                                   std::wstring picture, const LocaleWords& localeWords) {
-    switch (format) {
-    case TimestampSettings::DateFormat::iso8601:
-        return std::format(L"{0:%F}T{0:%T}", std::chrono::time_point_cast<std::chrono::milliseconds>(timePoint));
-    case TimestampSettings::DateFormat::localeShort:
-        return getWindowsDateTimeFormat(timePoint, false, localeWords.locale);
-    case TimestampSettings::DateFormat::localeLong:
-        return getWindowsDateTimeFormat(timePoint, true, localeWords.locale);
-    }
-
-    std::wstring info = std::format(L"{0:%Y}{0:%m}{0:%d}{0:%j}{0:%w}{0:%H}{0:%I}{0:%M}{0:%S}", timePoint);
-    std::wstring s;
-    for (size_t i = 0; i < picture.length();) {
-        switch (picture[i]) {
-        case L'y':
-        {
-            size_t j = std::min(picture.find_first_not_of(L'y', i), picture.length());
-            s += j - i < 3 ? info.substr(2, 2) : info.substr(0, 4);
-            i = j;
-            break;
-        }
-        case L'M':
-        {
-            size_t j = std::min(picture.find_first_not_of(L'M', i), picture.length());
-            s += j - i < 2 && info[4] == L'0' ? info.substr(5, 1) : j - i < 3 ? info.substr(4, 2)
-               : j - i == 3 ? localeWords.abbrMonth[std::stoi(info.substr(4,2)) - 1]
-               : j - i == 4 ? localeWords.geniMonth[std::stoi(info.substr(4,2)) - 1]
-               : (localeWords.geniMonth[std::stoi(info.substr(4,2)) - 1] + std::wstring(localeWords.geniMax, L' ')).substr(0, localeWords.geniMax);
-            i = j;
-            break;
-        }
-        case L'N':
-        {
-            size_t j = std::min(picture.find_first_not_of(L'N', i), picture.length());
-            s += j - i < 5 ? localeWords.fullMonth[std::stoi(info.substr(4,2)) - 1]
-               : (localeWords.fullMonth[std::stoi(info.substr(4,2)) - 1] + std::wstring(localeWords.fullMax, L' ')).substr(0, localeWords.fullMax);
-            i = j;
-            break;
-        }
-        case L'd':
-        {
-            size_t j = std::min(picture.find_first_not_of(L'd', i), picture.length());
-            s += j - i < 2 && info[6] == L'0' ? info.substr(7, 1) : j - i < 3 ? info.substr(6, 2)
-                : j - i == 3 ? localeWords.dayAbbrev[info[11] - L'0']
-                : j - i == 4 ? localeWords.dayOfWeek[info[11] - L'0']
-                : (localeWords.dayOfWeek[info[11] - L'0'] + std::wstring(localeWords.weekMax, L' ')).substr(0, localeWords.weekMax);
-            i = j;
-            break;
-        }
-        case L'D':
-        {
-            size_t j = std::min(picture.find_first_not_of(L'D', i), picture.length());
-            s += j - i < 2 && info[8] == L'0' && info[9] == L'0' ? info.substr(10, 1) : j - i < 3 && info[8] == L'0' ? info.substr(9, 2) : info.substr(8, 3);
-            i = j;
-            break;
-        }
-        case L'H':
-        {
-            size_t j = std::min(picture.find_first_not_of(L'H', i), picture.length());
-            s += j - i < 2 && info[12] == L'0' ? info.substr(13, 1) : info.substr(12, 2);
-            i = j;
-            break;
-        }
-        case L'h':
-        {
-            size_t j = std::min(picture.find_first_not_of(L'h', i), picture.length());
-            s += j - i < 2 && info[14] == L'0' ? info.substr(15, 1) : info.substr(14, 2);
-            i = j;
-            break;
-        }
-        case L'm':
-        {
-            size_t j = std::min(picture.find_first_not_of(L'm', i), picture.length());
-            s += j - i < 2 && info[16] == L'0' ? info.substr(17, 1) : info.substr(16, 2);
-            i = j;
-            break;
-        }
-        case L's':
-        {
-            size_t j = std::min(picture.find_first_not_of(L's', i), picture.length());
-            s += j - i < 2 && info[18] == L'0' ? info.substr(19, 1) : info.substr(18, 2);
-            i = j;
-            if (picture.substr(i, 2) == L".s" || picture.substr(i, 2) == L",s") {
-                s += picture[i];
-                j = std::min(picture.find_first_not_of(L's', i + 1), picture.length());
-                s += info.substr(21, j - i - 1);
-                i = j;
-            }
-            break;
-        }
-        case L'T':
-        {
-            size_t j = std::min(picture.find_first_not_of(L'T', i), picture.length());
-            size_t k = info.substr(12,2) < L"12" ? 0 : 1;
-            if (j - i == 1) s += localeWords.ampm[k][0];
-            else s += localeWords.ampm[k];
-            i = j;
-            break;
-        }
-        case L't':
-        {
-            size_t j = std::min(picture.find_first_not_of(L't', i), picture.length());
-            size_t k = info.substr(12, 2) < L"12" ? 0 : 1;
-            if (j - i == 1) s += static_cast<wchar_t>(std::tolower(localeWords.ampm[k][0]));
-            else for (auto c : localeWords.ampm[k]) s += static_cast<wchar_t>(std::tolower(c));
-            i = j;
-            break;
-        }
-        case L'\'':
-            for (;;) {
-                size_t j = std::min(picture.find_first_of(L'\'', i + 1), picture.length());
-                s += picture.substr(i + 1, j - i - 1);
-                i = j + 1;
-                if (i >= picture.length() || picture[i] != L'\'') break;
-                s += L'\'';
-            }
-            break;
-        case L'z':
-            if (i + 1 >= picture.length()) {
-                s += L'z';
-                ++i;
-                break;
-            }
-            switch (picture[i + 1]) {
-            case L'M':
-                s += info[4] == L'0' ? L' ' + info.substr(5, 1) : info.substr(4, 2);
-                i += 2;
-                break;
-            case L'd':
-                s += info[6] == L'0' ? L' ' + info.substr(7, 1) : info.substr(6, 2);
-                i += 2;
-                break;
-            case L'D':
-                s += info[8] == L'0' && info[9] == L'0' ? L"  " + info.substr(10, 1) : info[8] == L'0' ? L' ' + info.substr(9, 2) : info.substr(8, 3);
-                i += 2;
-                break;
-            case L'H':
-                s += info[12] == L'0' ? L' ' + info.substr(13, 1) : info.substr(12, 2);
-                i += 2;
-                break;
-            case L'h':
-                s += info[14] == L'0' ? L' ' + info.substr(15, 1) : info.substr(14, 2);
-                i += 2;
-                break;
-            case L'm':
-                s += info[16] == L'0' ? L' ' + info.substr(15, 1) : info.substr(16, 2);
-                i += 2;
-                break;
-            case L's':
-            {
-                s += info[18] == L'0' ? L' ' + info.substr(19, 1) : info.substr(18, 2);
-                i += 2;
-                if (picture.substr(i, 2) == L".s" || picture.substr(i, 2) == L",s") {
-                    s += picture[i];
-                    size_t j = std::min(picture.find_first_not_of(L's', i + 1), picture.length());
-                    s += info.substr(21, j - i - 1);
-                    i = j;
-                }
-                break;
-            }
-            case L'z':
-                s += picture[i + 1];
-                i += 2;
-                break;
-            default:
-                s += L'z';
-                ++i;
-            }
-            break;
-        default:
-            s += picture[i];
-            ++i;
-        }
-    }
-    return s;
-}
-
-
-// class for enumerating locales and time zones and for communicating between the command routine and the dialog procedure
-
-class TimestampsCommon {
-
-public:
-
-    struct Locale {
-        std::wstring name;
-        std::wstring language;
-        std::wstring country;
-    };
-
-    struct TimeZone {
-        const std::chrono::time_zone* tz;
-        std::wstring continent;
-        std::wstring city;
-    };
-
-    ColumnsPlusPlusData& data;
-    std::map<std::wstring, std::map<std::wstring, Locale>> locales;
-    std::map<std::wstring, std::map<std::wstring, TimeZone>> zones;
-    std::wstring fromLocale, toLocale;
-    const std::chrono::time_zone* fromZone = 0;
-    const std::chrono::time_zone* toZone   = 0;
-
-    TimestampsCommon(ColumnsPlusPlusData& data) : data(data) {
-        EnumSystemLocalesEx(addLocale, LOCALE_NEUTRALDATA | LOCALE_SUPPLEMENTAL | LOCALE_WINDOWS, reinterpret_cast<LPARAM>(this), 0);
-        try {
-            for (const auto& tz : std::chrono::get_tzdb().zones) {
-                const std::wstring s = toWide(tz.name().data(), CP_UTF8);
-                size_t p = s.find_first_of(L'/');
-                if (p > 0 && p < s.length() - 1) {
-                    TimeZone timeZone{ &tz, s.substr(0, p), s.substr(p + 1) };
-                    zones[timeZone.continent][timeZone.city] = timeZone;
-                }
-            }
-            const std::chrono::time_zone* current = std::chrono::get_tzdb().current_zone();
-            if (fromZone == 0) fromZone = current;
-            if (toZone   == 0) toZone   = current;
-        }
-        catch (...) {}
-    }
-
-    void initializeDialogLanguagesAndLocales(HWND hwndDlg, const std::wstring& locale, int cbLanguage, int cbLocale) {
-        for (const auto& s : locales)
-            SendDlgItemMessage(hwndDlg, cbLanguage, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s.first.data()));
-        std::wstring localeName = locale;
-        if (localeName.empty()) {
-            int n = GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SNAME, 0, 0);
-            localeName.resize(n - 1);
-            GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SNAME, localeName.data(), n);
-        }
-        int nLanguage = GetLocaleInfoEx(localeName.data(), LOCALE_SLOCALIZEDLANGUAGENAME, 0, 0);
-        if (nLanguage) {
-            std::wstring language(nLanguage - 1, 0);
-            GetLocaleInfoEx(localeName.data(), LOCALE_SLOCALIZEDLANGUAGENAME, language.data(), nLanguage);
-            auto n = SendDlgItemMessage(hwndDlg, cbLanguage, CB_FINDSTRINGEXACT,
-                static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(language.data()));
-            if (n != CB_ERR) {
-                SendDlgItemMessage(hwndDlg, cbLanguage, CB_SETCURSEL, n, 0);
-                for (const auto& s : locales[language]) {
-                    std::wstring x = s.first + L"  -  " + s.second.country;
-                    n = SendDlgItemMessage(hwndDlg, cbLocale, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(x.data()));
-                    if (s.first == localeName) SendDlgItemMessage(hwndDlg, cbLocale, CB_SETCURSEL, n, 0);
-                }
-            }
-        }
-    }
-
-    void initializeDialogTimeZones(HWND hwndDlg, const std::chrono::time_zone* timeZone, int cbRegion, int cbZone) {
-        for (const auto& s : zones)
-            SendDlgItemMessage(hwndDlg, cbRegion, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s.first.data()));
-        std::wstring continent, city;
-        if (timeZone) {
-            std::wstring cc = toWide(timeZone->name(), CP_UTF8);
-            size_t p = cc.find_first_of(L'/');
-            if (p > 0 && p < cc.length() - 1) {
-                continent = cc.substr(0, p);
-                city = cc.substr(p + 1);
-            }
-            auto n = SendDlgItemMessage(hwndDlg, cbRegion, CB_FINDSTRINGEXACT,
-                static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(continent.data()));
-            if (n != CB_ERR) {
-                SendDlgItemMessage(hwndDlg, cbRegion, CB_SETCURSEL, n, 0);
-                for (const auto& s : zones[continent]) {
-                    n = SendDlgItemMessage(hwndDlg, cbZone, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s.first.data()));
-                    if (s.first == city) SendDlgItemMessage(hwndDlg, cbZone, CB_SETCURSEL, n, 0);
-                }
-            }
-        }
-    }
-
-    void updateDialogLocales(HWND hwndDlg, int cbLanguage, int cbLocale) {
-        SendDlgItemMessage(hwndDlg, cbLocale, CB_RESETCONTENT, 0, 0);
-        std::wstring language = GetDlgItemString(hwndDlg, cbLanguage);
-        for (const auto& s : locales[language]) {
-            std::wstring x = s.first + L"  -  " + s.second.country;
-            SendDlgItemMessage(hwndDlg, cbLocale, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(x.data()));
-        }
-        SendDlgItemMessage(hwndDlg, cbLocale, CB_SETCURSEL, 0, 0);
-    }
-
-    void updateDialogTimeZones(HWND hwndDlg, int cbRegion, int cbZone) {
-        SendDlgItemMessage(hwndDlg, cbZone, CB_RESETCONTENT, 0, 0);
-        std::wstring region = GetDlgItemString(hwndDlg, cbRegion);
-        for (const auto& s : zones[region]) {
-            SendDlgItemMessage(hwndDlg, cbZone, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s.first.data()));
-        }
-        SendDlgItemMessage(hwndDlg, cbZone, CB_SETCURSEL, 0, 0);
-    }
-
-private:
-
-    static BOOL CALLBACK addLocale(LPWSTR pStr, DWORD, LPARAM lparam) {
-        TimestampsCommon& si = *reinterpret_cast<TimestampsCommon*>(lparam);
-        int nLanguage = GetLocaleInfoEx(pStr, LOCALE_SLOCALIZEDLANGUAGENAME, 0, 0);
-        int nCountry = GetLocaleInfoEx(pStr, LOCALE_SLOCALIZEDCOUNTRYNAME, 0, 0);
-        TimestampsCommon::Locale locale;
-        locale.name = pStr;
-        if (nLanguage) {
-            locale.language.resize(nLanguage - 1);
-            GetLocaleInfoEx(pStr, LOCALE_SLOCALIZEDLANGUAGENAME, locale.language.data(), nLanguage);
-        }
-        if (nCountry) {
-            locale.country.resize(nCountry - 1);
-            GetLocaleInfoEx(pStr, LOCALE_SLOCALIZEDCOUNTRYNAME, locale.country.data(), nCountry);
-        }
-        si.locales[locale.language][locale.name] = locale;
-        return TRUE;
-    }
-
-};
-
-
-// some helper routines for the dialog procedure
-
 TimestampSettings::DateFormat dialogDateFormat(HWND hwndDlg) {
     if (IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_TO_DATE_STD  )) return TimestampSettings::DateFormat::iso8601;
     if (IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_TO_DATE_SHORT)) return TimestampSettings::DateFormat::localeShort;
@@ -604,21 +58,18 @@ TimestampSettings::DateFormat dialogDateFormat(HWND hwndDlg) {
                                                                   return TimestampSettings::DateFormat::custom;
 }
 
-const std::wstring dialogFromLocale(HWND hwndDlg) {
-    std::wstring locale = GetDlgItemString(hwndDlg, IDC_TIMESTAMP_FROM_LOCALE);
+const std::wstring dialogLocale(HWND hwndDlg) {
+    if (!IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_TZLOCALE_ENABLE)) return L"";
+    std::wstring locale = GetDlgItemString(hwndDlg, IDC_TIMESTAMP_LOCALE);
     return locale.substr(0, locale.find(L"  -  "));
 }
 
-const std::wstring dialogToLocale(HWND hwndDlg) {
-    std::wstring locale = GetDlgItemString(hwndDlg, IDC_TIMESTAMP_TO_LOCALE);
-    return locale.substr(0, locale.find(L"  -  "));
-}
-
-void showExampleOutput(HWND hwndDlg) {
-    std::chrono::system_clock::time_point tp = std::chrono::sys_days(std::chrono::year(1991) / 9 / 6)
-        + std::chrono::hours(14) + std::chrono::minutes(5) + std::chrono::seconds(7) + std::chrono::milliseconds(135);
-    std::wstring s = formatTimePoint(tp, dialogDateFormat(hwndDlg), GetDlgItemString(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT),
-                                     LocaleWords(dialogToLocale(hwndDlg)));
+void showExampleOutput(HWND hwndDlg, const TimestampsCommon& tsc) {
+    const LocaleWords lw(dialogLocale(hwndDlg));
+    const std::chrono::time_zone* tz = IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_TZLOCALE_ENABLE) ?
+                                       tsc.zoneNamed(GetDlgItemString(hwndDlg, IDC_TIMESTAMP_TO_REGION) + L"/" + 
+                                                     GetDlgItemString(hwndDlg, IDC_TIMESTAMP_TO_TIMEZONE)) : 0;
+    std::wstring s = lw.formatTimePoint(6841659071350000, false, tz, dialogDateFormat(hwndDlg), GetDlgItemString(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT));
     SetDlgItemText(hwndDlg, IDC_TIMESTAMP_TO_EXAMPLE, s.data());
 }
 
@@ -654,6 +105,17 @@ void enableFromFields(HWND hwndDlg, bool counterChanged = false) {
     EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_DMY               ), enableDate);
     EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_DATETIME_CUSTOM   ), enableDate);
     EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_PARSE             ), enableDate && customDate);
+}
+
+void enableTzLFields(HWND hwndDlg) {
+    bool tzl = IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_TZLOCALE_ENABLE);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_LANGUAGE      ), tzl);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_LOCALE        ), tzl);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_TZLOCALE_ARROW), tzl);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_REGION   ), tzl);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_TIMEZONE ), tzl);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_TO_REGION     ), tzl);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_TO_TIMEZONE   ), tzl);
 }
 
 void enableToCounterFields(HWND hwndDlg) {
@@ -719,6 +181,7 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
 
         CheckDlgButton(hwndDlg, IDC_TIMESTAMP_FROM_COUNTER_ENABLE , ts.enableFromCounter  ? BST_CHECKED : BST_UNCHECKED);
         CheckDlgButton(hwndDlg, IDC_TIMESTAMP_FROM_DATETIME_ENABLE, ts.enableFromDatetime ? BST_CHECKED : BST_UNCHECKED);
+        CheckDlgButton(hwndDlg, IDC_TIMESTAMP_TZLOCALE_ENABLE     , ts.enableTzAndLocale  ? BST_CHECKED : BST_UNCHECKED);
         for (const auto& s : ts.dateParse) SendDlgItemMessage(hwndDlg, IDC_TIMESTAMP_FROM_PARSE, CB_INSERTSTRING, 0, reinterpret_cast<LPARAM>(s.data()));
         SendDlgItemMessage(hwndDlg, IDC_TIMESTAMP_FROM_PARSE, CB_SETCURSEL, 0, 0);
         for (const auto& s : ts.datePicture) SendDlgItemMessage(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT, CB_INSERTSTRING, 0, reinterpret_cast<LPARAM>(s.data()));
@@ -737,14 +200,14 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
         CheckRadioButton(hwndDlg, IDC_TIMESTAMP_TO_DATE_STD, IDC_TIMESTAMP_TO_DATE_CUSTOM, radioButton);
         EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT), radioButton == IDC_TIMESTAMP_TO_DATE_CUSTOM);
 
-        tsc.initializeDialogLanguagesAndLocales(hwndDlg, tsc.fromLocale, IDC_TIMESTAMP_FROM_LANGUAGE, IDC_TIMESTAMP_FROM_LOCALE);
-        tsc.initializeDialogLanguagesAndLocales(hwndDlg, tsc.toLocale  , IDC_TIMESTAMP_TO_LANGUAGE  , IDC_TIMESTAMP_TO_LOCALE  );
-        tsc.initializeDialogTimeZones(hwndDlg, tsc.fromZone, IDC_TIMESTAMP_FROM_REGION, IDC_TIMESTAMP_FROM_TIMEZONE);
-        tsc.initializeDialogTimeZones(hwndDlg, tsc.toZone  , IDC_TIMESTAMP_TO_REGION  , IDC_TIMESTAMP_TO_TIMEZONE  );
+        tsc.initializeDialogLanguagesAndLocales(hwndDlg, data.timestamps.localeName, IDC_TIMESTAMP_LANGUAGE, IDC_TIMESTAMP_LOCALE);
+        tsc.initializeDialogTimeZones(hwndDlg, data.timestamps.fromZone, IDC_TIMESTAMP_FROM_REGION, IDC_TIMESTAMP_FROM_TIMEZONE);
+        tsc.initializeDialogTimeZones(hwndDlg, data.timestamps.toZone  , IDC_TIMESTAMP_TO_REGION  , IDC_TIMESTAMP_TO_TIMEZONE  );
 
         enableFromFields(hwndDlg);
+        enableTzLFields(hwndDlg);
         enableToCounterFields(hwndDlg);
-        showExampleOutput(hwndDlg);
+        showExampleOutput(hwndDlg, tsc);
         return TRUE;
     }
 
@@ -816,6 +279,7 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
             }
             data.timestamps.enableFromCounter  = enableFromCounter;
             data.timestamps.enableFromDatetime = enableFromDatetime;
+            data.timestamps.enableTzAndLocale  = IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_TZLOCALE_ENABLE);
             if (enableFromCounter) {
                 data.timestamps.fromCounter.type = fromCounter;
                 if (fromCounter == TimestampSettings::CounterType::custom) {
@@ -841,8 +305,11 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
                 if (data.timestamps.dateFormat == TimestampSettings::DateFormat::custom)
                     updateComboHistory(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT, data.timestamps.datePicture);
             }
-            tsc.fromLocale = dialogFromLocale(hwndDlg);
-            tsc.toLocale   = dialogToLocale  (hwndDlg);
+            if (data.timestamps.enableTzAndLocale) {
+                data.timestamps.localeName = dialogLocale(hwndDlg);
+                data.timestamps.fromZone = GetDlgItemString(hwndDlg, IDC_TIMESTAMP_FROM_REGION) + L'/' + GetDlgItemString(hwndDlg, IDC_TIMESTAMP_FROM_TIMEZONE);
+                data.timestamps.toZone   = GetDlgItemString(hwndDlg, IDC_TIMESTAMP_TO_REGION  ) + L'/' + GetDlgItemString(hwndDlg, IDC_TIMESTAMP_TO_TIMEZONE  );
+            }
             EndDialog(hwndDlg, LOWORD(wParam));
             return TRUE;
         }
@@ -858,6 +325,10 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
         case IDC_TIMESTAMP_FROM_DATETIME_ENABLE:
             enableFromFields(hwndDlg);
             break;
+        case IDC_TIMESTAMP_TZLOCALE_ENABLE:
+            enableTzLFields(hwndDlg);
+            showExampleOutput(hwndDlg, tsc);
+            break;
         case IDC_TIMESTAMP_FROM_COUNTER_ENABLE:
             enableFromFields(hwndDlg, true);
             break;
@@ -872,37 +343,33 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
         case IDC_TIMESTAMP_TO_DATE_SHORT:
         case IDC_TIMESTAMP_TO_DATE_LONG:
             EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT), FALSE);
-            showExampleOutput(hwndDlg);
+            showExampleOutput(hwndDlg, tsc);
             break;
         case IDC_TIMESTAMP_TO_DATE_CUSTOM:
             EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT), TRUE);
-            showExampleOutput(hwndDlg);
+            showExampleOutput(hwndDlg, tsc);
             break;
         case IDC_TIMESTAMP_TO_DATE_FORMAT:
-            showExampleOutput(hwndDlg);
+            showExampleOutput(hwndDlg, tsc);
             break;
-        case IDC_TIMESTAMP_FROM_LANGUAGE:
+        case IDC_TIMESTAMP_LANGUAGE:
             if (HIWORD(wParam) == CBN_SELCHANGE) {
-                tsc.updateDialogLocales(hwndDlg, IDC_TIMESTAMP_FROM_LANGUAGE, IDC_TIMESTAMP_FROM_LOCALE);
-            }
-            break;
-        case IDC_TIMESTAMP_TO_LANGUAGE:
-            if (HIWORD(wParam) == CBN_SELCHANGE) {
-                tsc.updateDialogLocales(hwndDlg, IDC_TIMESTAMP_TO_LANGUAGE, IDC_TIMESTAMP_TO_LOCALE);
+                tsc.updateDialogLocales(hwndDlg, IDC_TIMESTAMP_LANGUAGE, IDC_TIMESTAMP_LOCALE);
+                showExampleOutput(hwndDlg, tsc);
             }
             break;
         case IDC_TIMESTAMP_FROM_REGION:
-            if (HIWORD(wParam) == CBN_SELCHANGE) {
-                tsc.updateDialogTimeZones(hwndDlg, IDC_TIMESTAMP_FROM_REGION, IDC_TIMESTAMP_FROM_TIMEZONE);
-            }
+            if (HIWORD(wParam) == CBN_SELCHANGE) tsc.updateDialogTimeZones(hwndDlg, IDC_TIMESTAMP_FROM_REGION, IDC_TIMESTAMP_FROM_TIMEZONE);
             break;
         case IDC_TIMESTAMP_TO_REGION:
-            if (HIWORD(wParam) == CBN_SELCHANGE) {
-                tsc.updateDialogTimeZones(hwndDlg, IDC_TIMESTAMP_TO_REGION, IDC_TIMESTAMP_TO_TIMEZONE);
-            }
+            if (HIWORD(wParam) == CBN_SELCHANGE) tsc.updateDialogTimeZones(hwndDlg, IDC_TIMESTAMP_TO_REGION, IDC_TIMESTAMP_TO_TIMEZONE);
+            showExampleOutput(hwndDlg, tsc);
             break;
-        case IDC_TIMESTAMP_TO_LOCALE:
-            if (HIWORD(wParam) == CBN_SELCHANGE) showExampleOutput(hwndDlg);
+        case IDC_TIMESTAMP_TO_TIMEZONE:
+            showExampleOutput(hwndDlg, tsc);
+            break;
+        case IDC_TIMESTAMP_LOCALE:
+            if (HIWORD(wParam) == CBN_SELCHANGE) showExampleOutput(hwndDlg, tsc);
             break;
         }
         break;
@@ -912,256 +379,107 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
 }
 
 
-// helper classes and functions for the main routine
+// helper routines for the main routine - manipulating 64-bit integers
 
-struct ParsingInformation {
-    ColumnsPlusPlusData& data;
-    RegularExpression    rx;
-    const std::wstring   locale;
-    const intptr_t       action;
-    LocaleWords          localeWords;
-    unsigned int         codepage   = 0;
-    ParsingInformation(ColumnsPlusPlusData& data, const intptr_t action, const std::wstring locale = L"");
-    bool parseDateText       (const std::string_view source, int64_t& counter);
-    bool parseGenericDateText(const std::string_view source, int64_t& counter) const;
-    bool parsePatternDateText(const std::string_view source, int64_t& counter);
-    bool isParseDivider      (wchar_t c) const;
-};
-
-ParsingInformation::ParsingInformation(ColumnsPlusPlusData& data, const intptr_t action, const std::wstring locale)
-        : data(data), rx(data), locale(locale), action(action), localeWords(locale), codepage(data.sci.CodePage()) {
-    if (data.timestamps.enableFromDatetime && data.timestamps.datePriority == TimestampSettings::DatePriority::custom)
-        rx.find(data.timestamps.dateParse.back(), true);
-}
-
-bool ParsingInformation::parseDateText(const std::string_view source, int64_t& counter) {
-    if (!data.timestamps.enableFromDatetime) return false;
-    return data.timestamps.datePriority == TimestampSettings::DatePriority::custom ? parsePatternDateText(source, counter)
-                                                                                   : parseGenericDateText(source, counter);
-}
-
-bool ParsingInformation::isParseDivider(wchar_t c) const {
-    static const std::wstring nonAsciiDividers =
-        L"\u2012\u2013\u2212\uFE63\uFF0D\u00A0\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200A\u202F\u205F";
-    if (c < 128) return !isalnum(c);
-    return (nonAsciiDividers.find_first_of(c) != std::wstring::npos);
-}
-
-
-bool ParsingInformation::parseGenericDateText(const std::string_view source, int64_t& counter) const {
-
-    const TimestampSettings& ts = data.timestamps;
-    const std::wstring s = toWide(source, codepage);
-
-    if (!ts.enableFromDatetime || ts.datePriority == TimestampSettings::DatePriority::custom) return false;
-
-    std::vector<std::wstring> aToken;
-    std::vector<std::wstring> nToken;
-
-    for (size_t i = 0; i < s.length();) {
-        if (iswdigit(s[i])) {
-            size_t j = i + 1;
-            while (j < s.length() && iswdigit(s[j])) ++j;
-            nToken.push_back(s.substr(i, j - i));
-            i = j;
-        }
-        else if (isParseDivider(s[i])) ++i;
-        else {
-            size_t j = i + 1;
-            while (j < s.length() && !iswdigit(s[j]) && !isParseDivider(s[j])) ++j;
-            aToken.push_back(s.substr(i, j - i));
-            i = j;
-        }
-    }
-
-    if (nToken.size() < 2 || nToken.size() > 7 || aToken.size() + nToken.size() < 3) return false;
-
-    int aMonth = -1;
-    int ampm = -1;
-
-    for (size_t i = 0; i < aToken.size(); ++i) {
-        if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
-                                          aToken[i].data(), static_cast<int>(aToken[i].length()), 
-                                          localeWords.ampm[0].data(), aToken[i].length() == 1 ? 1 : -1, 0, 0, 0))
-            ampm = ampm == -1 ? 0 : -2;
-        else if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
-                                          aToken[i].data(), static_cast<int>(aToken[i].length()),
-                                          localeWords.ampm[1].data(), aToken[i].length() == 1 ? 1 : -1, 0, 0, 0))
-            ampm = ampm == -1 ? 12 : -2;
-        for (int j = 0; j < 12; ++j) {
-            if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
-                                              aToken[i].data(), -1, localeWords.abbrMonth[j].data(), -1, 0, 0, 0)) {
-                aMonth = aMonth == -1 ? j + 1 : -2;
-                break;
-            }
-            if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
-                                              aToken[i].data(), -1, localeWords.fullMonth[j].data(), -1, 0, 0, 0)) {
-                aMonth = aMonth == -1 ? j + 1 : -2;
-                break;
-            }
-            if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
-                                              aToken[i].data(), -1, localeWords.geniMonth[j].data(), -1, 0, 0, 0)) {
-                aMonth = aMonth == -1 ? j + 1 : -2;
-                break;
-            }
-        }
-    }
-
-    if (aMonth == -2 || ampm == -2) return false;
-    if (aMonth > 0 ? (nToken.size() < 2 || nToken.size() > 6) : (nToken.size() < 3 && nToken.size() > 7) ) return false;
-
-    int    nYear    = 0;
-    int    nMonth   = 0;
-    int    nDay     = 0;
-    size_t tToken   = 3;
-
-    if (aMonth > 0) {
-        tToken = 2;
-        nMonth = aMonth;
-        if      (nToken[0].length() > 3 && nToken[1].length() < 3       ) { nYear = stoi(nToken[0]); nDay = stoi(nToken[1]); }
-        else if (nToken[0].length() < 3 && nToken[1].length() > 3       ) { nYear = stoi(nToken[1]); nDay = stoi(nToken[0]); }
-        else if (ts.datePriority == TimestampSettings::DatePriority::ymd) { nYear = stoi(nToken[0]); nDay = stoi(nToken[1]); }
-        else                                                              { nYear = stoi(nToken[1]); nDay = stoi(nToken[0]); }
-    }
-    else {
-        if (nToken[0].length() > 2 && nToken[1].length() < 3 && nToken[2].length() < 3) {
-            nYear  = stoi(nToken[0]);
-            nMonth = stoi(nToken[1]);
-            nDay   = stoi(nToken[2]);
-        }
-        else if (nToken[0].length() < 3 && nToken[1].length() > 2 && nToken[2].length() < 3) {
-            nYear  = stoi(nToken[1]);
-            if (ts.datePriority == TimestampSettings::DatePriority::dmy) { nMonth = stoi(nToken[2]); nDay = stoi(nToken[0]); }
-            else                                                         { nMonth = stoi(nToken[0]); nDay = stoi(nToken[2]); }
-        }
-        else if (nToken[0].length() < 3 && nToken[1].length() < 3 && nToken[2].length() > 2) {
-            nYear  = stoi(nToken[2]);
-            if (ts.datePriority == TimestampSettings::DatePriority::dmy) { nMonth = stoi(nToken[1]); nDay = stoi(nToken[0]); }
-            else                                                         { nMonth = stoi(nToken[0]); nDay = stoi(nToken[1]); }
-        }
-        else if (ts.datePriority == TimestampSettings::DatePriority::ymd) { nYear = stoi(nToken[0]); nMonth = stoi(nToken[1]); nDay = stoi(nToken[2]); }
-        else if (ts.datePriority == TimestampSettings::DatePriority::mdy) { nYear = stoi(nToken[2]); nMonth = stoi(nToken[0]); nDay = stoi(nToken[1]); }
-        else                                                              { nYear = stoi(nToken[2]); nMonth = stoi(nToken[1]); nDay = stoi(nToken[0]); }
-    }
-    std::chrono::year_month_day ymd = std::chrono::sys_days(std::chrono::year(nYear) / nMonth / nDay);
-    if (!ymd.ok()) return false;
-
-    int64_t ticks = 0;
-    if (tToken < nToken.size()) {
-        ticks = 36000000000 * (ampm >= 0 ? stoi(nToken[tToken]) % 12 + ampm : stoi(nToken[tToken]));
-        if (tToken + 1 < nToken.size()) {
-            ticks += 600000000i64 * stoi(nToken[tToken + 1]);
-            if (tToken + 2 < nToken.size()) {
-                ticks += 10000000i64 * stoi(nToken[tToken + 2]);
-                if (tToken + 3 < nToken.size()) ticks += stoi((nToken[tToken + 3] + L"000000").substr(0, 7));
-            }
-        }
-    }
-
-    if (action == IDC_TIMESTAMP_TO_DATETIME || ts.toCounter.spec().leap) {
-        std::chrono::utc_clock::time_point tp = std::chrono::clock_cast<std::chrono::utc_clock>(std::chrono::sys_days(ymd));
-        counter = tp.time_since_epoch().count() + ticks;
-    }
-    else {
-        std::chrono::system_clock::time_point tp = std::chrono::sys_days(ymd);
-        counter = tp.time_since_epoch().count() + ticks;
-    }
-
-    return true;
-
-}
-
-
-bool ParsingInformation::parsePatternDateText(const std::string_view source, int64_t& counter) {
-
-    if (data.timestamps.dateParse.empty()) return false;
-    if (!rx.can_search()) return false;
-    if (!rx.search(source)) return false;
-    std::string year    = rx.str("y");
-    std::string doy     = rx.str("D");
-    std::string month   = rx.str("M");
-    std::string dom     = rx.str("d");
-    std::string hour12  = rx.str("h");
-    std::string hour24  = rx.str("H");
-    std::string minute  = rx.str("m");
-    std::string seconds = rx.str("s");
-    std::string ampm    = rx.str("t");
-    if (year.empty()) return false;
-    if (doy.empty() && (month.empty() || dom.empty())) return false;
-    if (!doy.empty() && !(month.empty() && dom.empty())) return false;
-    if (!hour24.empty() && !(hour12.empty() && ampm.empty())) return false;
-
-    try {
-
-        std::chrono::sys_days date;
-        int nYear = stoi(year);
-        if (year.length() == 2) nYear += nYear < 50 ? 2000 : 1900;
-        if (doy.empty()) {
-            int nMonth = 0;
-            if (month.find_first_not_of("0123456789 ") == std::string::npos) nMonth = stoi(month);
-            else {
-                std::wstring wMonth = toWide(month, codepage);
-                while (++nMonth < 13) {
-                    if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
-                        wMonth.data(), -1, localeWords.abbrMonth[nMonth - 1].data(), -1, 0, 0, 0)) break;
-                    if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
-                        wMonth.data(), -1, localeWords.fullMonth[nMonth - 1].data(), -1, 0, 0, 0)) break;
-                    if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
-                        wMonth.data(), -1, localeWords.geniMonth[nMonth - 1].data(), -1, 0, 0, 0)) break;
-                }
-            }
-            if (nMonth < 1 || nMonth > 12) return false;
-            int nDom = stoi(dom);
-            if (nDom < 1 || nDom > 31) return false;
-            std::chrono::year_month_day ymd = std::chrono::year(nYear) / nMonth / nDom;
-            if (!ymd.ok()) return false;
-            date = std::chrono::sys_days(ymd);
-        }
-        else date = std::chrono::sys_days(std::chrono::year(nYear) / 1 / 1) + std::chrono::days(stoi(doy) - 1);
-
-        int64_t ticks = hour24.empty() ? 0 : 36000000000i64 * stoi(hour24);
-        if (!hour12.empty()) ticks += 36000000000i64 * (stoi(hour12) % 12);
-        if (!ampm.empty()) {
-            std::wstring wampm = toWide(ampm, codepage);
-            if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
-                                              wampm.data(), static_cast<int>(wampm.length()),
-                                              localeWords.ampm[1].data(), wampm.length() == 1 ? 1 : -1, 0, 0, 0))
-                ticks += 432000000000i64;
-            else if (CSTR_EQUAL != CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
-                                              wampm.data(), static_cast<int>(wampm.length()),
-                                              localeWords.ampm[0].data(), wampm.length() == 1 ? 1 : -1, 0, 0, 0))
-                return false;
-        }
-        if (!minute.empty()) ticks += 600000000i64 * stoi(minute);
-        if (!seconds.empty()) {
-            size_t p = seconds.find_first_not_of("0123456789 ");
-            if (p == std::string::npos || (seconds[p] != '.' && seconds[p] != ',')) ticks += 10000000i64 * stoi(seconds);
-            else {
-                ticks += 10000000i64 * stoi(seconds.substr(0, p - 1));
-                try {
-                     ticks += stoi((seconds.substr(p + 1) + "0000000").substr(0, 7));
-                }
-                catch (...) {}
-            }
-        }
-
-        if (action == IDC_TIMESTAMP_TO_DATETIME || data.timestamps.toCounter.spec().leap) {
-            std::chrono::utc_clock::time_point tp = std::chrono::clock_cast<std::chrono::utc_clock>(date);
-            counter = tp.time_since_epoch().count() + ticks;
-        }
-        else {
-            std::chrono::system_clock::time_point tp = date;
-            counter = tp.time_since_epoch().count() + ticks;
-        }
-
+bool ratioToDecimal(int64_t numerator, int64_t denominator, int64_t& integer, int64_t& decimal, size_t& places) {
+    if (denominator == 0) return false;
+    if (numerator == 0) {
+        integer = 0;
+        decimal = 0;
+        places = 0;
         return true;
-
     }
-    catch (...) {
-        return false;
+    if (denominator == 1) {
+        integer = numerator;
+        decimal = 0;
+        places = 0;
+        return true;
+    }
+    if (denominator == -1) {
+        integer = -numerator;
+        decimal = 0;
+        places = 0;
+        return true;
+    }
+    int64_t quotient = numerator / denominator;
+    int64_t remainder = std::abs(numerator % denominator);
+    if (remainder == 0) {
+        integer = quotient;
+        decimal = 0;
+        places = 0;
+        return true;
     }
 
+    double divisor = static_cast<double>(std::abs(denominator));
+    double fraction = static_cast<double>(remainder) / divisor;
+    double power = 1;
+    size_t exponent = 0;
+    for (; exponent < 15 && remainder != static_cast<int64_t>(std::round(std::round(fraction * power) * divisor / power)); ++exponent, power *= 10);
+    integer = quotient;
+    decimal = static_cast<int64_t>(std::round(fraction * power));
+    places = exponent;
+    return true;
 }
+
+bool ratioToDecimal(int64_t numerator, int64_t denominator, std::string& result, char decimalSeparator = '.') {
+    int64_t integer;
+    int64_t decimal;
+    size_t  places;
+    if (!ratioToDecimal(numerator, denominator, integer, decimal, places)) return false;
+    result = std::to_string(integer);
+    if (places) {
+        result += decimalSeparator;
+        std::string f = std::to_string(decimal);
+        if (places > f.length()) result += std::string(places - f.length(), '0');
+        result += f;
+    }
+    return true;
+}
+
+bool stringToCounter(const std::string& source, int64_t& counter, int64_t unit, char dsep) {
+    try {
+        std::string integer, decimal;
+        bool negative = false;
+        size_t pos = source.find_first_not_of(' ');
+        if (pos == std::string::npos) return false;
+        if (source[pos] == '-') {
+            negative = true;
+            ++pos;
+        }
+        else if (source[pos] == '+') ++pos;
+        for (; pos < source.length(); ++pos) {
+            const char ch = source[pos];
+            if (ch == dsep) break;
+            if (ch >= '0' && ch <= '9') {
+                integer += ch;
+                continue;
+            }
+            if (ch == ' ' || ch == '.' || ch == ',' || ch == '\'') continue;
+            return false;
+        }
+        if (pos >= source.length()) counter = std::stoll(integer) * unit;
+        else {
+            ++pos;
+            double power = 1;
+            for (; pos < source.length(); ++pos) {
+                const char ch = source[pos];
+                if (ch == dsep) return false;
+                if (ch >= '0' && ch <= '9') {
+                    decimal += ch;
+                    power *= 10;
+                    continue;
+                }
+                if (ch == ' ' || ch == '.' || ch == ',' || ch == '\'') continue;
+                return false;
+            }
+            counter = std::stoll(integer) * unit + static_cast<int64_t>(std::round(std::stod(decimal) * static_cast<double>(unit) / power));
+        }
+        if (negative) counter = -counter;
+        return true;
+    }
+    catch (...) { return false; }
+}
+
 
 } // end unnamed namespace
 
@@ -1176,6 +494,9 @@ void ColumnsPlusPlusData::convertTimestamps() {
     auto action = DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_TIMESTAMP), nppData._nppHandle, ::timestampsDialogProc, reinterpret_cast<LPARAM>(&tsc));
     if (!action) return;
 
+    const std::chrono::time_zone* tzFrom = timestamps.enableTzAndLocale ? tsc.zoneNamed(timestamps.fromZone) : 0;
+    const std::chrono::time_zone* tzTo   = timestamps.enableTzAndLocale ? tsc.zoneNamed(timestamps.toZone  ) : 0;
+    
     TimestampSettings::CounterSpec fromCounter = timestamps.fromCounter.spec();
     TimestampSettings::CounterSpec toCounter   = timestamps.toCounter  .spec();
 
@@ -1189,8 +510,7 @@ void ColumnsPlusPlusData::convertTimestamps() {
             std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(toCounter.epoch))
         ).time_since_epoch().count();
 
-    ParsingInformation pi(*this, action, tsc.fromLocale);
-    const LocaleWords& lw = tsc.toLocale == tsc.fromLocale ? pi.localeWords : LocaleWords(tsc.toLocale);
+    TimestampsParse pi(*this, action, timestamps.enableTzAndLocale ? timestamps.localeName : L"");
 
     struct Replacement {
         std::string text;
@@ -1230,20 +550,20 @@ void ColumnsPlusPlusData::convertTimestamps() {
                 sourceIsCounter = true;
                 if (timestamps.fromCounter.type == TimestampSettings::CounterType::Ex00 && counter < -22039776000000000) counter += fromCounter.unit;
             }
-            else if (!pi.parseDateText(source, counter)) continue;
+            else if (!pi.parseDateText(source, counter, tzFrom)) continue;
 
             if (action == IDC_TIMESTAMP_TO_DATETIME) {
-                std::wstring s = !sourceIsCounter || fromCounter.leap
-                    ? formatTimePoint(std::chrono::utc_clock   ::time_point(std::chrono::utc_clock::duration(counter)), timestamps.dateFormat,
-                                                                            timestamps.datePicture.empty() ? std::wstring() : timestamps.datePicture.back(),
-                                                                            lw)
-                    : formatTimePoint(std::chrono::system_clock::time_point(std::chrono::system_clock::duration(counter)), timestamps.dateFormat,
-                                                                            timestamps.datePicture.empty() ? std::wstring() : timestamps.datePicture.back(),
-                                                                            lw);
+                std::wstring s = pi.localeWords.formatTimePoint(counter, !sourceIsCounter || fromCounter.leap, tzTo, timestamps.dateFormat,
+                                                                timestamps.datePicture.empty() ? std::wstring() : timestamps.datePicture.back());
+//                std::wstring s = !sourceIsCounter || fromCounter.leap
+//                    ? pi.localeWords.formatTimePoint(std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(counter)), timestamps.dateFormat,
+//                                                                            timestamps.datePicture.empty() ? std::wstring() : timestamps.datePicture.back())
+//                    : pi.localeWords.formatTimePoint(std::chrono::system_clock::time_point(std::chrono::system_clock::duration(counter)), timestamps.dateFormat,
+//                                                                            timestamps.datePicture.empty() ? std::wstring() : timestamps.datePicture.back());
                 replaceCell.text = fromWide(s, pi.codepage);
             }
             else {
-                if (sourceIsCounter && fromCounter.leap != toCounter.leap) {
+                if (sourceIsCounter ? fromCounter.leap != toCounter.leap : !toCounter.leap) {
                     counter = toCounter.leap
                         ? std::chrono::clock_cast<std::chrono::utc_clock>(
                              std::chrono::system_clock::time_point(std::chrono::system_clock::duration(counter))

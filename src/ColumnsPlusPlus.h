@@ -325,8 +325,11 @@ public:
         }
     };
 
-    Counter fromCounter;
-    Counter toCounter;
+    Counter      fromCounter;
+    Counter      toCounter;
+    std::wstring localeName;
+    std::wstring fromZone;
+    std::wstring toZone;
     std::vector<std::wstring> dateParse;
     std::vector<std::wstring> datePicture;
 
@@ -334,6 +337,7 @@ public:
     DateFormat   dateFormat         = DateFormat::iso8601;
     bool         enableFromCounter  = true;
     bool         enableFromDatetime = true;
+    bool         enableTzAndLocale  = false;
 
 };
 

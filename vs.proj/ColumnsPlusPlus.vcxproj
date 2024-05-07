@@ -27,6 +27,7 @@
     <ClInclude Include="..\src\RegularExpression.h" />
     <ClInclude Include="..\src\resource.h" />
     <ClInclude Include="..\src\Search.h" />
+    <ClInclude Include="..\src\Timestamps.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\About.cpp" />
@@ -46,6 +47,7 @@
     <ClCompile Include="..\src\Sort.cpp" />
     <ClCompile Include="..\src\TimeFormats.cpp" />
     <ClCompile Include="..\src\Timestamps.cpp" />
+    <ClCompile Include="..\src\TimestampsHelpers.cpp" />
     <ClCompile Include="..\src\Update.cpp" />
   </ItemGroup>
   <ItemGroup>
