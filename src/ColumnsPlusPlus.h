@@ -333,6 +333,7 @@ public:
     std::vector<std::wstring> dateParse;
     std::vector<std::wstring> datePicture;
 
+    int          twoDigitYearLimit  = 2049;
     DatePriority datePriority       = DatePriority::ymd;
     DateFormat   dateFormat         = DateFormat::iso8601;
     bool         enableFromCounter  = true;

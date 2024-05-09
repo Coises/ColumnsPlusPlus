@@ -104,6 +104,9 @@ void enableFromFields(HWND hwndDlg, bool counterChanged = false) {
     EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_MDY               ), enableDate);
     EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_DMY               ), enableDate);
     EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_DATETIME_CUSTOM   ), enableDate);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_LIMIT_TEXT        ), enableDate);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_LIMIT_EDIT        ), enableDate);
+    EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_LIMIT_SPIN        ), enableDate);
     EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_FROM_PARSE             ), enableDate && customDate);
 }
 
@@ -200,6 +203,9 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
         CheckRadioButton(hwndDlg, IDC_TIMESTAMP_TO_DATE_STD, IDC_TIMESTAMP_TO_DATE_CUSTOM, radioButton);
         EnableWindow(GetDlgItem(hwndDlg, IDC_TIMESTAMP_TO_DATE_FORMAT), radioButton == IDC_TIMESTAMP_TO_DATE_CUSTOM);
 
+        SendDlgItemMessage(hwndDlg, IDC_TIMESTAMP_FROM_LIMIT_SPIN, UDM_SETRANGE, 0, MAKELPARAM(9999, 99));
+        SendDlgItemMessage(hwndDlg, IDC_TIMESTAMP_FROM_LIMIT_SPIN, UDM_SETPOS, 0, ts.twoDigitYearLimit);
+
         tsc.initializeDialogLanguagesAndLocales(hwndDlg, data.timestamps.localeName, IDC_TIMESTAMP_LANGUAGE, IDC_TIMESTAMP_LOCALE);
         tsc.initializeDialogTimeZones(hwndDlg, data.timestamps.fromZone, IDC_TIMESTAMP_FROM_REGION, IDC_TIMESTAMP_FROM_TIMEZONE);
         tsc.initializeDialogTimeZones(hwndDlg, data.timestamps.toZone  , IDC_TIMESTAMP_TO_REGION  , IDC_TIMESTAMP_TO_TIMEZONE  );
@@ -235,10 +241,11 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
                                                                : IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_FROM_MDY) ? TimestampSettings::DatePriority::mdy
                                                                : IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_FROM_DMY) ? TimestampSettings::DatePriority::dmy
                                                                : TimestampSettings::DatePriority::custom;
-            uint64_t     fromEpoch = data.timestamps.fromCounter.custom.epoch;
-            uint64_t     fromUnit  = data.timestamps.fromCounter.custom.unit;
-            uint64_t     toEpoch   = data.timestamps.toCounter.custom.epoch;
-            uint64_t     toUnit    = data.timestamps.toCounter.custom.unit;
+            uint64_t fromEpoch     = data.timestamps.fromCounter.custom.epoch;
+            uint64_t fromUnit      = data.timestamps.fromCounter.custom.unit;
+            uint64_t toEpoch       = data.timestamps.toCounter.custom.epoch;
+            uint64_t toUnit        = data.timestamps.toCounter.custom.unit;
+            int      tdyLimit      = data.timestamps.twoDigitYearLimit;
             std::wstring dateParse = data.timestamps.dateParse.empty() ? std::wstring() : data.timestamps.dateParse[0];
             if (enableFromCounter && fromCounter == TimestampSettings::CounterType::custom) {
                 fromEpoch = utcTime(GetDlgItemString(hwndDlg, IDC_TIMESTAMP_FROM_EPOCH));
@@ -264,19 +271,22 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
                     return TRUE;
                 }
             }
-            if (enableFromDatetime && datePriority == TimestampSettings::DatePriority::custom) {
-                dateParse = GetDlgItemString(hwndDlg, IDC_TIMESTAMP_FROM_PARSE);
-                if (dateParse.empty()) {
-                    showBalloonTip(hwndDlg, IDC_TIMESTAMP_FROM_PARSE, L"Enter a regular expression to use for parsing dates and times.", true);
-                    return TRUE;
+            if (enableFromDatetime) {
+                if (!validateSpin(tdyLimit, hwndDlg, IDC_TIMESTAMP_FROM_LIMIT_SPIN, L"Enter the maximum year represented by two digits.")) return TRUE;
+                if (datePriority == TimestampSettings::DatePriority::custom) {
+                    dateParse = GetDlgItemString(hwndDlg, IDC_TIMESTAMP_FROM_PARSE);
+                    if (dateParse.empty()) {
+                        showBalloonTip(hwndDlg, IDC_TIMESTAMP_FROM_PARSE, L"Enter a regular expression to use for parsing dates and times.", true);
+                        return TRUE;
+                    }
+                    RegularExpression rx(data);
+                    std::wstring error = rx.find(dateParse);
+                    if (!error.empty()) {
+                        showBalloonTip(hwndDlg, IDC_TIMESTAMP_FROM_PARSE, error, true);
+                        return TRUE;
+                    }
                 }
-                RegularExpression rx(data);
-                std::wstring error = rx.find(dateParse);
-                if (!error.empty()) {
-                    showBalloonTip(hwndDlg, IDC_TIMESTAMP_FROM_PARSE, error, true);
-                    return TRUE;
-                }
-            }
+            } 
             data.timestamps.enableFromCounter  = enableFromCounter;
             data.timestamps.enableFromDatetime = enableFromDatetime;
             data.timestamps.enableTzAndLocale  = IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_TZLOCALE_ENABLE);
@@ -289,7 +299,8 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
                 }
             }
             if (enableFromDatetime) {
-                data.timestamps.datePriority = datePriority;
+                data.timestamps.datePriority      = datePriority;
+                data.timestamps.twoDigitYearLimit = tdyLimit;
                 if (datePriority == TimestampSettings::DatePriority::custom) updateComboHistory(hwndDlg, IDC_TIMESTAMP_FROM_PARSE, data.timestamps.dateParse);
             }
             if (LOWORD(wParam) == IDC_TIMESTAMP_TO_COUNTER) {

@@ -588,7 +588,8 @@ bool TimestampsParse::parseGenericDateText(const std::string_view source, Parsed
             alphaTokens.push_back(tokens.size());
             tokens.emplace_back(s, i, j - i);
             Token& t = tokens.back();
-            if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE, t.data(), static_cast<int>(t.length()),
+            if (t == L"T" || t == L"t" || t == L"Z" || t == L"z") /* Disallowed for LocaleWords matching as that would conflict with ISO 8601 use */;
+            else if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE, t.data(), static_cast<int>(t.length()),
                                               localeWords.ampm[0].data(), t.length() == 1 ? 1 : -1, 0, 0, 0)) {
                 if (ampmToken != std::wstring::npos) return false;
                 t.tokenType  = Token::ampm;
@@ -636,7 +637,7 @@ bool TimestampsParse::parseGenericDateText(const std::string_view source, Parsed
             pv.ymd = std::chrono::year(y) / m / d;
             if (!pv.ymd.ok()) return false;
         }
-        else {
+        else /* yyyyDDD */ {
             int d = (num1[4] - L'0') * 100 + (num1[5] - L'0') * 10 + (num1[6] - L'0');
             if (d > (std::chrono::year(y).is_leap() ? 366 : 365)) return false;
             pv.ymd = std::chrono::sys_days(std::chrono::year(y) / 1 / 1) + std::chrono::days(d - 1);
@@ -657,22 +658,35 @@ bool TimestampsParse::parseGenericDateText(const std::string_view source, Parsed
         timeNumber = 2;
         timeToken = std::max(numberTokens[1], monthToken) + 1;
     }
+    else if (numberTokens.size() > 1 && num1.length() == 4 && tokens[2].length() == 3) /* yyyy DDD */ {
+        pv.ymd = std::chrono::sys_days(std::chrono::year(num1.iValue()) / 1 / 1) + std::chrono::days(tokens[2].iValue() - 1);
+        timeNumber = 2;
+        timeToken  = numberTokens[1] + 1;
+    }
     else /* year, month and day are first three numbers (not necessarily in that order) */ {
         if (numberTokens.size() < 3) return false;
         const Token& num2 = tokens[numberTokens[1]];
         const Token& num3 = tokens[numberTokens[2]];
+        const int val1 = num1.iValue();
+        const int val2 = num2.iValue();
+        const int val3 = num3.iValue();
+        int year = 0;
         int yearPosition = 0;
-        if (num1.length() > 2) yearPosition = 1;
-        if (num2.length() > 2) { if (yearPosition == 0) yearPosition = 2; else return false; }
-        if (num3.length() > 2) { if (yearPosition == 0) yearPosition = 3; else return false; }
-        if (yearPosition == 0) yearPosition = ts.datePriority == TimestampSettings::DatePriority::ymd ? 1 : 3;
-        if (yearPosition == 1) pv.ymd = std::chrono::year(num1.iValue()) / num2.iValue() / num3.iValue();
+        if (num1.length() > 2) {                                      yearPosition = 1; year = val1; }
+        if (num2.length() > 2) { if (yearPosition != 0) return false; yearPosition = 2; year = val2; }
+        if (num3.length() > 2) { if (yearPosition != 0) return false; yearPosition = 3; year = val3; }
+        if (yearPosition == 0) {
+            if (ts.datePriority == TimestampSettings::DatePriority::ymd) { yearPosition = 1; year = val1; }
+            else                                                         { yearPosition = 3; year = val3; }
+            year += ts.twoDigitYearLimit - (ts.twoDigitYearLimit % 100) - (year > ts.twoDigitYearLimit % 100 ? 100 : 0);
+        }
+        if (yearPosition == 1) pv.ymd = std::chrono::year(year) / val2 / val3;
         else if (yearPosition == 2)
-            pv.ymd = ts.datePriority == TimestampSettings::DatePriority::dmy ? std::chrono::year(num2.iValue()) / num3.iValue() / num1.iValue()
-            : std::chrono::year(num2.iValue()) / num1.iValue() / num3.iValue();
+            pv.ymd = ts.datePriority == TimestampSettings::DatePriority::dmy ? std::chrono::year(year) / val3 / val1
+            : std::chrono::year(year) / val1 / val3;
         else
-            pv.ymd = ts.datePriority == TimestampSettings::DatePriority::dmy ? std::chrono::year(num3.iValue()) / num2.iValue() / num1.iValue()
-            : std::chrono::year(num3.iValue()) / num1.iValue() / num2.iValue();
+            pv.ymd = ts.datePriority == TimestampSettings::DatePriority::dmy ? std::chrono::year(year) / val2 / val1
+            : std::chrono::year(year) / val1 / val2;
         if (!pv.ymd.ok()) return false;
         timeNumber = 3;
         timeToken = numberTokens[2] + 1;
@@ -741,7 +755,12 @@ bool TimestampsParse::parseGenericDateText(const std::string_view source, Parsed
         else if (tz1.length() < 3 && (tz2.back() == L'+' || tz2.back() == L'-' || tz2.back() == L'\u2212')) {
             if ( tokens[numberTokens[timeNumber]].length() > 2         // allowed with unseparated time
               || timeNumber + 3 < numberTokens.size()                  // allowed if already have three time numbers without this
-              || tz2.length() > 1 ) {                                  // allowed when separator is more than just the +/- sign
+              || tz2.length() > 1                                      // allowed when separator is more than just the +/- sign
+              || ( ( tokens[numberTokens[timeNumber] - 1] == L"T"      // allowed when it looks like ISO 8601 extended format
+                  || tokens[numberTokens[timeNumber] - 1] == L"t" )
+                && ( timeNumber == numberTokens.size() - 2
+                  || tokens[numberTokens[numberTokens.size() - 2] - 1] == L":"
+                  || tokens[numberTokens[numberTokens.size() - 2] - 1] == L".") ) ) {
                 zoneNumber = numberTokens.size() - 1;
                 pv.offset = tz1.iValue() * 60;
                 if (tz2.back() != L'+') pv.offset = -pv.offset;
@@ -816,7 +835,6 @@ bool TimestampsParse::parseGenericDateText(const std::string_view source, Parsed
         return true;
     }
  
-    
     // seconds
     
     pv.ticks = tokens[numberTokens[timeNumber + 2]].iValue();
@@ -842,9 +860,6 @@ bool TimestampsParse::parseGenericDateText(const std::string_view source, Parsed
     }
  
     return false;
- 
- 
-
 
 }
 
@@ -871,7 +886,8 @@ bool TimestampsParse::parsePatternDateText(const std::string_view source, Parsed
 
         std::chrono::sys_days date;
         int nYear = stoi(year);
-        if (year.length() == 2) nYear += nYear < 50 ? 2000 : 1900;
+        if (year.length() == 2) nYear += data.timestamps.twoDigitYearLimit - (data.timestamps.twoDigitYearLimit % 100)
+                                       - (nYear > data.timestamps.twoDigitYearLimit % 100 ? 100 : 0);
         if (doy.empty()) {
             int nMonth = 0;
             if (month.find_first_not_of("0123456789 ") == std::string::npos) nMonth = stoi(month);

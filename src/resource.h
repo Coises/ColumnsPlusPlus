@@ -238,35 +238,38 @@
 #define IDC_TIMESTAMP_FROM_YMD                1264
 #define IDC_TIMESTAMP_FROM_MDY                1265
 #define IDC_TIMESTAMP_FROM_DMY                1266
-#define IDC_TIMESTAMP_FROM_DATETIME_CUSTOM    1267
-#define IDC_TIMESTAMP_FROM_PARSE              1268
-#define IDC_TIMESTAMP_TZLOCALE_ENABLE         1269
-#define IDC_TIMESTAMP_FROM_REGION             1270
-#define IDC_TIMESTAMP_FROM_TIMEZONE           1271
-#define IDC_TIMESTAMP_TZLOCALE_ARROW          1272
-#define IDC_TIMESTAMP_TO_REGION               1273
-#define IDC_TIMESTAMP_TO_TIMEZONE             1274
-#define IDC_TIMESTAMP_LANGUAGE                1275
-#define IDC_TIMESTAMP_LOCALE                  1276
-#define IDC_TIMESTAMP_TO_UNIX                 1277
-#define IDC_TIMESTAMP_TO_FILE                 1278
-#define IDC_TIMESTAMP_TO_1900                 1279
-#define IDC_TIMESTAMP_TO_1904                 1280
-#define IDC_TIMESTAMP_TO_COUNTER_CUSTOM       1281
-#define IDC_TIMESTAMP_TO_COUNTER_CUSTOM1      1282
-#define IDC_TIMESTAMP_TO_COUNTER_CUSTOM2      1283
-#define IDC_TIMESTAMP_TO_COUNTER_CUSTOM3      1284
-#define IDC_TIMESTAMP_TO_EPOCH                1285
-#define IDC_TIMESTAMP_TO_UNIT                 1286
-#define IDC_TIMESTAMP_TO_LEAP                 1287
-#define IDC_TIMESTAMP_TO_COUNTER              1288
-#define IDC_TIMESTAMP_TO_DATE_STD             1289
-#define IDC_TIMESTAMP_TO_DATE_SHORT           1290
-#define IDC_TIMESTAMP_TO_DATE_LONG            1291
-#define IDC_TIMESTAMP_TO_DATE_CUSTOM          1292
-#define IDC_TIMESTAMP_TO_DATE_FORMAT          1293
-#define IDC_TIMESTAMP_TO_EXAMPLE              1294
-#define IDC_TIMESTAMP_TO_DATETIME             1295
+#define IDC_TIMESTAMP_FROM_LIMIT_TEXT         1267
+#define IDC_TIMESTAMP_FROM_LIMIT_EDIT         1268
+#define IDC_TIMESTAMP_FROM_LIMIT_SPIN         1269
+#define IDC_TIMESTAMP_FROM_DATETIME_CUSTOM    1270
+#define IDC_TIMESTAMP_FROM_PARSE              1271
+#define IDC_TIMESTAMP_TZLOCALE_ENABLE         1272
+#define IDC_TIMESTAMP_FROM_REGION             1273
+#define IDC_TIMESTAMP_FROM_TIMEZONE           1274
+#define IDC_TIMESTAMP_TZLOCALE_ARROW          1275
+#define IDC_TIMESTAMP_TO_REGION               1276
+#define IDC_TIMESTAMP_TO_TIMEZONE             1277
+#define IDC_TIMESTAMP_LANGUAGE                1278
+#define IDC_TIMESTAMP_LOCALE                  1279
+#define IDC_TIMESTAMP_TO_UNIX                 1280
+#define IDC_TIMESTAMP_TO_FILE                 1281
+#define IDC_TIMESTAMP_TO_1900                 1282
+#define IDC_TIMESTAMP_TO_1904                 1283
+#define IDC_TIMESTAMP_TO_COUNTER_CUSTOM       1284
+#define IDC_TIMESTAMP_TO_COUNTER_CUSTOM1      1285
+#define IDC_TIMESTAMP_TO_COUNTER_CUSTOM2      1286
+#define IDC_TIMESTAMP_TO_COUNTER_CUSTOM3      1287
+#define IDC_TIMESTAMP_TO_EPOCH                1288
+#define IDC_TIMESTAMP_TO_UNIT                 1289
+#define IDC_TIMESTAMP_TO_LEAP                 1290
+#define IDC_TIMESTAMP_TO_COUNTER              1291
+#define IDC_TIMESTAMP_TO_DATE_STD             1292
+#define IDC_TIMESTAMP_TO_DATE_SHORT           1293
+#define IDC_TIMESTAMP_TO_DATE_LONG            1294
+#define IDC_TIMESTAMP_TO_DATE_CUSTOM          1295
+#define IDC_TIMESTAMP_TO_DATE_FORMAT          1296
+#define IDC_TIMESTAMP_TO_EXAMPLE              1297
+#define IDC_TIMESTAMP_TO_DATETIME             1298
 
 // Next default values for new objects
 // 
@@ -274,7 +277,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        143
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1299
+#define _APS_NEXT_CONTROL_VALUE         1301
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
