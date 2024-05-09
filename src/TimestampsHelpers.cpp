@@ -171,12 +171,15 @@ std::wstring LocaleWords::formatTimePoint(int64_t counter, bool leap, const std:
     }
     else if (format == TimestampSettings::DateFormat::localeShort) return getWindowsDateTimeFormat(counter, leap, false, locale);
     else if (format == TimestampSettings::DateFormat::localeLong ) return getWindowsDateTimeFormat(counter, leap, true , locale);
-    else info = leap ? std::format(L"{0:%Y}{0:%m}{0:%d}{0:%j}{0:%w}{0:%H}{0:%I}{0:%M}{0:%S}",
-                                   std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(counter)))
-                     : std::format(L"{0:%Y}{0:%m}{0:%d}{0:%j}{0:%w}{0:%H}{0:%I}{0:%M}{0:%S}",
-                                   std::chrono::system_clock::time_point(std::chrono::system_clock::duration(counter)));
+    else {
+        info = leap ? std::format(L"{0:%Y}{0:%m}{0:%d}{0:%j}{0:%w}{0:%H}{0:%I}{0:%M}{0:%S}",
+                                  std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(counter)))
+                    : std::format(L"{0:%Y}{0:%m}{0:%d}{0:%j}{0:%w}{0:%H}{0:%I}{0:%M}{0:%S}",
+                                  std::chrono::system_clock::time_point(std::chrono::system_clock::duration(counter)));
+        zoneInfo = L"+0000UTC";
+    }
 
-    const std::wstring picture = format == TimestampSettings::DateFormat::custom ? customPicture : L"yyyy-MM-dd'T'HH:mm:ss.sssZZ";
+    const std::wstring picture = format == TimestampSettings::DateFormat::custom ? customPicture : L"yyyy-MM-dd'T'HH:mm:ss.sssZ";
 
     std::wstring s;
     for (size_t i = 0; i < picture.length();) {
@@ -287,14 +290,28 @@ std::wstring LocaleWords::formatTimePoint(int64_t counter, bool leap, const std:
         case L'Z':
         {
             size_t j = std::min(picture.find_first_not_of(L'Z', i), picture.length());
-            s += j - i < 2 ? (zoneInfo.length() > 4 && zoneInfo.substr(1,4) != L"0000" ? zoneInfo.substr(0, 5) : L"")
-               : j - i < 3 ? zoneInfo.substr(0,5) : zoneInfo.length() > 5 ? zoneInfo.substr(5) : L"";
+            s += j - i == 3                       ? zoneInfo.substr(5)
+               : zoneInfo.substr(1, 4) == L"0000" ? L"Z"
+               : j - i == 1                       ? zoneInfo.substr(0, 3) + L":" + zoneInfo.substr(3, 2)
+               : j - i != 2                       ? zoneInfo.substr(0, 5)
+               : zoneInfo.substr(3, 2) == L"00"   ? zoneInfo.substr(0, 3)
+                                                  : zoneInfo.substr(0, 3) + L":" + zoneInfo.substr(3, 2);
             i = j;
             break;
         }
         case L'z':
+        {
+            size_t j = std::min(picture.find_first_not_of(L'z', i), picture.length());
+            s += j - i == 1                       ? zoneInfo.substr(0, 3) + L":" + zoneInfo.substr(3, 2)
+               : j - i != 2                       ? zoneInfo.substr(0, 5)
+               : zoneInfo.substr(3, 2) == L"00"   ? zoneInfo.substr(0, 3)
+                                                  : zoneInfo.substr(0, 3) + L":" + zoneInfo.substr(3, 2);
+            i = j;
+            break;
+        }
+        case L'x':
             if (i + 1 >= picture.length()) {
-                s += L'z';
+                s += L'x';
                 ++i;
                 break;
             }
@@ -335,12 +352,12 @@ std::wstring LocaleWords::formatTimePoint(int64_t counter, bool leap, const std:
                 }
                 break;
             }
-            case L'z':
+            case L'x':
                 s += picture[i + 1];
                 i += 2;
                 break;
             default:
-                s += L'z';
+                s += L'x';
                 ++i;
             }
             break;
@@ -493,7 +510,7 @@ bool TimestampsParse::parseDateText(const std::string_view source, int64_t& coun
     if ( !(data.timestamps.datePriority == TimestampSettings::DatePriority::custom ? parsePatternDateText(source, pv)
                                                                                    : parseGenericDateText(source, pv)) ) return false;
     std::chrono::utc_clock::time_point tp;
-    if (tz) {
+    if (tz && !pv.offsetFound) {
         std::chrono::local_seconds lt = std::chrono::local_days(pv.ymd);
         lt += std::chrono::hours(pv.hour);
         lt += std::chrono::minutes(pv.minute);
@@ -502,7 +519,7 @@ bool TimestampsParse::parseDateText(const std::string_view source, int64_t& coun
     else {
         tp = std::chrono::clock_cast<std::chrono::utc_clock>(std::chrono::sys_days(pv.ymd));
         tp += std::chrono::hours(pv.hour);
-        tp += std::chrono::minutes(pv.minute);
+        tp += std::chrono::minutes(pv.minute - pv.offset);
     }
     counter = tp.time_since_epoch().count() + pv.ticks;
     return true;
@@ -524,108 +541,310 @@ bool TimestampsParse::parseGenericDateText(const std::string_view source, Parsed
     const TimestampSettings& ts = data.timestamps;
     const std::wstring s = toWide(source, codepage);
 
-    std::vector<std::wstring> aToken;
-    std::vector<std::wstring> nToken;
-
+    struct Token : std::wstring_view {
+        enum TokenType {unknown, number, divider, ampm, month} tokenType = unknown;
+        int tokenValue = -1;
+        Token(std::wstring_view sv, size_t pos, size_t len) : std::wstring_view(sv.substr(pos, len)) {}
+        int iValue() const {
+            if (tokenType == ampm || tokenType == month) return tokenValue;
+            if (tokenType != number || length() > 9) return -1;
+            int v = 0;
+            for (size_t i = 0;;) {
+                v += at(i) - L'0';
+                if (++i >= length()) break;
+                v *= 10;
+            }
+            return v;
+        }
+    };
+ 
+    std::vector<Token>  tokens;
+    std::vector<size_t> alphaTokens;
+    std::vector<size_t> numberTokens;
+    std::vector<size_t> dividerTokens;
+    size_t ampmToken  = std::wstring::npos;
+    size_t monthToken = std::wstring::npos;
+ 
     for (size_t i = 0; i < s.length();) {
         if (iswdigit(s[i])) {
             size_t j = i + 1;
             while (j < s.length() && iswdigit(s[j])) ++j;
-            nToken.push_back(s.substr(i, j - i));
+            numberTokens.push_back(tokens.size());
+            tokens.emplace_back(s, i, j - i);
+            tokens.back().tokenType = Token::number;
             i = j;
         }
-        else if (isParseDivider(s[i])) ++i;
+        else if (isParseDivider(s[i])) {
+            size_t j = i + 1;
+            while (j < s.length() && isParseDivider(s[j])) ++j;
+            dividerTokens.push_back(tokens.size());
+            tokens.emplace_back(s, i, j - i);
+            tokens.back().tokenType = Token::divider;
+            i = j;
+        }
         else {
             size_t j = i + 1;
             while (j < s.length() && !iswdigit(s[j]) && !isParseDivider(s[j])) ++j;
-            aToken.push_back(s.substr(i, j - i));
+            alphaTokens.push_back(tokens.size());
+            tokens.emplace_back(s, i, j - i);
+            Token& t = tokens.back();
+            if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE, t.data(), static_cast<int>(t.length()),
+                                              localeWords.ampm[0].data(), t.length() == 1 ? 1 : -1, 0, 0, 0)) {
+                if (ampmToken != std::wstring::npos) return false;
+                t.tokenType  = Token::ampm;
+                t.tokenValue = 0;
+                ampmToken = tokens.size() - 1;
+            }
+            else if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE, t.data(), static_cast<int>(t.length()),
+                                                   localeWords.ampm[1].data(), t.length() == 1 ? 1 : -1, 0, 0, 0)) {
+                if (ampmToken != std::wstring::npos) return false;
+                t.tokenType  = Token::ampm;
+                t.tokenValue = 12;
+                ampmToken = tokens.size() - 1;
+            }
+            else for (int k = 0; k < 12; ++k) {
+                if ( ( CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE, t.data(), static_cast<int>(t.length()),
+                                                     localeWords.abbrMonth[k].data(), -1, 0, 0, 0) )
+                  || ( CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE, t.data(), static_cast<int>(t.length()),
+                                                     localeWords.fullMonth[k].data(), -1, 0, 0, 0) )
+                  || ( CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE, t.data(), static_cast<int>(t.length()),
+                                                     localeWords.geniMonth[k].data(), -1, 0, 0, 0) ) ) {
+                    if (monthToken != std::wstring::npos) return false;
+                    t.tokenType  = Token::month;
+                    t.tokenValue = k + 1;
+                    monthToken = tokens.size() - 1;
+                    break;
+                }
+            }
             i = j;
         }
     }
-
-    if (nToken.size() < 2 || nToken.size() > 7 || aToken.size() + nToken.size() < 3) return false;
-
-    int aMonth = -1;
-    int ampm = -1;
-
-    for (size_t i = 0; i < aToken.size(); ++i) {
-        if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
-            aToken[i].data(), static_cast<int>(aToken[i].length()),
-            localeWords.ampm[0].data(), aToken[i].length() == 1 ? 1 : -1, 0, 0, 0))
-            ampm = ampm == -1 ? 0 : -2;
-        else if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
-            aToken[i].data(), static_cast<int>(aToken[i].length()),
-            localeWords.ampm[1].data(), aToken[i].length() == 1 ? 1 : -1, 0, 0, 0))
-            ampm = ampm == -1 ? 12 : -2;
-        for (int j = 0; j < 12; ++j) {
-            if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
-                aToken[i].data(), -1, localeWords.abbrMonth[j].data(), -1, 0, 0, 0)) {
-                aMonth = aMonth == -1 ? j + 1 : -2;
-                break;
-            }
-            if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
-                aToken[i].data(), -1, localeWords.fullMonth[j].data(), -1, 0, 0, 0)) {
-                aMonth = aMonth == -1 ? j + 1 : -2;
-                break;
-            }
-            if (CSTR_EQUAL == CompareStringEx(LOCALE_NAME_USER_DEFAULT, LINGUISTIC_IGNORECASE,
-                aToken[i].data(), -1, localeWords.geniMonth[j].data(), -1, 0, 0, 0)) {
-                aMonth = aMonth == -1 ? j + 1 : -2;
-                break;
-            }
+ 
+    if (numberTokens.size() == 0) return false;
+    const Token& num1 = tokens[numberTokens[0]];
+ 
+    if (num1.length() == 6 || num1.length() > 8) return false;
+ 
+    size_t timeToken, timeNumber; // these will tell the indices into tokens and into numberTokens where the time can start
+ 
+    if (num1.length() > 6) /* must be yyyyMMdd or yyyyDDD */ {
+        if (monthToken != std::wstring::npos) /* shouldn't be a named month with this form */ return false;
+        int y = (num1[0] - L'0') * 1000 + (num1[1] - L'0') * 100 + (num1[2] - L'0') * 10 + (num1[3] - L'0');
+        if (num1.length() == 8) /* yyyyMMdd */ {
+            int m = (num1[4] - L'0') * 10 + (num1[5] - L'0');
+            int d = (num1[6] - L'0') * 10 + (num1[7] - L'0');
+            pv.ymd = std::chrono::year(y) / m / d;
+            if (!pv.ymd.ok()) return false;
         }
+        else {
+            int d = (num1[4] - L'0') * 100 + (num1[5] - L'0') * 10 + (num1[6] - L'0');
+            if (d > (std::chrono::year(y).is_leap() ? 366 : 365)) return false;
+            pv.ymd = std::chrono::sys_days(std::chrono::year(y) / 1 / 1) + std::chrono::days(d - 1);
+        }
+        timeNumber = 1;
+        timeToken = numberTokens[0] + 1;
+    }
+    else if (monthToken != std::wstring::npos) /* named month given */ {
+        if (numberTokens.size() < 2) /* must have a year and a day */ return false;
+        if (numberTokens.size() > 2 && numberTokens[2] < monthToken) /* should not have three numbers before named month */ return false;
+        const Token& num2 = tokens[numberTokens[1]];
+        if (num1.length() > 2 || (num2.length() < 3 && ts.datePriority == TimestampSettings::DatePriority::ymd)) /* year first */ {
+            if (num2.length() > 2) /* day should not be more than two digits */ return false;
+            pv.ymd = std::chrono::year(num1.iValue()) / tokens[monthToken].tokenValue / num2.iValue();
+        }
+        else pv.ymd = std::chrono::year(num2.iValue()) / tokens[monthToken].tokenValue / num1.iValue();
+        if (!pv.ymd.ok()) return false;
+        timeNumber = 2;
+        timeToken = std::max(numberTokens[1], monthToken) + 1;
+    }
+    else /* year, month and day are first three numbers (not necessarily in that order) */ {
+        if (numberTokens.size() < 3) return false;
+        const Token& num2 = tokens[numberTokens[1]];
+        const Token& num3 = tokens[numberTokens[2]];
+        int yearPosition = 0;
+        if (num1.length() > 2) yearPosition = 1;
+        if (num2.length() > 2) { if (yearPosition == 0) yearPosition = 2; else return false; }
+        if (num3.length() > 2) { if (yearPosition == 0) yearPosition = 3; else return false; }
+        if (yearPosition == 0) yearPosition = ts.datePriority == TimestampSettings::DatePriority::ymd ? 1 : 3;
+        if (yearPosition == 1) pv.ymd = std::chrono::year(num1.iValue()) / num2.iValue() / num3.iValue();
+        else if (yearPosition == 2)
+            pv.ymd = ts.datePriority == TimestampSettings::DatePriority::dmy ? std::chrono::year(num2.iValue()) / num3.iValue() / num1.iValue()
+            : std::chrono::year(num2.iValue()) / num1.iValue() / num3.iValue();
+        else
+            pv.ymd = ts.datePriority == TimestampSettings::DatePriority::dmy ? std::chrono::year(num3.iValue()) / num2.iValue() / num1.iValue()
+            : std::chrono::year(num3.iValue()) / num1.iValue() / num2.iValue();
+        if (!pv.ymd.ok()) return false;
+        timeNumber = 3;
+        timeToken = numberTokens[2] + 1;
     }
 
-    if (aMonth == -2 || ampm == -2) return false;
-    if (aMonth > 0 ? (nToken.size() < 2 || nToken.size() > 6) : (nToken.size() < 3 && nToken.size() > 7)) return false;
+    if (timeNumber >= numberTokens.size()) /* no time given; should be no am/pm */ return ampmToken == std::wstring::npos;
 
-    int    nYear = 0;
-    int    nMonth = 0;
-    int    nDay = 0;
-    size_t tToken = 3;
-
-    if (aMonth > 0) {
-        tToken = 2;
-        nMonth = aMonth;
-        if (nToken[0].length() > 3 && nToken[1].length() < 3) { nYear = stoi(nToken[0]); nDay = stoi(nToken[1]); }
-        else if (nToken[0].length() < 3 && nToken[1].length() > 3) { nYear = stoi(nToken[1]); nDay = stoi(nToken[0]); }
-        else if (ts.datePriority == TimestampSettings::DatePriority::ymd) { nYear = stoi(nToken[0]); nDay = stoi(nToken[1]); }
-        else { nYear = stoi(nToken[1]); nDay = stoi(nToken[0]); }
+    if (tokens[numberTokens[timeNumber]].length() > 2) /* could be Hmm, HHmm or Hmmss or HHmmss with optional decimals following */ {
+        const Token& time = tokens[numberTokens[timeNumber]];
+        switch (time.length()) {
+        case 3:
+            pv.hour = time[0] - L'0';
+            pv.minute = (time[1] - L'0') * 10 + (time[2] - L'0');
+            break;
+        case 4:
+            pv.hour = (time[0] - L'0') * 10 + time[1] - L'0';
+            pv.minute = (time[2] - L'0') * 10 + (time[3] - L'0');
+            break;
+        case 5:
+            pv.hour = time[0] - L'0';
+            pv.minute = (time[1] - L'0') * 10 + (time[2] - L'0');
+            pv.ticks = (time[3] - L'0') * 100000000LL + (time[4] - L'0') * 10000000LL;
+            break;
+        case 6:
+            pv.hour = (time[0] - L'0') * 10 + time[1] - L'0';
+            pv.minute = (time[2] - L'0') * 10 + (time[3] - L'0');
+            pv.ticks = (time[4] - L'0') * 100000000LL + (time[5] - L'0') * 10000000LL;
+            break;
+        default:
+            return false;
+        }
+        if (pv.hour > 23 || pv.minute > 59 || pv.ticks > 600000000LL) return false;
     }
-    else {
-        if (nToken[0].length() > 2 && nToken[1].length() < 3 && nToken[2].length() < 3) {
-            nYear = stoi(nToken[0]);
-            nMonth = stoi(nToken[1]);
-            nDay = stoi(nToken[2]);
+    else /* hour */ {
+        pv.hour = tokens[numberTokens[timeNumber]].iValue();
+        if (ampmToken != std::wstring::npos) {
+            if (ampmToken < timeToken) /* am/pm should not appear within the date section */ return false;
+            if (pv.hour < 1 || pv.hour > 12) return false;
+            pv.hour = (pv.hour % 12) + tokens[ampmToken].tokenValue;
         }
-        else if (nToken[0].length() < 3 && nToken[1].length() > 2 && nToken[2].length() < 3) {
-            nYear = stoi(nToken[1]);
-            if (ts.datePriority == TimestampSettings::DatePriority::dmy) { nMonth = stoi(nToken[2]); nDay = stoi(nToken[0]); }
-            else { nMonth = stoi(nToken[0]); nDay = stoi(nToken[2]); }
-        }
-        else if (nToken[0].length() < 3 && nToken[1].length() < 3 && nToken[2].length() > 2) {
-            nYear = stoi(nToken[2]);
-            if (ts.datePriority == TimestampSettings::DatePriority::dmy) { nMonth = stoi(nToken[1]); nDay = stoi(nToken[0]); }
-            else { nMonth = stoi(nToken[0]); nDay = stoi(nToken[1]); }
-        }
-        else if (ts.datePriority == TimestampSettings::DatePriority::ymd) { nYear = stoi(nToken[0]); nMonth = stoi(nToken[1]); nDay = stoi(nToken[2]); }
-        else if (ts.datePriority == TimestampSettings::DatePriority::mdy) { nYear = stoi(nToken[2]); nMonth = stoi(nToken[0]); nDay = stoi(nToken[1]); }
-        else { nYear = stoi(nToken[2]); nMonth = stoi(nToken[1]); nDay = stoi(nToken[0]); }
+        else if (pv.hour < 0 || pv.hour > 23) return false;
     }
 
-    pv.ymd = std::chrono::sys_days(std::chrono::year(nYear) / nMonth / nDay);
-    if (!pv.ymd.ok()) return false;
-    if (tToken < nToken.size()) {
-        pv.hour = (ampm >= 0 ? stoi(nToken[tToken]) % 12 + ampm : stoi(nToken[tToken]));
-        if (tToken + 1 < nToken.size()) {
-            pv.minute = stoi(nToken[tToken + 1]);
-            if (tToken + 2 < nToken.size()) {
-                pv.ticks = 10000000i64 * stoi(nToken[tToken + 2]);
-                if (tToken + 3 < nToken.size()) pv.ticks += stoi((nToken[tToken + 3] + L"000000").substr(0, 7));
+    /* if there is a "Z" time zone offset specified, get that now */
+
+    pv.offsetFound = tokens.back() == L"Z" || tokens.back() == L"z";
+
+    if (timeNumber + 1 == numberTokens.size()) /* done */ return true;
+
+    // time zone offests other than "Z" begin with a plus or minus sign and have two digits, four digits or two digits, a colon and two digits
+    // they can only appear at the very end of an entry
+
+    size_t zoneNumber = numberTokens.size();
+
+    if (!pv.offsetFound && tokens.back().tokenType == Token::number) {
+        const Token& tz1 = tokens.back();
+        const Token& tz2 = tokens[tokens.size() - 2];
+        const Token& tz3 = tokens[tokens.size() - 3];
+        const Token& tz4 = tokens[tokens.size() - 4];
+        if (tz1.length() == 4 && (tz2.back() == L'+' || tz2.back() == L'-' || tz2.back() == L'\u2212')) {
+            zoneNumber = numberTokens.size() - 1;
+            pv.offset = (tz1[0] - L'0') * 600 + (tz1[1] - L'0') * 60 + (tz1[2] - L'0') * 10 + (tz1[3] - L'0');
+            if (tz2.back() != L'+') pv.offset = -pv.offset;
+            pv.offsetFound = true;
+        }
+        else if (tz1.length() < 3 && (tz2.back() == L'+' || tz2.back() == L'-' || tz2.back() == L'\u2212')) {
+            if ( tokens[numberTokens[timeNumber]].length() > 2         // allowed with unseparated time
+              || timeNumber + 3 < numberTokens.size()                  // allowed if already have three time numbers without this
+              || tz2.length() > 1 ) {                                  // allowed when separator is more than just the +/- sign
+                zoneNumber = numberTokens.size() - 1;
+                pv.offset = tz1.iValue() * 60;
+                if (tz2.back() != L'+') pv.offset = -pv.offset;
+                pv.offsetFound = true;
             }
         }
+        else if ( tz3.tokenType == Token::number && tz1.length() == 2 && tz3.length() < 3 && tz2 == L":" 
+               && (tz4.back() == L'+' || tz4.back() == L'-' || tz4.back() == L'\u2212') ) {
+            zoneNumber = numberTokens.size() - 2;
+            pv.offset  = tz3.iValue() * 60 + tz1.iValue();
+            if (tz4.back() != L'+') pv.offset = -pv.offset;
+            pv.offsetFound = true;
+        }
     }
-    return true;
+ 
+    if (timeNumber + 1 == zoneNumber) /* done */ return true;
+ 
+    if (tokens[numberTokens[timeNumber]].length() > 2) /* decimal minutes or seconds, or cannot parse */ {
+        if ( timeNumber + 2 != zoneNumber || numberTokens[timeNumber + 1] == numberTokens[timeNumber] + 2
+          || (tokens[numberTokens[timeNumber] + 1] != L"." && tokens[numberTokens[timeNumber] + 1] != L",") ) return false;
+        const std::wstring_view decimalString = tokens[numberTokens[timeNumber + 1]];
+        int64_t v = 0;
+        for (size_t i = 0;;) {
+            if (i < decimalString.length()) v += decimalString.at(i) - L'0';
+            if (++i >= 9) break;
+            v *= 10;
+        }
+        if (tokens[numberTokens[timeNumber]].length() > 4) /* decimal seconds */ pv.ticks += (v + 50) / 100;
+                                                      else /* decimal minutes */ pv.ticks  = (v * 6 + 5) / 10;
+        return true;
+    }
+ 
+    // decimal hours are recognized only if separated from whole hours by a single period or comma,
+    // and there are no more numbers before the time zone offset (if any)
+ 
+    if ( timeNumber + 2 == zoneNumber
+      && numberTokens[timeNumber + 1] == numberTokens[timeNumber] + 2
+      && (tokens[numberTokens[timeNumber] + 1] == L"." || tokens[numberTokens[timeNumber] + 1] == L",") ) {
+        const std::wstring_view decimalString = tokens[numberTokens[timeNumber + 1]];
+        int64_t v = 0;
+        for (size_t i = 0;;) {
+            if (i < decimalString.length()) v += decimalString.at(i) - L'0';
+            if (++i >= 9) break;
+            v *= 10;
+        }
+        v *= 36;
+        pv.minute = static_cast<int>(v / 600000000);
+        pv.ticks  = v % 600000000;
+        return true;
+    }
+ 
+    // minute
+ 
+    pv.minute = tokens[numberTokens[timeNumber + 1]].iValue();
+    if (pv.minute < 0 || pv.minute > 59) return false;
+    if (timeNumber + 2 == zoneNumber) /* done */ return true;
+ 
+    // decimal minutes are recognized only if separated from whole minutes by a single period or comma,
+    // and there are no more numbers before the time zone offset (if any)
+ 
+    if ( timeNumber + 3 == zoneNumber
+      && numberTokens[timeNumber + 2] == numberTokens[timeNumber + 1] + 2
+      && (tokens[numberTokens[timeNumber + 1] + 1] == L"." || tokens[numberTokens[timeNumber + 1] + 1] == L",") ) {
+        const std::wstring_view decimalString = tokens[numberTokens[timeNumber + 2]];
+        int64_t v = 0;
+        for (size_t i = 0;;) {
+            if (i < decimalString.length()) v += decimalString.at(i) - L'0';
+            if (++i >= 9) break;
+            v *= 10;
+        }
+        pv.ticks = (v * 6 + 5) / 10;
+        return true;
+    }
+ 
+    
+    // seconds
+    
+    pv.ticks = tokens[numberTokens[timeNumber + 2]].iValue();
+    if (pv.ticks < 0 || pv.ticks > 60) return false;
+    pv.ticks *= 10000000;
+    if (timeNumber + 3 == zoneNumber) /* done */ return true;
+ 
+    // decimal seconds are recognized only if separated from whole seconds by a single period or comma,
+    // and there are no more numbers before the time zone offset (if any)
+ 
+    if ( timeNumber + 4 == zoneNumber
+      && numberTokens[timeNumber + 3] == numberTokens[timeNumber + 2] + 2
+      && (tokens[numberTokens[timeNumber + 2] + 1] == L"." || tokens[numberTokens[timeNumber + 2] + 1] == L",") ) {
+        const std::wstring_view decimalString = tokens[numberTokens[timeNumber + 3]];
+        int64_t v = 0;
+        for (size_t i = 0;;) {
+            if (i < decimalString.length()) v += decimalString.at(i) - L'0';
+            if (++i >= 9) break;
+            v *= 10;
+        }
+        pv.ticks += (v + 50) / 100;
+        return true;
+    }
+ 
+    return false;
+ 
+ 
+
 
 }
 
@@ -643,11 +862,13 @@ bool TimestampsParse::parsePatternDateText(const std::string_view source, Parsed
     std::string minute  = rx.str("m");
     std::string seconds = rx.str("s");
     std::string ampm    = rx.str("t");
+    std::string offset  = rx.str("Z");
     if (year.empty()) return false;
     if (doy.empty() && (month.empty() || dom.empty())) return false;
     if (!doy.empty() && !(month.empty() && dom.empty())) return false;
 
     try {
+
         std::chrono::sys_days date;
         int nYear = stoi(year);
         if (year.length() == 2) nYear += nYear < 50 ? 2000 : 1900;
@@ -672,6 +893,44 @@ bool TimestampsParse::parsePatternDateText(const std::string_view source, Parsed
             if (!pv.ymd.ok()) return false;
         }
         else pv.ymd = std::chrono::sys_days(std::chrono::year(nYear) / 1 / 1) + std::chrono::days(stoi(doy) - 1);
+
+        if (!offset.empty()) {
+            if (offset == "Z" || offset == "z") pv.offset = 0;
+            else {
+                bool west = false;
+                std::wstring s = toWide(offset, codepage);
+                if (s[0] == L'-' || s[0] == L'\u2212') west = true;
+                else if (s[0] != L'+') return false;
+                switch (s.length()) {
+                case 2:
+                    if (!iswdigit(s[1])) return false;
+                    pv.offset = 60 * stoi(s.substr(1, 1));
+                    break;
+                case 3:
+                    if (!iswdigit(s[1]) && iswdigit(s[2])) return false;
+                    pv.offset = 60 * stoi(s.substr(1, 2));
+                    break;
+                case 5:
+                    if (s[2] == L':') {
+                        if (!iswdigit(s[1]) && iswdigit(s[3]) && iswdigit(s[4])) return false;
+                        pv.offset = 60 * stoi(s.substr(1, 1)) + stoi(s.substr(3, 2));
+                    }
+                    else {
+                        if (!iswdigit(s[1]) && iswdigit(s[2]) && iswdigit(s[3]) && iswdigit(s[4])) return false;
+                        pv.offset = 60 * stoi(s.substr(1, 2)) + stoi(s.substr(3, 2));
+                    }
+                    break;
+                case 6:
+                    if (!iswdigit(s[1]) && iswdigit(s[2]) && s[3] != L':' && iswdigit(s[4]) && iswdigit(s[5])) return false;
+                    pv.offset = 60 * stoi(s.substr(1, 2)) + stoi(s.substr(4, 2));
+                    break;
+                default:
+                    return false;
+                }
+                if (west) pv.offset = -pv.offset;
+            }
+            pv.offsetFound = true;
+        }
 
         pv.hour = hour.empty() ? 0 : stoi(hour);
         if (!ampm.empty()) {
@@ -699,7 +958,9 @@ bool TimestampsParse::parsePatternDateText(const std::string_view source, Parsed
                 catch (...) {}
             }
         }
+
         return true;
+
     }
     catch (...) {
         return false;

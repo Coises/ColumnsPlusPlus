@@ -555,11 +555,6 @@ void ColumnsPlusPlusData::convertTimestamps() {
             if (action == IDC_TIMESTAMP_TO_DATETIME) {
                 std::wstring s = pi.localeWords.formatTimePoint(counter, !sourceIsCounter || fromCounter.leap, tzTo, timestamps.dateFormat,
                                                                 timestamps.datePicture.empty() ? std::wstring() : timestamps.datePicture.back());
-//                std::wstring s = !sourceIsCounter || fromCounter.leap
-//                    ? pi.localeWords.formatTimePoint(std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(counter)), timestamps.dateFormat,
-//                                                                            timestamps.datePicture.empty() ? std::wstring() : timestamps.datePicture.back())
-//                    : pi.localeWords.formatTimePoint(std::chrono::system_clock::time_point(std::chrono::system_clock::duration(counter)), timestamps.dateFormat,
-//                                                                            timestamps.datePicture.empty() ? std::wstring() : timestamps.datePicture.back());
                 replaceCell.text = fromWide(s, pi.codepage);
             }
             else {

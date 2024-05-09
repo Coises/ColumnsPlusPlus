@@ -70,8 +70,11 @@ struct TimestampsParse {
 
     struct ParsedValues {
         std::chrono::year_month_day ymd;
-        int64_t ticks;
-        int hour, minute;
+        int64_t ticks    = 0;
+        int hour         = 0;
+        int minute       = 0;
+        int offset       = 0;
+        bool offsetFound = false;
     };
 
     ColumnsPlusPlusData& data;
