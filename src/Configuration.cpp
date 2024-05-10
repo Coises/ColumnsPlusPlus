@@ -286,6 +286,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 else if (setting == "fromleap"     ) timestamps.fromCounter.custom.leap = value != "0";
                 else if (setting == "toleap"       ) timestamps.toCounter  .custom.leap = value != "0";
                 else if (setting == "zoneandlocale") timestamps.enableTzAndLocale       = value != "0";
+                else if (setting == "overwrite"    ) timestamps.overwrite               = value != "0";
                 else if (setting == "fromzone"     ) timestamps.fromZone                = toWide(value, CP_UTF8);
                 else if (setting == "tozone"       ) timestamps.toZone                  = toWide(value, CP_UTF8);
                 else if (setting == "localename"   ) timestamps.localeName              = toWide(value, CP_UTF8);
@@ -516,6 +517,7 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "toLeap\t"        << timestamps.toCounter.custom.leap         << std::endl;
     file << "twoDigitLimit\t" << timestamps.twoDigitYearLimit             << std::endl;
     file << "zoneAndLocale\t" << timestamps.enableTzAndLocale             << std::endl;
+    file << "overwrite\t"     << timestamps.overwrite                     << std::endl;
     file << "fromZone\t"      << fromWide(timestamps.fromZone  , CP_UTF8) << std::endl;
     file << "toZone\t"        << fromWide(timestamps.toZone    , CP_UTF8) << std::endl;
     file << "localeName\t"    << fromWide(timestamps.localeName, CP_UTF8) << std::endl;

@@ -206,9 +206,14 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
         SendDlgItemMessage(hwndDlg, IDC_TIMESTAMP_FROM_LIMIT_SPIN, UDM_SETRANGE, 0, MAKELPARAM(9999, 99));
         SendDlgItemMessage(hwndDlg, IDC_TIMESTAMP_FROM_LIMIT_SPIN, UDM_SETPOS, 0, ts.twoDigitYearLimit);
 
-        tsc.initializeDialogLanguagesAndLocales(hwndDlg, data.timestamps.localeName, IDC_TIMESTAMP_LANGUAGE, IDC_TIMESTAMP_LOCALE);
-        tsc.initializeDialogTimeZones(hwndDlg, data.timestamps.fromZone, IDC_TIMESTAMP_FROM_REGION, IDC_TIMESTAMP_FROM_TIMEZONE);
-        tsc.initializeDialogTimeZones(hwndDlg, data.timestamps.toZone  , IDC_TIMESTAMP_TO_REGION  , IDC_TIMESTAMP_TO_TIMEZONE  );
+        CheckDlgButton(hwndDlg, IDC_TIMESTAMP_OVERWRITE, ts.overwrite ? BST_CHECKED : BST_UNCHECKED);
+
+        if (ts.enableTzAndLocale) {
+            tsc.initializeDialogLanguagesAndLocales(hwndDlg, data.timestamps.localeName, IDC_TIMESTAMP_LANGUAGE, IDC_TIMESTAMP_LOCALE);
+            tsc.initializeDialogTimeZones(hwndDlg, data.timestamps.fromZone, IDC_TIMESTAMP_FROM_REGION, IDC_TIMESTAMP_FROM_TIMEZONE);
+            tsc.initializeDialogTimeZones(hwndDlg, data.timestamps.toZone  , IDC_TIMESTAMP_TO_REGION  , IDC_TIMESTAMP_TO_TIMEZONE  );
+            tsc.dialogTzLInitialized = true;
+        }
 
         enableFromFields(hwndDlg);
         enableTzLFields(hwndDlg);
@@ -290,6 +295,7 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
             data.timestamps.enableFromCounter  = enableFromCounter;
             data.timestamps.enableFromDatetime = enableFromDatetime;
             data.timestamps.enableTzAndLocale  = IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_TZLOCALE_ENABLE);
+            data.timestamps.overwrite          = IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_OVERWRITE);
             if (enableFromCounter) {
                 data.timestamps.fromCounter.type = fromCounter;
                 if (fromCounter == TimestampSettings::CounterType::custom) {
@@ -337,6 +343,12 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
             enableFromFields(hwndDlg);
             break;
         case IDC_TIMESTAMP_TZLOCALE_ENABLE:
+            if (!tsc.dialogTzLInitialized && IsDlgButtonChecked(hwndDlg, IDC_TIMESTAMP_TZLOCALE_ENABLE)) {
+                tsc.initializeDialogLanguagesAndLocales(hwndDlg, data.timestamps.localeName, IDC_TIMESTAMP_LANGUAGE, IDC_TIMESTAMP_LOCALE);
+                tsc.initializeDialogTimeZones(hwndDlg, data.timestamps.fromZone, IDC_TIMESTAMP_FROM_REGION, IDC_TIMESTAMP_FROM_TIMEZONE);
+                tsc.initializeDialogTimeZones(hwndDlg, data.timestamps.toZone  , IDC_TIMESTAMP_TO_REGION  , IDC_TIMESTAMP_TO_TIMEZONE  );
+                tsc.dialogTzLInitialized = true;
+            }
             enableTzLFields(hwndDlg);
             showExampleOutput(hwndDlg, tsc);
             break;
@@ -531,6 +543,7 @@ void ColumnsPlusPlusData::convertTimestamps() {
     };
 
     std::vector<std::vector<Replacement>> replacements;
+    bool needsSpace = false;
 
     rs.natural();
 
@@ -545,12 +558,13 @@ void ColumnsPlusPlusData::convertTimestamps() {
             auto& replaceCell = replaceLine.emplace_back();
             replaceCell.isLastInRow = cell.isLastInRow();
             replaceCell.isEndOfLine = cell.isEndOfLine();
-            {
+            if (timestamps.overwrite) {
                 const std::string text = cell.text();
                 const size_t n = text.find_last_not_of(' ');
                 if (n == std::string::npos) continue;
                 replaceCell.text = text.substr(0, n + 1);
             }
+            else if (cell.isLastInRow() && cell.text().back() != ' ') needsSpace = true;
 
             const std::string source = cell.trim();
             int64_t counter = 0;
@@ -615,6 +629,7 @@ void ColumnsPlusPlusData::convertTimestamps() {
 
     for (auto row : rs) {
         std::string r;
+        if (needsSpace) r = ' ';
         const auto& replacementRow = replacements[row.index];
         for (size_t column = 0; column < replacementRow.size(); ++column) {
             const auto& repl      = replacementRow[column];
@@ -625,7 +640,17 @@ void ColumnsPlusPlusData::convertTimestamps() {
             r += s;
             if (!repl.isLastInRow) r += '\t';
         }
-        if (r != row.text()) row.replace(r);
+        if (!timestamps.overwrite) {
+            if (row.isEndOfLine() && r.empty()) continue;
+            if (row.vsMax()) {
+                sci.SetTargetRange(row.endOfLine(), row.endOfLine());
+                sci.SetTargetStartVirtualSpace(row.vsMax());
+                sci.SetTargetEndVirtualSpace(row.vsMax());
+            }
+            else sci.SetTargetRange(row.cpMax(), row.cpMax());
+            sci.ReplaceTarget(r);
+        }
+        else if (r != row.text()) row.replace(r);
     }
 
     rs.refit();

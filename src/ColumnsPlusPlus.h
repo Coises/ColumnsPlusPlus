@@ -339,6 +339,7 @@ public:
     bool         enableFromCounter  = true;
     bool         enableFromDatetime = true;
     bool         enableTzAndLocale  = false;
+    bool         overwrite          = false;
 
 };
 

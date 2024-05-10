@@ -409,8 +409,14 @@ TimestampsCommon::TimestampsCommon(ColumnsPlusPlusData& data) : data(data) {
 }
 
 void TimestampsCommon::initializeDialogLanguagesAndLocales(HWND hwndDlg, const std::wstring& initialLocale, int cbLanguage, int cbLocale) {
-    for (const auto& s : locales)
-        SendDlgItemMessage(hwndDlg, cbLanguage, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s.first.data()));
+    HWND h = GetDlgItem(hwndDlg, cbLanguage);
+    SendMessage(h, WM_SETREDRAW, FALSE, 0);
+    size_t totalStringSpace = 32;
+    for (const auto& s : locales) { totalStringSpace += 2 * (s.first.length() + 1); }
+    SendMessage(h, CB_INITSTORAGE, locales.size(), totalStringSpace);
+    for (const auto& s : locales) SendMessage(h, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s.first.data()));
+    SendMessage(h, WM_SETREDRAW, TRUE, 0);
+    RedrawWindow(h, NULL, NULL, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN);
     std::wstring localeName = initialLocale;
     if (localeName.empty()) {
         int n = GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_SNAME, 0, 0);
@@ -421,15 +427,23 @@ void TimestampsCommon::initializeDialogLanguagesAndLocales(HWND hwndDlg, const s
     if (nLanguage) {
         std::wstring language(nLanguage - 1, 0);
         GetLocaleInfoEx(localeName.data(), LOCALE_SLOCALIZEDLANGUAGENAME, language.data(), nLanguage);
-        auto n = SendDlgItemMessage(hwndDlg, cbLanguage, CB_FINDSTRINGEXACT,
-            static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(language.data()));
+        auto n = SendMessage(h, CB_FINDSTRINGEXACT, static_cast<WPARAM>(-1), reinterpret_cast<LPARAM>(language.data()));
         if (n != CB_ERR) {
-            SendDlgItemMessage(hwndDlg, cbLanguage, CB_SETCURSEL, n, 0);
+            SendMessage(h, CB_SETCURSEL, n, 0);
+            HWND h2 = GetDlgItem(hwndDlg, cbLocale);
+            SendMessage(h2, WM_SETREDRAW, FALSE, 0);
+            size_t totalStringSpace2 = 32;
+            for (const auto& s : locales[language]) { totalStringSpace2 += 2 * (s.first.length() + s.second.country.length() + 6); }
+            SendMessage(h2, CB_INITSTORAGE, locales[language].size(), totalStringSpace2);
+            for (const auto& s : locales[language])
+                SendMessage(h2, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>((s.first + L"  -  " + s.second.country).data()));
             for (const auto& s : locales[language]) {
                 std::wstring x = s.first + L"  -  " + s.second.country;
-                n = SendDlgItemMessage(hwndDlg, cbLocale, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(x.data()));
-                if (s.first == localeName) SendDlgItemMessage(hwndDlg, cbLocale, CB_SETCURSEL, n, 0);
+                n = SendMessage(h2, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(x.data()));
+                if (s.first == localeName) SendMessage(h2, CB_SETCURSEL, n, 0);
             }
+            SendMessage(h2, WM_SETREDRAW, TRUE, 0);
+            RedrawWindow(h2, NULL, NULL, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN);
         }
     }
 }
@@ -456,10 +470,17 @@ void TimestampsCommon::initializeDialogTimeZones(HWND hwndDlg, const std::wstrin
         continent = GetDlgItemString(hwndDlg, cbRegion);
     }
     else SendDlgItemMessage(hwndDlg, cbRegion, CB_SETCURSEL, n, 0);
+    HWND h = GetDlgItem(hwndDlg, cbZone);
+    SendMessage(h, WM_SETREDRAW, FALSE, 0);
+    size_t totalStringSpace = 32;
+    for (const auto& s : zones[continent]) { totalStringSpace += 2 * (s.first.length() + 1); }
+    SendMessage(h, CB_INITSTORAGE, zones[continent].size(), totalStringSpace);
     for (const auto& s : zones[continent]) {
-        n = SendDlgItemMessage(hwndDlg, cbZone, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s.first.data()));
-        if (s.first == city) SendDlgItemMessage(hwndDlg, cbZone, CB_SETCURSEL, n, 0);
+        n = SendMessage(h, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(s.first.data()));
+        if (s.first == city) SendMessage(h, CB_SETCURSEL, n, 0);
     }
+    SendMessage(h, WM_SETREDRAW, TRUE, 0);
+    RedrawWindow(h, NULL, NULL, RDW_ERASE | RDW_FRAME | RDW_INVALIDATE | RDW_ALLCHILDREN);
 }
 
 void TimestampsCommon::updateDialogLocales(HWND hwndDlg, int cbLanguage, int cbLocale) const {

@@ -55,6 +55,7 @@ public:
     ColumnsPlusPlusData& data;
     std::map<std::wstring, std::map<std::wstring, Locale>> locales;
     std::map<std::wstring, std::map<std::wstring, TimeZone>> zones;
+    bool dialogTzLInitialized = false;
 
     TimestampsCommon(ColumnsPlusPlusData& data);
     void initializeDialogLanguagesAndLocales(HWND hwndDlg, const std::wstring& initialLocale, int cbLanguage, int cbLocale);
