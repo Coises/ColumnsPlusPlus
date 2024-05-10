@@ -281,12 +281,16 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 std::string setting = match[1];
                 std::string value = match[2];
                 strlwr(setting.data());
-                if      (setting == "fromcounter") timestamps.enableFromCounter       = value != "0";
-                else if (setting == "fromdate"   ) timestamps.enableFromDatetime      = value != "0";
-                else if (setting == "fromleap"   ) timestamps.fromCounter.custom.leap = value != "0";
-                else if (setting == "toleap"     ) timestamps.toCounter  .custom.leap = value != "0";
-                else if (setting == "parse"      ) timestamps.dateParse  .push_back(decodeDelimitedString(value));
-                else if (setting == "picture"    ) timestamps.datePicture.push_back(decodeDelimitedString(value));
+                if      (setting == "fromcounter"  ) timestamps.enableFromCounter       = value != "0";
+                else if (setting == "fromdate"     ) timestamps.enableFromDatetime      = value != "0";
+                else if (setting == "fromleap"     ) timestamps.fromCounter.custom.leap = value != "0";
+                else if (setting == "toleap"       ) timestamps.toCounter  .custom.leap = value != "0";
+                else if (setting == "zoneandlocale") timestamps.enableTzAndLocale       = value != "0";
+                else if (setting == "fromzone"     ) timestamps.fromZone                = toWide(value, CP_UTF8);
+                else if (setting == "tozone"       ) timestamps.toZone                  = toWide(value, CP_UTF8);
+                else if (setting == "localename"   ) timestamps.localeName              = toWide(value, CP_UTF8);
+                else if (setting == "parse"        ) timestamps.dateParse  .push_back(decodeDelimitedString(value));
+                else if (setting == "picture"      ) timestamps.datePicture.push_back(decodeDelimitedString(value));
                 else if (setting == "fromtype") {
                     strlwr(value.data());
                     timestamps.fromCounter.type = value == "unix" ? TimestampSettings::CounterType::Unix
@@ -318,10 +322,11 @@ void ColumnsPlusPlusData::loadConfiguration() {
                                                              : TimestampSettings::DateFormat::custom;
                 }
                 else if (std::regex_match(value, integerValue)) {
-                    if (setting == "fromepoch") timestamps.fromCounter.custom.epoch = std::stoll(value);
-                    if (setting == "fromunit" ) timestamps.fromCounter.custom.unit  = std::stoll(value);
-                    if (setting == "toepoch"  ) timestamps.toCounter  .custom.epoch = std::stoll(value);
-                    if (setting == "tounit"   ) timestamps.toCounter  .custom.unit  = std::stoll(value);
+                    if (setting == "fromepoch"    ) timestamps.fromCounter.custom.epoch = std::stoll(value);
+                    if (setting == "fromunit"     ) timestamps.fromCounter.custom.unit  = std::stoll(value);
+                    if (setting == "toepoch"      ) timestamps.toCounter  .custom.epoch = std::stoll(value);
+                    if (setting == "tounit"       ) timestamps.toCounter  .custom.unit  = std::stoll(value);
+                    if (setting == "twodigitlimit") timestamps.twoDigitYearLimit        = std::stoi(value);
                 }
             }
             else if (readingSection == sectionUpdate) {
@@ -501,32 +506,37 @@ void ColumnsPlusPlusData::saveConfiguration() {
 
     file << std::endl << "Timestamps" << std::endl << std::endl;
 
-    file << "fromCounter\t" << timestamps.enableFromCounter        << std::endl;
-    file << "fromDate\t"    << timestamps.enableFromDatetime       << std::endl;
-    file << "fromEpoch\t"   << timestamps.fromCounter.custom.epoch << std::endl;
-    file << "fromUnit\t"    << timestamps.fromCounter.custom.unit  << std::endl;
-    file << "fromLeap\t"    << timestamps.fromCounter.custom.leap  << std::endl;
-    file << "toEpoch\t"     << timestamps.toCounter.custom.epoch   << std::endl;
-    file << "toUnit\t"      << timestamps.toCounter.custom.unit    << std::endl;
-    file << "toLeap\t"      << timestamps.toCounter.custom.leap    << std::endl;
-    file << "fromType\t"    << ( timestamps.fromCounter.type == TimestampSettings::CounterType::Unix ? "Unix"
-                               : timestamps.fromCounter.type == TimestampSettings::CounterType::File ? "File"
-                               : timestamps.fromCounter.type == TimestampSettings::CounterType::Ex00 ? "1900"
-                               : timestamps.fromCounter.type == TimestampSettings::CounterType::Ex04 ? "1904"
-                                                                                                     : "custom") << std::endl;
-    file << "toType\t"      << ( timestamps.toCounter.type   == TimestampSettings::CounterType::Unix ? "Unix"
-                               : timestamps.toCounter.type   == TimestampSettings::CounterType::File ? "File"
-                               : timestamps.toCounter.type   == TimestampSettings::CounterType::Ex00 ? "1900"
-                               : timestamps.toCounter.type   == TimestampSettings::CounterType::Ex04 ? "1904"
-                                                                                                     : "custom") << std::endl;
-    file << "priority\t"    << ( timestamps.datePriority     == TimestampSettings::DatePriority::ymd ? "ymd"
-                               : timestamps.datePriority     == TimestampSettings::DatePriority::mdy ? "mdy"
-                               : timestamps.datePriority     == TimestampSettings::DatePriority::dmy ? "dmy"
-                                                                                                     : "custom") << std::endl;
-    file << "format\t"      << ( timestamps.dateFormat       == TimestampSettings::DateFormat::iso8601     ? "iso"
-                               : timestamps.dateFormat       == TimestampSettings::DateFormat::localeShort ? "short"
-                               : timestamps.dateFormat       == TimestampSettings::DateFormat::localeLong  ? "long"
-                                                                                                           : "custom") << std::endl;
+    file << "fromCounter\t"   << timestamps.enableFromCounter             << std::endl;
+    file << "fromDate\t"      << timestamps.enableFromDatetime            << std::endl;
+    file << "fromEpoch\t"     << timestamps.fromCounter.custom.epoch      << std::endl;
+    file << "fromUnit\t"      << timestamps.fromCounter.custom.unit       << std::endl;
+    file << "fromLeap\t"      << timestamps.fromCounter.custom.leap       << std::endl;
+    file << "toEpoch\t"       << timestamps.toCounter.custom.epoch        << std::endl;
+    file << "toUnit\t"        << timestamps.toCounter.custom.unit         << std::endl;
+    file << "toLeap\t"        << timestamps.toCounter.custom.leap         << std::endl;
+    file << "twoDigitLimit\t" << timestamps.twoDigitYearLimit             << std::endl;
+    file << "zoneAndLocale\t" << timestamps.enableTzAndLocale             << std::endl;
+    file << "fromZone\t"      << fromWide(timestamps.fromZone  , CP_UTF8) << std::endl;
+    file << "toZone\t"        << fromWide(timestamps.toZone    , CP_UTF8) << std::endl;
+    file << "localeName\t"    << fromWide(timestamps.localeName, CP_UTF8) << std::endl;
+    file << "fromType\t"      << ( timestamps.fromCounter.type == TimestampSettings::CounterType::Unix ? "Unix"
+                                 : timestamps.fromCounter.type == TimestampSettings::CounterType::File ? "File"
+                                 : timestamps.fromCounter.type == TimestampSettings::CounterType::Ex00 ? "1900"
+                                 : timestamps.fromCounter.type == TimestampSettings::CounterType::Ex04 ? "1904"
+                                                                                                       : "custom") << std::endl;
+    file << "toType\t"        << ( timestamps.toCounter.type   == TimestampSettings::CounterType::Unix ? "Unix"
+                                 : timestamps.toCounter.type   == TimestampSettings::CounterType::File ? "File"
+                                 : timestamps.toCounter.type   == TimestampSettings::CounterType::Ex00 ? "1900"
+                                 : timestamps.toCounter.type   == TimestampSettings::CounterType::Ex04 ? "1904"
+                                                                                                       : "custom") << std::endl;
+    file << "priority\t"      << ( timestamps.datePriority     == TimestampSettings::DatePriority::ymd ? "ymd"
+                                 : timestamps.datePriority     == TimestampSettings::DatePriority::mdy ? "mdy"
+                                 : timestamps.datePriority     == TimestampSettings::DatePriority::dmy ? "dmy"
+                                                                                                       : "custom") << std::endl;
+    file << "format\t"        << ( timestamps.dateFormat       == TimestampSettings::DateFormat::iso8601     ? "iso"
+                                 : timestamps.dateFormat       == TimestampSettings::DateFormat::localeShort ? "short"
+                                 : timestamps.dateFormat       == TimestampSettings::DateFormat::localeLong  ? "long"
+                                                                                                             : "custom") << std::endl;
     writeDelimitedStringHistory(file, "parse"  , timestamps.dateParse  );
     writeDelimitedStringHistory(file, "picture", timestamps.datePicture);
 
