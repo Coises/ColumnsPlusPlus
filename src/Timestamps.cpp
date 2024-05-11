@@ -592,7 +592,7 @@ void ColumnsPlusPlusData::convertTimestamps() {
                              std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(counter))
                              ).time_since_epoch().count();
                 }
-                if (timestamps.toCounter.type == TimestampSettings::CounterType::Ex00 && counter < -22039776000000000) counter -= toCounter.unit;
+                if (timestamps.toCounter.type == TimestampSettings::CounterType::Ex00 && counter < -22038912000000000) counter -= toCounter.unit;
                 std::string s;
                 if (!ratioToDecimal(counter - toEpoch, toCounter.unit, s, settings.decimalSeparatorIsComma ? ',' : '.')) continue;
                 replaceCell.text = s;
