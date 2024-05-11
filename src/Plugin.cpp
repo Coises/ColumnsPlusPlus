@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include <chrono>
 #include "ColumnsPlusPlus.h"
 using namespace NPP;
 
@@ -176,6 +177,11 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             data.aboutMenuItem            = menuDefinition.about                  ._cmdID;
             data.decimalSeparatorMenuItem = menuDefinition.decimalSeparatorIsComma._cmdID;
             data.elasticEnabledMenuItem   = menuDefinition.elasticEnabled         ._cmdID;
+            try { (void) std::format(L"{0:%F} {0:%T}", std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(0))); }
+            catch (...) /* Disable Timestamps command on older systems where it doesn't work */ {
+                EnableMenuItem(reinterpret_cast<HMENU>(SendMessage(data.nppData._nppHandle, NPPM_GETMENUHANDLE, 0, 0)),
+                                                       menuDefinition.timestamps._cmdID, MF_GRAYED);
+            }
             data.getReleases();
             if (data.showOnMenuBar) data.moveMenuToMenuBar();
             startupOrShutdown = false;
