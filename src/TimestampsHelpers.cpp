@@ -44,18 +44,19 @@ namespace {
         int secs;
         if (leap) {
             auto timePoint = std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(counter));
-            auto tp_seconds = std::chrono::round<std::chrono::seconds>(timePoint);
+            auto tp_seconds = std::chrono::floor<std::chrono::seconds>(timePoint);
             auto sctp = std::chrono::clock_cast<std::chrono::system_clock>(tp_seconds);
             ymd = std::chrono::floor<std::chrono::days>(sctp);
             secs = static_cast<int>(sctp.time_since_epoch().count() % 86400);
         }
         else {
             auto timePoint = std::chrono::system_clock::time_point(std::chrono::system_clock::duration(counter));
-            auto tp_seconds = std::chrono::round<std::chrono::seconds>(timePoint);
+            auto tp_seconds = std::chrono::floor<std::chrono::seconds>(timePoint);
             auto sctp = std::chrono::clock_cast<std::chrono::system_clock>(tp_seconds);
             ymd = std::chrono::floor<std::chrono::days>(sctp);
             secs = static_cast<int>(sctp.time_since_epoch().count() % 86400);
         }
+        if (secs < 0) secs += 86400;
         SYSTEMTIME st;
         st.wYear = static_cast<WORD>(int(ymd.year()));
         st.wMonth = static_cast<WORD>(unsigned(ymd.month()));
@@ -75,6 +76,10 @@ namespace {
         std::wstring time(n - 1, 0);
         GetTimeFormatEx(locale.empty() ? LOCALE_NAME_USER_DEFAULT : locale.data(), 0, &st, timeFormat.data(), time.data(), n);
         return date + L" " + time;
+    }
+
+    std::wstring padRight(const std::wstring& s, size_t n) {
+        return s.length() >= n ? s : s + std::wstring(n - s.length(), L' ');
     }
 
 }
@@ -147,8 +152,30 @@ LocaleWords::LocaleWords(const std::wstring locale) : locale(locale) {
 
 std::wstring LocaleWords::formatTimePoint(int64_t counter, bool leap, const std::chrono::time_zone* tz,
                                           TimestampSettings::DateFormat format, const std::wstring& customPicture) const {
-    
-    std::wstring info, zoneInfo;
+
+    struct MainInfo {
+        std::wstring data;
+        std::wstring zj2(size_t i, bool zs, bool rj) const {
+            return (!zs && !rj) || data[i] != L'0' ? data.substr(i, 2) : rj ? L' ' + data.substr(i + 1, 1) : data.substr(i + 1, 1);
+        }
+        std::wstring zj3(size_t i, bool zs, bool rj) const {
+            return (!zs && !rj) || data[i] != L'0' ? data.substr(i, 3)
+                : rj ? ( data[i + 1] != L'0' ? L' ' + data.substr(i + 1, 2) : L"  " + data.substr(i + 2, 1))
+                     : ( data[i + 1] != L'0' ?        data.substr(i + 1, 2) :         data.substr(i + 2, 1) );
+        }
+        std::wstring month     (bool zeroSup = false, bool rj = false) const { return zj2( 0, zeroSup, rj); }
+        std::wstring dayOfMonth(bool zeroSup = false, bool rj = false) const { return zj2( 2, zeroSup, rj); }
+        std::wstring dayOfYear (bool zeroSup = false, bool rj = false) const { return zj3( 4, zeroSup, rj); }
+        int          dayOfWeek ()                                      const { return data[7] - L'0'; }
+        std::wstring hour24    (bool zeroSup = false, bool rj = false) const { return zj2( 8, zeroSup, rj); }
+        std::wstring hour12    (bool zeroSup = false, bool rj = false) const { return zj2(10, zeroSup, rj); }
+        std::wstring minute    (bool zeroSup = false, bool rj = false) const { return zj2(12, zeroSup, rj); }
+        std::wstring second    (bool zeroSup = false, bool rj = false) const { return zj2(14, zeroSup, rj); }
+        std::wstring subSecond (size_t n = std::wstring::npos)         const { return data.substr(17, n); }
+    } info;
+
+    std::wstring yearInfo, zoneInfo;
+
     if (tz) {
         std::chrono::system_clock::time_point systp;
         std::wstring seconds;
@@ -166,17 +193,23 @@ std::wstring LocaleWords::formatTimePoint(int64_t counter, bool leap, const std:
             return getWindowsDateTimeFormat(zt.get_local_time().time_since_epoch().count(), false, false, locale);
         if (format == TimestampSettings::DateFormat::localeLong )
             return getWindowsDateTimeFormat(zt.get_local_time().time_since_epoch().count(), false, true, locale);
-        info = std::format(L"{0:%Y}{0:%m}{0:%d}{0:%j}{0:%w}{0:%H}{0:%I}{0:%M}", zt) + seconds;
-        zoneInfo = std::format(L"{0:%z}{0:%Z}", zt);
+        info.data = std::format(L"{0:%m}{0:%d}{0:%j}{0:%w}{0:%H}{0:%I}{0:%M}", zt) + seconds;
+        yearInfo  = std::format(L"{0:%Y}", zt);
+        zoneInfo  = std::format(L"{0:%z}{0:%Z}", zt);
     }
     else if (format == TimestampSettings::DateFormat::localeShort) return getWindowsDateTimeFormat(counter, leap, false, locale);
     else if (format == TimestampSettings::DateFormat::localeLong ) return getWindowsDateTimeFormat(counter, leap, true , locale);
+    else if (leap) {
+        const auto tp = std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(counter));
+        info.data = std::format(L"{0:%m}{0:%d}{0:%j}{0:%w}{0:%H}{0:%I}{0:%M}{0:%S}", tp);
+        yearInfo  = std::format(L"{0:%Y}", tp);
+        zoneInfo  = L"+0000UTC";
+    }
     else {
-        info = leap ? std::format(L"{0:%Y}{0:%m}{0:%d}{0:%j}{0:%w}{0:%H}{0:%I}{0:%M}{0:%S}",
-                                  std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(counter)))
-                    : std::format(L"{0:%Y}{0:%m}{0:%d}{0:%j}{0:%w}{0:%H}{0:%I}{0:%M}{0:%S}",
-                                  std::chrono::system_clock::time_point(std::chrono::system_clock::duration(counter)));
-        zoneInfo = L"+0000UTC";
+        const auto tp = std::chrono::system_clock::time_point(std::chrono::system_clock::duration(counter));
+        info.data = std::format(L"{0:%m}{0:%d}{0:%j}{0:%w}{0:%H}{0:%I}{0:%M}{0:%S}", tp);
+        yearInfo  = std::format(L"{0:%Y}", tp);
+        zoneInfo  = L"+0000UTC";
     }
 
     const std::wstring picture = format == TimestampSettings::DateFormat::custom ? customPicture : L"yyyy-MM-dd'T'HH:mm:ss.sssZ";
@@ -187,75 +220,75 @@ std::wstring LocaleWords::formatTimePoint(int64_t counter, bool leap, const std:
         case L'y':
         {
             size_t j = std::min(picture.find_first_not_of(L'y', i), picture.length());
-            s += j - i < 3 ? info.substr(2, 2) : info.substr(0, 4);
+            s += j - i < 3 ? yearInfo.substr(yearInfo.length() - 2) : yearInfo;
             i = j;
             break;
         }
         case L'M':
         {
             size_t j = std::min(picture.find_first_not_of(L'M', i), picture.length());
-            s += j - i < 2 && info[4] == L'0' ? info.substr(5, 1) : j - i < 3 ? info.substr(4, 2)
-               : j - i == 3 ? abbrMonth[std::stoi(info.substr(4,2)) - 1]
-               : j - i == 4 ? geniMonth[std::stoi(info.substr(4,2)) - 1]
-               : (geniMonth[std::stoi(info.substr(4,2)) - 1] + std::wstring(geniMax, L' ')).substr(0, geniMax);
+            s += j - i <  3 ? info.month(j - i == 1)
+               : j - i == 3 ? abbrMonth[std::stoi(info.month()) - 1]
+               : j - i == 4 ? geniMonth[std::stoi(info.month()) - 1]
+                            : padRight(geniMonth[std::stoi(info.month()) - 1], geniMax);
             i = j;
             break;
         }
         case L'N':
         {
             size_t j = std::min(picture.find_first_not_of(L'N', i), picture.length());
-            s += j - i < 5 ? fullMonth[std::stoi(info.substr(4,2)) - 1]
-               : (fullMonth[std::stoi(info.substr(4,2)) - 1] + std::wstring(fullMax, L' ')).substr(0, fullMax);
+            s += j - i < 5 ? fullMonth[std::stoi(info.month()) - 1]
+                           : padRight(fullMonth[std::stoi(info.month()) - 1], fullMax);
             i = j;
             break;
         }
         case L'd':
         {
             size_t j = std::min(picture.find_first_not_of(L'd', i), picture.length());
-            s += j - i < 2 && info[6] == L'0' ? info.substr(7, 1) : j - i < 3 ? info.substr(6, 2)
-                : j - i == 3 ? dayAbbrev[info[11] - L'0']
-                : j - i == 4 ? dayOfWeek[info[11] - L'0']
-                : (dayOfWeek[info[11] - L'0'] + std::wstring(weekMax, L' ')).substr(0, weekMax);
+            s += j - i <  3 ? info.dayOfMonth(j - i == 1)
+               : j - i == 3 ? dayAbbrev[info.dayOfWeek()]
+               : j - i == 4 ? dayOfWeek[info.dayOfWeek()]
+                            : padRight(dayOfWeek[info.dayOfWeek()], weekMax);
             i = j;
             break;
         }
         case L'D':
         {
             size_t j = std::min(picture.find_first_not_of(L'D', i), picture.length());
-            s += j - i < 2 && info[8] == L'0' && info[9] == L'0' ? info.substr(10, 1) : j - i < 3 && info[8] == L'0' ? info.substr(9, 2) : info.substr(8, 3);
+            s += info.dayOfYear(j - i == 1);
             i = j;
             break;
         }
         case L'H':
         {
             size_t j = std::min(picture.find_first_not_of(L'H', i), picture.length());
-            s += j - i < 2 && info[12] == L'0' ? info.substr(13, 1) : info.substr(12, 2);
+            s += info.hour24(j - i == 1);
             i = j;
             break;
         }
         case L'h':
         {
             size_t j = std::min(picture.find_first_not_of(L'h', i), picture.length());
-            s += j - i < 2 && info[14] == L'0' ? info.substr(15, 1) : info.substr(14, 2);
+            s += info.hour12(j - i == 1);
             i = j;
             break;
         }
         case L'm':
         {
             size_t j = std::min(picture.find_first_not_of(L'm', i), picture.length());
-            s += j - i < 2 && info[16] == L'0' ? info.substr(17, 1) : info.substr(16, 2);
+            s += info.minute(j - i == 1);
             i = j;
             break;
         }
         case L's':
         {
             size_t j = std::min(picture.find_first_not_of(L's', i), picture.length());
-            s += j - i < 2 && info[18] == L'0' ? info.substr(19, 1) : info.substr(18, 2);
+            s += info.second(j - i == 1);
             i = j;
             if (picture.substr(i, 2) == L".s" || picture.substr(i, 2) == L",s") {
                 s += picture[i];
                 j = std::min(picture.find_first_not_of(L's', i + 1), picture.length());
-                s += info.substr(21, j - i - 1);
+                s += info.subSecond(j - i - 1);
                 i = j;
             }
             break;
@@ -263,7 +296,7 @@ std::wstring LocaleWords::formatTimePoint(int64_t counter, bool leap, const std:
         case L'T':
         {
             size_t j = std::min(picture.find_first_not_of(L'T', i), picture.length());
-            size_t k = info.substr(12,2) < L"12" ? 0 : 1;
+            size_t k = info.hour24() < L"12" ? 0 : 1;
             if (j - i == 1) s += ampm[k][0];
             else s += ampm[k];
             i = j;
@@ -272,7 +305,7 @@ std::wstring LocaleWords::formatTimePoint(int64_t counter, bool leap, const std:
         case L't':
         {
             size_t j = std::min(picture.find_first_not_of(L't', i), picture.length());
-            size_t k = info.substr(12, 2) < L"12" ? 0 : 1;
+            size_t k = info.hour24() < L"12" ? 0 : 1;
             if (j - i == 1) s += static_cast<wchar_t>(std::tolower(ampm[k][0]));
             else for (auto c : ampm[k]) s += static_cast<wchar_t>(std::tolower(c));
             i = j;
@@ -317,37 +350,37 @@ std::wstring LocaleWords::formatTimePoint(int64_t counter, bool leap, const std:
             }
             switch (picture[i + 1]) {
             case L'M':
-                s += info[4] == L'0' ? L' ' + info.substr(5, 1) : info.substr(4, 2);
+                s += info.month(false, true);
                 i += 2;
                 break;
             case L'd':
-                s += info[6] == L'0' ? L' ' + info.substr(7, 1) : info.substr(6, 2);
+                s += info.dayOfMonth(false, true);
                 i += 2;
                 break;
             case L'D':
-                s += info[8] == L'0' && info[9] == L'0' ? L"  " + info.substr(10, 1) : info[8] == L'0' ? L' ' + info.substr(9, 2) : info.substr(8, 3);
+                s += info.dayOfYear(false, true);
                 i += 2;
                 break;
             case L'H':
-                s += info[12] == L'0' ? L' ' + info.substr(13, 1) : info.substr(12, 2);
+                s += info.hour24(false, true);
                 i += 2;
                 break;
             case L'h':
-                s += info[14] == L'0' ? L' ' + info.substr(15, 1) : info.substr(14, 2);
+                s += info.hour12(false, true);
                 i += 2;
                 break;
             case L'm':
-                s += info[16] == L'0' ? L' ' + info.substr(15, 1) : info.substr(16, 2);
+                s += info.minute(false, true);
                 i += 2;
                 break;
             case L's':
             {
-                s += info[18] == L'0' ? L' ' + info.substr(19, 1) : info.substr(18, 2);
+                s += info.second(false, true);
                 i += 2;
                 if (picture.substr(i, 2) == L".s" || picture.substr(i, 2) == L",s") {
                     s += picture[i];
                     size_t j = std::min(picture.find_first_not_of(L's', i + 1), picture.length());
-                    s += info.substr(21, j - i - 1);
+                    s += info.subSecond(j - i - 1);
                     i = j;
                 }
                 break;
@@ -757,16 +790,16 @@ bool TimestampsParse::parseGenericDateText(const std::string_view source, Parsed
 
     if (timeNumber + 1 == numberTokens.size()) /* done */ return true;
 
-    // time zone offests other than "Z" begin with a plus or minus sign and have two digits, four digits or two digits, a colon and two digits
-    // they can only appear at the very end of an entry
+    // time zone offsets other than "Z" begin with a plus or minus sign and have two digits, four digits or two digits, a colon and two digits
+    // they must be the last number(s) in an entry
 
     size_t zoneNumber = numberTokens.size();
 
-    if (!pv.offsetFound && tokens.back().tokenType == Token::number) {
-        const Token& tz1 = tokens.back();
-        const Token& tz2 = tokens[tokens.size() - 2];
-        const Token& tz3 = tokens[tokens.size() - 3];
-        const Token& tz4 = tokens[tokens.size() - 4];
+    if (!pv.offsetFound) {
+        const Token& tz1 = tokens[numberTokens.back()];
+        const Token& tz2 = tokens[numberTokens.back() - 1];
+        const Token& tz3 = tokens[numberTokens.back() - 2];
+        const Token& tz4 = tokens[numberTokens.back() - 3];
         if (tz1.length() == 4 && (tz2.back() == L'+' || tz2.back() == L'-' || tz2.back() == L'\u2212')) {
             zoneNumber = numberTokens.size() - 1;
             pv.offset = (tz1[0] - L'0') * 600 + (tz1[1] - L'0') * 60 + (tz1[2] - L'0') * 10 + (tz1[3] - L'0');
