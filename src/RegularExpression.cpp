@@ -154,6 +154,17 @@ public:
         return std::string(pt1 + s1, pt1 + gap) + std::string(pt2 + gap, pt2 + s2);
     }
 
+    std::string str(std::string_view n) const override {
+        if (aMatch.empty() || n.empty()) return "";
+        auto x = aMatch[n.data()];
+        if (!x.matched) return "";
+        Scintilla::Position s1 = x.first.position();
+        Scintilla::Position s2 = x.second.position();
+        if (s2 <= gap) return std::string(pt1 + s1, pt1 + s2);
+        if (s1 >= gap) return std::string(pt2 + s1, pt2 + s2);
+        return std::string(pt1 + s1, pt1 + gap) + std::string(pt2 + gap, pt2 + s2);
+    }
+
 };
 
 
@@ -379,6 +390,17 @@ public:
         if (wMatch.empty() || n < 0 || n >= static_cast<int>(wMatch.size()) || !wMatch[n].matched) return "";
         Scintilla::Position s1 = wMatch[n].first.position();
         Scintilla::Position s2 = wMatch[n].second.position();
+        if (s2 <= gap) return std::string(pt1 + s1, pt1 + s2);
+        if (s1 >= gap) return std::string(pt2 + s1, pt2 + s2);
+        return std::string(pt1 + s1, pt1 + gap) + std::string(pt2 + gap, pt2 + s2);
+    }
+
+    std::string str(std::string_view n) const override {
+        if (wMatch.empty() || n.empty()) return "";
+        auto x = wMatch[n.data()];
+        if (!x.matched) return "";
+        Scintilla::Position s1 = wMatch[n.data()].first.position();
+        Scintilla::Position s2 = wMatch[n.data()].second.position();
         if (s2 <= gap) return std::string(pt1 + s1, pt1 + s2);
         if (s1 >= gap) return std::string(pt2 + s1, pt2 + s2);
         return std::string(pt1 + s1, pt1 + gap) + std::string(pt2 + gap, pt2 + s2);

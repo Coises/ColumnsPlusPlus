@@ -148,6 +148,7 @@ window.addEventListener("load", doPageLoad);
 <a href="#calculation"  >Calculation</a>
 <a href="#formulas"     >Formulas</a>
 <a href="#alignment"    >Alignment</a>
+<a href="#timestamps"   >Timestamps</a>
 <a href="#sorting"      >Sorting</a>
 <a href="#conversion"   >Conversion</a>
 <a href="#numberformats">Number formats</a>
@@ -610,6 +611,123 @@ Up to <strong><em>d</em></strong> decimal places will be shown, but no fewer tha
 </table>
 
 <p>ExprTk expressions have many more features which are described in Sections 8, 12, 13 and 20 of the <a href="https://github.com/ArashPartow/exprtk#readme">documentation</a> for ExprTk. <strong>Columns++</strong> supports the <strong>return</strong> call (section 20 of the ExprTk documentation). The returned strings and scalar values will be concatenated and inserted in the new column; if two or more scalar values are specified without intervening strings they will be separated by a tab character (if <strong>Tabbed</strong> is checked) or a single space. The concatenated string will be left aligned, regardless of whether <strong>Numeric aligned</strong> is checked.</p>
+
+</section>
+
+<section id=timestamps><h2>Timestamps</h2>
+
+<p>The <strong>Timestamps...</strong> command opens a dialog that lets you convert between common timestamp formats. The command requires a rectangular selection, which can be a single column or multiple columns separated by tabs. The dialog is comprised of five sections: <strong>From counter</strong>, <strong>From date and time</strong>, <strong>Time zones and locale</strong>, <strong>To counter</strong> and <strong>To date and time</strong>.</p>
+
+<p>The <strong>Overwrite selection</strong> checkbox at the bottom left of the dialog controls whether the results of the conversion replace the selected timestamps (checked) or whether one or more new columns are added to the right of the selection to hold the results (default, unchecked).</p>
+
+<p><em>Note: The <strong>Timestamps...</strong> command does not work properly on older versions of Windows. <strong>Columns++</strong> attempts to detect this and disable the menu item on those systems. Based on Microsoft documentation, the author expects that it will be fully functional on Windows 10 version 1903/19H1 and later, and on Windows Server 2022 and later; it may work on some older systems with the exception of time zone functionality.</em></p>
+
+<h3>From counter</h3>
+
+<p><strong>From counter</strong> processing may be enabled or disabled using the check box at the top left of the section. When enabled, this section controls the interpretation of any items in the selection which consist of a single number. The number is treated as a counter representing elapsed time. The starting point is called the <em>epoch</em> and the length of time represented by an increase of one in the counter is called the <em>unit</em>.
+
+<p><em>Note: As with other</em> <strong>Columns++</strong> <em>commands, numbers to be recognized as counters can include spaces, apostrophes and either commas or periods (whichever is not selected as the decimal separator). If your data contains date and time formats that are separated only by these characters (for example, <tt>12.10.1980</tt> if</em> <strong>Decimal separator is comma</strong> <em>is selected), be sure to disable the</em> <strong>From counter</strong> <em>section. You can leave it enabled if all your date and time formatted data uses separators that would disqualify the entries as numbers.</em></p>
+
+<table class=optionsTable>
+<tr><th>Unix time</th><td><p>a common timestamp counter, for which the epoch is January 1st, 1970 and the unit is one second. Unix time does not count leap seconds.</p></td></tr>
+<tr><th>Windows filetime</th><td><p>the timestamp format used to store creation, modification and access dates of files in Windows. Its epoch in January 1st, 1601 and its unit is 100 nanoseconds. Windows filetime counts leap seconds.</p></td></tr>
+<tr><th>Excel 1900</th><td><p>the default date system for Excel for Windows, and for Excel for Mac beginning with Excel 2016. It counts in days, beginning with <strong>1</strong> for January 1st, 1900 and counting <a href="https://learn.microsoft.com/en-us/office/troubleshoot/excel/wrongly-assumes-1900-is-leap-year">February 29th, 1900</a> (even though there was no such date, since 1900 was not a leap year). The count does not include leap seconds.</p></td></tr>
+<tr><th>Excel 1904</th><td><p>the default date system for Excel for Mac prior to Excel 2016. The epoch is January 1st, 1904, the unit is 1 day, and leap seconds are not counted.</p></td></tr>
+<tr><th>Custom</th><td><p>enables the <strong>Epoch</strong>, <strong>Unit</strong> and <strong>Include leap seconds in count</strong> controls to define counter specifications.</p></td></tr>
+<tr><th>Epoch</th><td><p>specifies the date and time corresponding to a counter value of zero. Enter this as a four-digit year, a dash, a one- or two-digit month, a dash, and a one- or two-digit day, optionally followed by a space and a time in hours, minutes and seconds (including up to seven decimal places), separated by colons.</p>
+<p><em>Note: This field is always specified in Universal Coordinated Time. If you have a counter which counts relative to a local date and time, enter the corresponding UTC date and time here.</em></p></td></tr>
+<tr><th>Unit</th><td><p>the number of seconds corresponding to an increase of one in the counter. The smallest possible value is  <strong>1e-7</strong> (or <strong>.0000001</strong>), corresponding to 100 nanoseconds. Use <strong>.001</strong> to represent one millisecond, <strong>1</strong> to represent one second or <strong>86400</strong> to represent one day.</p></td></tr>
+<tr><th>Include leap seconds in count</th><td><p>when checked, the count includes <em>leap seconds</em>. Leap seconds are occasional one-second adjustments made to keep clock time synchronized to astronomical time. Ignoring leap seconds makes the correspondence between timestamp counters and clock time straightforward, but if a leap second occurs between two such timestamps, the difference between the timestamps will not accurately represent the elapsed time. Most timestamps ignore leap seconds; Windows filetime is a notable exception. For a more comprehensive explanation, see <a href="https://en.wikipedia.org/wiki/Leap_second">Leap second</a> on Wikipedia.</p></td></tr>
+</table>
+
+<h3>From date and time</h3>
+
+<p><strong>From date and time</strong> processing may be enabled or disabled using the check box at the top left of the section. When enabled, this section controls the interpretation of any items in the selection which were not processed by the <strong>From counter</strong> section.</p>
+
+<table class=optionsTable>
+<tr><th style="white-space: nowrap;">year-month-day<br>month-day-year<br>day-month-year</th><td><p>When one of these options is selected, <strong>Columns++</strong> tries to interpret each item as a date and an optional time following the date. The parsing algorithm recognizes names and abbreviations for months in the current locale. When the order of month, day and year is ambiguous (e.g., <strong>12-08-04</strong>), the selected order is used (e.g., <strong>August 4th, 2012</strong>; <strong>December 8th, 2004</strong>; or <strong>August 12th, 2004</strong>).</p></td></tr>
+<tr><th>yy limit</th><td>specifies the latest year represented by a two-digit year; two-digit years are interpreted as years from 99 years before this year through this year.</td></tr>
+<tr><th>Parse</th><td><p>Selecting this option allows you to specify a regular expression; <strong>Columns++</strong> attempts to match the expression to each item and, when the match succeeds, named capture groups are used to designate the elements of the date and time. The name of each capture group is a single, case-sensitive letter:</p>
+<table class=optionsTable>
+<tr><th>y</th><td>year</td></tr>
+<tr><th>M</th><td>month (1-12 or the name or abbreviation in the current locale)</td></tr>
+<tr><th>d</th><td>day of the month</td></tr>
+<tr><th>D</th><td>day of the year</td></tr>
+<tr><th>H</th><td>hour (0-23 if <strong>t</strong> is null, 1-12 if <strong>t</strong> is not null)</td></tr>
+<tr><th>m</th><td>minute</td></tr>
+<tr><th>s</th><td>second (may include decimals)</td></tr>
+<tr><th>t</th><td>am or pm (may be the designator for the current locale or the first letter of the designator)</td></tr>
+<tr><th>Z</th><td>an ISO 8601 time zone offset — the letter <strong>Z</strong>, or a plus or minus sign followed by two digits, four digits, or two digits, a colon and two digits representing the hours and minutes ahead of (East, plus sign) or behind (West, minus sign) UTC by which the given times have been offset</td></tr>
+</table>
+<p>The groups <strong>y</strong> and either <strong>D</strong> or both <strong>M</strong> and <strong>d</strong> must match and provide valid values for the parse to succeed.</p>
+<p><strong>Example</strong>: Suppose you have entries of the form <tt>2018.113t14.08</tt> representing 14:08 on the 113th day of 2018; you could use <strong style="white-space: nowrap;">(?&lt;y&gt;\d+)\.(?&lt;D&gt;\d+)t(?&lt;H&gt;\d+)\.(?&lt;m&gt;\d+)</strong> to parse them.</p>
+</td></tr>
+</table>
+
+<h3>Time zones and locale</h3>
+
+<p><strong>Time zones and locale</strong> specification may be enabled or disabled using the check box at the top left of the section. When enabled, this section lets you specify the time zones and the locale to be used. When this section is disabled (the default condition), Universal Coordinated Time is assumed and the locale of your Windows system is used. Only enable this section when you need to use specified time zones instead of Universal Coordinated Time, or to interpret or format dates and times in another language.</p>
+
+<p>The top row in this section lets you choose the region and time zone assumed when parsing dates and times which do not include a time offset, and the region and time zone used to format generated dates and times. The bottom row lets you choose the language and locale used. Neither time zones nor locales apply to counters.</p>
+
+<h3>To counter</h3>
+<p>The <strong>To Counter</strong> button closes the dialog and converts timestamps to the specified counter. The other settings in this section have the same meaning as in the corresponding settings in the <strong>From counter</strong> section.</p>
+
+<h3>To date and time</h3>
+
+<p>The <strong>To Date/Time</strong> button closes the dialog and converts timestamps to the specified date and time format. An example of a date and time formatted as specified is shown just above the button. </p>
+
+<table class=optionsTable>
+<tr><th>ISO 8601</th><td><p>Format the date and time according to the ISO 8601 standard; equivalent to specifying <strong style="white-space: nowrap;">yyyy-MM-dd'T'HH:mm:ss.sssZ</strong> as a custom picture.</td></tr>
+<tr><th>Locale short</th><td><p>Use the short date and short time formats from Windows regional settings, separated by a space.<br><em>Note: Windows locale formats cannot render dates before January 1st, 1601.</em></p></td></tr>
+<tr><th>Locale long</th><td><p>Use the long date and long time formats from Windows regional settings, separated by a space.<br><em>Note: Windows locale formats cannot render dates before January 1st, 1601.</em></p></td></tr>
+<tr><th>Custom</th><td><p>Use the specified picture to format the date and time. The picture format is similar to that used for specifying date and time formats in Windows settings:</p>
+<table class=optionsTable>
+<tr><th>yy</th><td>two-digit year</td></tr>
+<tr><th>yyyy</th><td>four-digit year</td></tr>
+<tr><th>D</th><td>day of the year as one to three digits</td></tr>
+<tr><th>DDD</th><td>day of the year as three digits (with leading zeros for 1-99)</td></tr>
+<tr><th>M</th><td>month as one or two digits</td></tr>
+<tr><th>MM</th><td>month as two digits (with a leading zero for 1-9)</td></tr>
+<tr><th>MMM</th><td>abbreviation for the month</td></tr>
+<tr><th>MMMM</th><td>name of the month</td></tr>
+<tr><th>MMMMM</th><td>name of the month, padded with blanks as needed to equal the length of the longest name</td></tr>
+<tr><th>NNNN</th><td>name of the month (nominative case)<br><em>Note: Some locales support nominative and genitive cases of the names of months; for those locales,</em> <strong>MMMM</strong> <em>substitutes the genitive case and</em> <strong>NNNN</strong> <em>the nominative case. In locales without this distinction, both names are the same.</td></tr>
+<tr><th>NNNNN</th><td>name of the month (nominative case), padded with blanks as needed to equal the length of the longest name</td></tr>
+<tr><th>d</th><td>day of the month as one or two digits</td></tr>
+<tr><th>dd</th><td>day of the month as two digits (with leading zero for 1-9)</td></tr>
+<tr><th>ddd</th><td>the abbreviation for the day of the week</td></tr>
+<tr><th>dddd</th><td>the name of the day of the week</td></tr>
+<tr><th>ddddd</th><td>the name of the day of the week, padded with blanks as needed to equal the length of the longest name</td></tr>
+<tr><th>H</th><td>hour (0-23) as one or two digits</td></tr>
+<tr><th>HH</th><td>hour (00-23) as two digits (with leading zero for 0-9)</td></tr>
+<tr><th>h</th><td>hour (1-12) as one or two digits</td></tr>
+<tr><th>hh</th><td>hour (01-12) as two digits (with leading zero for 0-9)</td></tr>
+<tr><th>m</th><td>minute as one or two digits</td></tr>
+<tr><th>mm</th><td>minute as two digits (with leading zero for 0-9)</td></tr>
+<tr><th>s</th><td>seconds as one or two digits</td></tr>
+<tr><th>ss</th><td>seconds as two digits (with leading zero for 0-9)</td></tr>
+<tr><th>T</th><td>initial letter of AM/PM designation for the current locale</td></tr>
+<tr><th>TT</th><td>AM/PM designation for the current locale</td></tr>
+<tr><th>t</th><td>initial letter of am/pm designation for the current locale, forced to lower case</td></tr>
+<tr><th>tt</th><td>am/pm designation for the current locale, forced to lower case</td></tr>
+<tr><th>z</th><td>the effective time zone offset from UTC, as a plus or minus sign, two hours digits, a colon and two minutes digits</td></tr>
+<tr><th>zz</th><td>the effective time zone offset from UTC, as a plus or minus sign and two hours digits, followed by a colon and two minutes digits only if the minutes are non-zero</td></tr>
+<tr><th>zzzz</th><td>the effective time zone offset from UTC, as a plus or minus sign, two hours digits and two minutes digits</td></tr>
+<tr><th>Z ZZ ZZZZ</th><td>the same as <strong>z</strong>, <strong>zz</strong> and <strong>zzzz</strong>, but substituting the letter <strong>Z</strong> when the offset is zero.</td></tr>
+<tr><th>ZZZ</th><td>an abbreviation for the effective time zone
+<br><em>Note: Time zone abbreviations are not unambiguous. They can be useful for human-readable data where the context is understood, but they cannot be interpreted for further processing. Use an ISO 8601 time zone offset if you may need to process it further.</em></td></tr>
+<tr><th>xD</th><td>right-justified day of the year (three characters, with leading blanks for 1-99)</td></tr>
+<tr><th>xM xd xH xh xm xs</th><td>same as <strong>M</strong>, <strong>d</strong>, etc. but right-justified with a leading blank for values less than 10</td></tr>
+<tr><th>.sssssss<br>,sssssss</th><td><strong>s</strong>, <strong>ss</strong> or <strong>zs</strong> may be followed by a period or a comma and one to seven <strong>s</strong> characters to format decimal seconds.</td></tr>
+<tr><th>'</th><td>Enclose literal strings in apostrophes; within a literal string, use two apostrophes to represent one.</td></tr>
+</table>
+
+<p>All other characters are copied verbatim to the result.</p>
+
+</td></tr>
+</table>
+
 
 </section>
 

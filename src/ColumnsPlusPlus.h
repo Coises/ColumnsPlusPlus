@@ -1,5 +1,5 @@
 // This file is part of Columns++ for Notepad++.
-// Copyright 2023 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
+// Copyright 2023, 2024 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -99,6 +99,33 @@ inline std::wstring toWide(std::string_view s, unsigned int codepage) {
     return r;
 }
 
+
+inline std::wstring GetDlgItemString(HWND hwndDlg, int item) {
+    HWND h = GetDlgItem(hwndDlg, item);
+    int n = GetWindowTextLength(h);
+    if (n <= 0) return L"";
+    std::wstring s(n, 0);
+    GetWindowText(h, s.data(), n + 1);
+    return s;
+}
+
+inline void showBalloonTip(HWND hwndDlg, int control, const std::wstring& text, bool combobox = false) {
+    HWND hControl = GetDlgItem(hwndDlg, control);
+    if (combobox) {
+        COMBOBOXINFO cbi;
+        cbi.cbSize = sizeof(COMBOBOXINFO);
+        GetComboBoxInfo(hControl, &cbi);
+        hControl = cbi.hwndItem;
+    }
+    EDITBALLOONTIP ebt;
+    ebt.cbStruct = sizeof(EDITBALLOONTIP);
+    ebt.pszTitle = L"";
+    ebt.ttiIcon = TTI_NONE;
+    ebt.pszText = text.data();
+    SendMessage(hControl, EM_SHOWBALLOONTIP, 0, reinterpret_cast<LPARAM>(&ebt));
+    SendMessage(hwndDlg, WM_NEXTDLGCTL, reinterpret_cast<WPARAM>(hControl), TRUE);
+
+}
 
 inline std::wstring updateComboHistory(HWND dialog, int control, std::vector<std::wstring>& history) {
     HWND h = GetDlgItem(dialog, control);
@@ -270,6 +297,53 @@ public:
     bool matchCase   = false;
 };
 
+
+class TimestampSettings {
+public:
+
+    enum class CounterType  { custom, Unix, File, Ex00, Ex04 };
+    enum class DatePriority { custom, ymd, mdy, dmy };
+    enum class DateFormat   { custom, iso8601, localeLong, localeShort };
+
+    struct CounterSpec {
+        int64_t epoch = 0;
+        int64_t unit  = 10000000;
+        bool    leap  = false;
+    };
+
+    struct Counter {
+        CounterSpec custom;
+        CounterType type = CounterType::Unix;
+        const CounterSpec spec() const {
+            switch (type) {
+            case TimestampSettings::CounterType::Unix: return { 0                  ,     10000000, false };  // 1970-01-01, 1 second
+            case TimestampSettings::CounterType::File: return { -116444736000000000,            1, true  };  // 1601-01-01, 100 ns
+            case TimestampSettings::CounterType::Ex00: return { -22091616000000000 , 864000000000, false };  // 1899-12-30, 1 day
+            case TimestampSettings::CounterType::Ex04: return { -20828448000000000 , 864000000000, false };  // 1904-01-01, 1 day
+            }
+            return custom;
+        }
+    };
+
+    Counter      fromCounter;
+    Counter      toCounter;
+    std::wstring localeName;
+    std::wstring fromZone;
+    std::wstring toZone;
+    std::vector<std::wstring> dateParse;
+    std::vector<std::wstring> datePicture;
+
+    int          twoDigitYearLimit  = 2049;
+    DatePriority datePriority       = DatePriority::ymd;
+    DateFormat   dateFormat         = DateFormat::iso8601;
+    bool         enableFromCounter  = true;
+    bool         enableFromDatetime = true;
+    bool         enableTzAndLocale  = false;
+    bool         overwrite          = false;
+
+};
+
+
 class TabLayoutBlock {
 public:
     Scintilla::Line firstLine, lastLine;
@@ -340,6 +414,7 @@ public:
     CalculateSettings     calc;
     SortSettings          sort;
     AlignSettings         align;
+    TimestampSettings     timestamps;
     int  disableOverSize     = 1000;      // active if greater than zero; if negative, inactive and is negative of last used setting   
     int  disableOverLines    = 5000;      // active if greater than zero; if negative, inactive and is negative of last used setting
     int  elasticProgressTime = 2;         // maximum estimated time remaining in seconds to skip progress dialog for slow elastic tabstop operations
@@ -592,6 +667,10 @@ public:
 
     BOOL timeFormatsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lParam);
     void showTimeFormatsDialog();
+
+    // Timestamps.cpp
+
+    void convertTimestamps();
 
     // Update.cpp
 

@@ -1,5 +1,5 @@
 // This file is part of Columns++ for Notepad++.
-// Copyright 2023 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
+// Copyright 2023, 2024 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -14,6 +14,7 @@
 // You should have received a copy of the GNU General Public License
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
+#include <chrono>
 #include "ColumnsPlusPlus.h"
 using namespace NPP;
 
@@ -47,6 +48,7 @@ static struct MenuDefinition {
     FuncItem addNumbers              = {TEXT("Add numbers..."                     ), []() {cmdWrap(&ColumnsPlusPlusData::addNumbers            );}, 0, false, 0};
     FuncItem averageNumbers          = {TEXT("Average numbers..."                 ), []() {cmdWrap(&ColumnsPlusPlusData::averageNumbers        );}, 0, false, 0};
     FuncItem calculate               = {TEXT("Calculate..."                       ), []() {cmdWrap(&ColumnsPlusPlusData::calculate             );}, 0, false, 0};
+    FuncItem timestamps              = {TEXT("Timestamps..."                      ), []() {cmdWrap(&ColumnsPlusPlusData::convertTimestamps     );}, 0, false, 0};
     FuncItem separatorAlign          = {TEXT("---"                                ), 0                                                            , 0, false, 0};
     FuncItem alignLeft               = {TEXT("Align left"                         ), []() {cmdWrap(&ColumnsPlusPlusData::alignLeft             );}, 0, false, 0};
     FuncItem alignRight              = {TEXT("Align right"                        ), []() {cmdWrap(&ColumnsPlusPlusData::alignRight            );}, 0, false, 0};
@@ -63,7 +65,7 @@ static struct MenuDefinition {
     FuncItem separatorConvert        = {TEXT("---"                                ), 0                                                            , 0, false, 0};
     FuncItem convertTabsToSpaces     = {TEXT("Convert tabs to spaces"             ), []() {cmdWrap(&ColumnsPlusPlusData::tabsToSpaces          );}, 0, false, 0};
     FuncItem separatedValuesToTabs   = {TEXT("Convert separated values to tabs..."), []() {cmdWrap(&ColumnsPlusPlusData::separatedValuesToTabs );}, 0, false, 0};
-    FuncItem sabsToSeparatedValues   = {TEXT("Convert tabs to separated values..."), []() {cmdWrap(&ColumnsPlusPlusData::tabsToSeparatedValues );}, 0, false, 0};
+    FuncItem tabsToSeparatedValues   = {TEXT("Convert tabs to separated values..."), []() {cmdWrap(&ColumnsPlusPlusData::tabsToSeparatedValues );}, 0, false, 0};
     FuncItem separatorSettings       = {TEXT("---"                                ), 0                                                            , 0, false, 0};
     FuncItem decimalSeparatorIsComma = {TEXT("Decimal separator is comma"         ), []() {cmdWrap(&ColumnsPlusPlusData::toggleDecimalSeparator);}, 0, false, 0};
     FuncItem timeFormats             = {TEXT("Time formats..."                    ), []() {cmdWrap(&ColumnsPlusPlusData::showTimeFormatsDialog );}, 0, false, 0};
@@ -175,6 +177,11 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             data.aboutMenuItem            = menuDefinition.about                  ._cmdID;
             data.decimalSeparatorMenuItem = menuDefinition.decimalSeparatorIsComma._cmdID;
             data.elasticEnabledMenuItem   = menuDefinition.elasticEnabled         ._cmdID;
+            try { (void) std::format(L"{0:%F} {0:%T}", std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(0))); }
+            catch (...) /* Disable Timestamps command on older systems where it doesn't work */ {
+                EnableMenuItem(reinterpret_cast<HMENU>(SendMessage(data.nppData._nppHandle, NPPM_GETMENUHANDLE, 0, 0)),
+                                                       menuDefinition.timestamps._cmdID, MF_GRAYED);
+            }
             data.getReleases();
             if (data.showOnMenuBar) data.moveMenuToMenuBar();
             startupOrShutdown = false;
