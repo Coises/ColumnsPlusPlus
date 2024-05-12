@@ -833,7 +833,7 @@ bool TimestampsParse::parseGenericDateText(const std::string_view source, Parsed
     if (timeNumber + 1 == zoneNumber) /* done */ return true;
  
     if (tokens[numberTokens[timeNumber]].length() > 2) /* decimal minutes or seconds, or cannot parse */ {
-        if ( timeNumber + 2 != zoneNumber || numberTokens[timeNumber + 1] == numberTokens[timeNumber] + 2
+        if ( timeNumber + 2 != zoneNumber || numberTokens[timeNumber + 1] != numberTokens[timeNumber] + 2
           || (tokens[numberTokens[timeNumber] + 1] != L"." && tokens[numberTokens[timeNumber] + 1] != L",") ) return false;
         const std::wstring_view decimalString = tokens[numberTokens[timeNumber + 1]];
         int64_t v = 0;
@@ -873,11 +873,14 @@ bool TimestampsParse::parseGenericDateText(const std::string_view source, Parsed
     if (timeNumber + 2 == zoneNumber) /* done */ return true;
  
     // decimal minutes are recognized only if separated from whole minutes by a single period or comma,
-    // and there are no more numbers before the time zone offset (if any)
+    // and there are no more numbers before the time zone offset (if any),
+    // and the same separator was not used to separate minutes from hours
  
     if ( timeNumber + 3 == zoneNumber
       && numberTokens[timeNumber + 2] == numberTokens[timeNumber + 1] + 2
-      && (tokens[numberTokens[timeNumber + 1] + 1] == L"." || tokens[numberTokens[timeNumber + 1] + 1] == L",") ) {
+      && (tokens[numberTokens[timeNumber + 1] + 1] == L"." || tokens[numberTokens[timeNumber + 1] + 1] == L",")
+      && ( numberTokens[timeNumber + 1] != numberTokens[timeNumber] + 2 
+        || tokens[numberTokens[timeNumber] + 1] != tokens[numberTokens[timeNumber + 1] + 1] ) ) {
         const std::wstring_view decimalString = tokens[numberTokens[timeNumber + 2]];
         int64_t v = 0;
         for (size_t i = 0;;) {
