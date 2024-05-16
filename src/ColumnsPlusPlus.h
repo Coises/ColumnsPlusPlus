@@ -33,8 +33,8 @@
 #include "Host\ScintillaCall.h"
 
 namespace NPP {
-   #include "Host\PluginInterface.h"
-   #include "Host\menuCmdID.h"
+    #include "Host\PluginInterface.h"
+    #include "Host\menuCmdID.h"
 }
 
 #undef min
@@ -399,9 +399,11 @@ public:
 
     Scintilla::ScintillaCall sci;
 
-    int aboutMenuItem;                 // Menu item identifiers of items that can be toggled or otherwise updated.
-    int decimalSeparatorMenuItem;
-    int elasticEnabledMenuItem;
+    int        aboutMenuItem;                 // Menu item identifiers of items that can be toggled or otherwise updated.
+    int        decimalSeparatorMenuItem;
+    int        elasticEnabledMenuItem;
+    CLIPFORMAT clipFormatRectangular;         // The clipboard format which signals a rectangular selection; zero if attempt to register failed
+    bool       selectionMouseUpTimerActive = false;
 
     std::map<void*       , DocumentData>       documents;
     std::map<std::wstring, ElasticTabsProfile> profiles;
@@ -509,7 +511,7 @@ public:
         return true;
     }
 
-    void reselectRectangularSelectionAndControlCharSymbol(DocumentData& dd, bool setControlCharSymbol) {
+    void reselectRectangularSelection(DocumentData& dd) {
         if (!dd.settings.elasticEnabled) return;
         Scintilla::SelectionMode selectionMode = sci.SelectionMode();
         if (selectionMode == Scintilla::SelectionMode::Rectangle || selectionMode == Scintilla::SelectionMode::Thin) {
@@ -519,19 +521,11 @@ public:
             Scintilla::Position caretVirtual  = sci.RectangularSelectionCaretVirtualSpace();
             Scintilla::Line anchorLine        = sci.LineFromPosition(anchor);
             Scintilla::Line caretLine         = sci.LineFromPosition(caret);
-            if (setControlCharSymbol) {
-                int ccsym = settings.monospaceNoMnemonics && dd.assumeMonospace ? '!' : 0;
-                if (sci.ControlCharSymbol() != ccsym) sci.SetControlCharSymbol(ccsym);
-            }
             setTabstops(dd, std::min(anchorLine, caretLine), std::max(anchorLine, caretLine));
             sci.SetRectangularSelectionAnchor(anchor);
             sci.SetRectangularSelectionAnchorVirtualSpace(anchorVirtual);
             sci.SetRectangularSelectionCaret(caret);
             sci.SetRectangularSelectionCaretVirtualSpace(caretVirtual);
-        }
-        else if (setControlCharSymbol) {
-            int ccsym = settings.monospaceNoMnemonics && dd.assumeMonospace ? '!' : 0;
-            if (sci.ControlCharSymbol() != ccsym) sci.SetControlCharSymbol(ccsym);
         }
     }
 
@@ -583,6 +577,9 @@ public:
     void analyzeTabstops(DocumentData& dd);
     bool findTabLayoutBlock(DocumentData& dd, Scintilla::Position position, Scintilla::Position length, TabLayoutBlock*& tlb, int& width);
     void setTabstops(DocumentData& dd, Scintilla::Line firstNeeded = -1, Scintilla::Line lastNeeded = -1);
+
+    void afterSelectionMouseUp();
+    void beforePaste();
 
     void bufferActivated();
     void fileClosed     (const NMHDR* nmhdr);

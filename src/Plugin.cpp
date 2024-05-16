@@ -40,6 +40,27 @@ static void cmdWrap(void (ColumnsPlusPlusData::* cmdFunction)()) {
     bypassNotifications = false;
 }
 
+static LRESULT __stdcall nppSubclassProcedure(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam, UINT_PTR, DWORD_PTR) {
+    if (uMsg == WM_COMMAND && lParam == 0) switch (LOWORD(wParam)) {
+    case IDM_EDIT_PASTE:
+        bypassNotifications = true;
+        getScintillaPointers();
+        data.beforePaste();
+        bypassNotifications = false;
+        break;
+    }
+    return DefSubclassProc(hWnd, uMsg, wParam, lParam);
+}
+
+void __stdcall catchSelectionMouseUp(HWND hwnd, UINT, UINT_PTR uIDEvent, DWORD) {
+    if (GetKeyState(VK_LBUTTON) & 0x8000) return;
+    KillTimer(hwnd, uIDEvent);
+    bypassNotifications = true;
+    getScintillaPointers();
+    data.afterSelectionMouseUp();
+    bypassNotifications = false;
+}
+
 static struct MenuDefinition {
     FuncItem elasticEnabled          = {TEXT("Elastic tabstops"                   ), []() {cmdWrap(&ColumnsPlusPlusData::toggleElasticEnabled  );}, 0, false, 0};
     FuncItem elasticProfile          = {TEXT("Profile..."                         ), []() {cmdWrap(&ColumnsPlusPlusData::showElasticProfile    );}, 0, false, 0};
@@ -177,6 +198,7 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             data.aboutMenuItem            = menuDefinition.about                  ._cmdID;
             data.decimalSeparatorMenuItem = menuDefinition.decimalSeparatorIsComma._cmdID;
             data.elasticEnabledMenuItem   = menuDefinition.elasticEnabled         ._cmdID;
+            data.clipFormatRectangular    = static_cast<CLIPFORMAT>(RegisterClipboardFormat(L"MSDEVColumnSelect"));
             try { (void) std::format(L"{0:%F} {0:%T}", std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(0))); }
             catch (...) /* Disable Timestamps command on older systems where it doesn't work */ {
                 EnableMenuItem(reinterpret_cast<HMENU>(SendMessage(data.nppData._nppHandle, NPPM_GETMENUHANDLE, 0, 0)),
@@ -190,11 +212,13 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             data.searchData.customIndicator = data.searchData.forceUserIndicator || !data.searchData.allocatedIndicator ? data.searchData.userIndicator
                                                                                                                         : data.searchData.allocatedIndicator;
             if (data.searchData.indicator < 21) data.searchData.indicator = data.searchData.customIndicator;
+            SetWindowSubclass(data.nppData._nppHandle, nppSubclassProcedure, 0, 0);
             getScintillaPointers();
             data.bufferActivated();
             break;
 
         case NPPN_SHUTDOWN:
+            RemoveWindowSubclass(data.nppData._nppHandle, nppSubclassProcedure, 0);
             data.saveConfiguration();
             break;
 

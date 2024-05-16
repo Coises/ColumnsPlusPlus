@@ -344,8 +344,48 @@ RectangularSelection& RectangularSelection::extend() {
     }
 
     if (data.sci.Selections() != 1) { 
-        MessageBox(data.nppData._nppHandle, L"This command requires a rectangular selection.", L"Columns++ rectangular selection", MB_OK);
-        _size = 0;
+        if (MessageBox(data.nppData._nppHandle, L"This command requires a rectangular selection.\n\n"
+            L"Create a rectangular selection that encloses the existing multiple selections?",
+            L"Columns++ rectangular selection", MB_OKCANCEL) != IDOK) {
+            _size = 0;
+            return *this;
+        }
+        _size = data.sci.Selections();
+        Scintilla::Line first = std::numeric_limits<Scintilla::Line>::max();
+        Scintilla::Line last  = 0;
+        int left  = std::numeric_limits<int>::max();
+        int right = std::numeric_limits<int>::min();
+        DocumentData* ddp = data.settings.elasticEnabled ? data.getDocument() : 0;
+        for (int i = 0; i < _size; ++i) {
+            Scintilla::Position p = data.sci.SelectionNStart(i);
+            Scintilla::Position q = data.sci.SelectionNEnd(i);
+            Scintilla::Line pLine = data.sci.LineFromPosition(p);
+            Scintilla::Line qLine = data.sci.LineFromPosition(q);
+            first = std::min(first, pLine);
+            last  = std::max(last , qLine);
+            if (ddp) data.setTabstops(*ddp, pLine, qLine);
+            if (pLine == qLine) {
+                left  = std::min(left , data.sci.PointXFromPosition(p));
+                right = std::max(right, data.sci.PointXFromPosition(q));
+            }
+            else {
+                left = data.sci.PointXFromPosition(0);
+                for (Scintilla::Line j = pLine; j < qLine; ++j) right = std::max(right, data.sci.PointXFromPosition(data.sci.LineEndPosition(j)));
+                right = std::max(right, data.sci.PointXFromPosition(q));
+            }
+        }
+        Scintilla::Position anchor = data.positionFromLineAndPointX(first, left );
+        Scintilla::Position caret  = data.positionFromLineAndPointX(last , right);
+        int caretVS = blankCount(right - data.sci.PointXFromPosition(caret));
+        _anchor = corner(anchor, 0);
+        _caret  = corner(caret, caretVS);
+        if (ddp) data.setTabstops(*ddp, first, last);
+        data.sci.SetRectangularSelectionAnchor(_anchor.cp);
+        data.sci.SetRectangularSelectionAnchorVirtualSpace(_anchor.vs);
+        data.sci.SetRectangularSelectionCaret(_caret.cp);
+        data.sci.SetRectangularSelectionCaretVirtualSpace(_caret.vs);
+        _mode = Scintilla::SelectionMode::Rectangle;
+        _reverse = false;
         return *this;
     }
 

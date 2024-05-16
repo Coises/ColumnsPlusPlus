@@ -20,6 +20,7 @@
 #include "resource.h"
 #include "commctrl.h"
 
+void __stdcall catchSelectionMouseUp(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
 
 struct ElasticProgressInfo {
     ColumnsPlusPlusData& data;
@@ -147,10 +148,6 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
             double projected = static_cast<double>(epi.objective() - epi.processed()) * static_cast<double>(after - before)
                              / (1000 * static_cast<double>(epi.stepSize));
             if (projected > timeLimit) {
-                // The mouse button up message avoids a problem where a flickering, wrong mouse cursor is shown outside of the text area.
-                // SCN_UPDATEUI is sent on mouse down and mouse move; when the dialog opens, Scintilla never gets the mouse up it expects.
-                // The cost of this is that you can no longer drag a rectangular selection once the threshold number of lines is exceeded.
-                SendMessage(activeScintilla, WM_LBUTTONUP, 0, 0);
                 DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_ELASTIC_PROGRESS), nppData._nppHandle, elasticProgressDialogProc, reinterpret_cast<LPARAM>(&epi));
                 break;
             }
@@ -460,8 +457,50 @@ void ColumnsPlusPlusData::scnUpdateUI(const Scintilla::NotificationData* scnp) {
     if (!ddp->settings.elasticEnabled) return;
     ddp->deleteWithoutLayoutChange = false;
     if (ddp->elasticAnalysisRequired || fontSpacingChange(*ddp)) analyzeTabstops(*ddp);
-    if (Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) reselectRectangularSelectionAndControlCharSymbol(*ddp, false);
+    if (!selectionMouseUpTimerActive && Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) {
+        Scintilla::SelectionMode selectionMode = sci.SelectionMode();
+        if (selectionMode == Scintilla::SelectionMode::Rectangle || selectionMode == Scintilla::SelectionMode::Thin) {
+            if (GetKeyState(VK_LBUTTON) & 0x8000) /* Mouse selection -- wait until the mouse button is released */ {
+                selectionMouseUpTimerActive = true;
+                SetTimer(0, 0, 50, catchSelectionMouseUp);
+            }
+            else reselectRectangularSelection(*ddp);
+        }
+    }
     setTabstops(*ddp);
+}
+
+
+void ColumnsPlusPlusData::afterSelectionMouseUp() {
+    selectionMouseUpTimerActive = false;
+    reselectRectangularSelection(*getDocument());
+}
+
+
+void ColumnsPlusPlusData::beforePaste() {
+    if (!settings.elasticEnabled || sci.Selections() > 1) return;
+    if (clipFormatRectangular && IsClipboardFormatAvailable(clipFormatRectangular) && OpenClipboard(0)) {
+        std::wstring clipboardString;
+        const auto clipboardHandle = GetClipboardData(CF_UNICODETEXT);
+        if (clipboardHandle) {
+            const wchar_t* clipboardCstr = static_cast<const wchar_t*>(GlobalLock(clipboardHandle));
+            if (clipboardCstr) {
+                clipboardString = clipboardCstr;
+                GlobalUnlock(clipboardHandle);
+            }
+        }
+        CloseClipboard();
+        if (!clipboardString.empty()) {
+            int depth = 0;
+            for (size_t pos = 0; pos = clipboardString.find_first_of(L"\r\n", pos), pos != std::wstring::npos; ++pos) {
+                ++depth;
+                if (pos + 1 < clipboardString.length() && clipboardString[pos] == L'\r' && clipboardString[pos + 1] == L'\n') ++pos;
+            }
+            DocumentData& dd = *getDocument();
+            Scintilla::Line currentLine = sci.LineFromPosition(sci.CurrentPos());
+            setTabstops(dd, currentLine, currentLine + depth);
+        }
+    }
 }
 
 
@@ -512,7 +551,11 @@ void ColumnsPlusPlusData::bufferActivated() {
         analyzeTabstops(dd);
         setTabstops(dd);
     }
-    else reselectRectangularSelectionAndControlCharSymbol(dd, true);
+    else {
+        int ccsym = settings.monospaceNoMnemonics && dd.assumeMonospace ? '!' : 0;
+        if (sci.ControlCharSymbol() != ccsym) sci.SetControlCharSymbol(ccsym);
+        reselectRectangularSelection(dd);
+    }
 }
 
 
