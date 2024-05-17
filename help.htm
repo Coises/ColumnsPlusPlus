@@ -263,6 +263,28 @@ window.addEventListener("load", doPageLoad);
 
 <p>You can enable specific “implicit” rectangular selections in the <a href="#options-autoextend">Options</a> dialog if you would prefer that <strong>Columns++</strong> make those selections without prompting you.</p>
 
+<h3>Selection submenu and keyboard shortcuts</h3>
+
+<p>The <strong>Selection</strong> submenu contains commands to create a rectangular selection based on the current selection.</p>
+
+<table class=optionsTable>
+<tr class=group><th>Command</th><th>Keyboard shortcut</th><th>Action</th></tr>
+<tr><th>Select&nbsp;Up</th><th>Ctrl+Alt+Up</th><td>Makes a rectangular selection which encloses the current selection and extends upward to reach the first line of the document.</td></tr>
+<tr><th>Select&nbsp;Left</th><th>Ctrl+Alt+Left</th><td>Makes a rectangular selection which encloses the current selection and extends to the left edge of the document.</td></tr>
+<tr><th>Select&nbsp;Right</th><th>Ctrl+Alt+Right</th><td>Makes a rectangular selection which encloses the current selection and extends to the right far enough to include the rightmost character in each line of which it includes any part.</td></tr>
+<tr><th>Select&nbsp;Down</th><th>Ctrl+Alt+Down</th><td>Makes a rectangular selection which encloses the current selection and extends downward to reach the last line of the document; except that if the last line is empty (that is, the document ends with a line return), the selection extends to the next-to-last line.</td></tr>
+<tr><th>Enclose&nbsp;Selection</th><th>Ctrl+Alt+Home</th><td>Makes the smallest rectangular selection which includes every part of the current selection.</td></tr>
+<tr><th>Extend&nbsp;Selection</th><th>Ctrl+Alt+End</th><td><p>If the selection is contained in a single line, makes a rectangular selection which encloses the current selection and extends from the first line of the document to the last line of the document; except that if the last line is empty (that is, the document ends with a line return), the selection extends to the next-to-last line.</p>
+
+<p>If the selection is an empty selection (a zero-width rectangular selection or a multiple selection in which each selection is empty) spanning more than one line, makes a rectangular selection which encloses the current selection and extends from the left edge of the document far enough to the right to include the rightmost character in each line of which it includes any part.</p>
+
+<p>Otherwise, makes the smallest rectangular selection which includes every part of the current selection.</p>
+</td></tr>
+</table>
+
+<p>The keyboard shortcuts are defined by default, but you can change or remove them using the <strong>Shortcut Mapper</strong> from the <strong>Settings</strong> menu in <strong>Notepad++</strong>. These commands do not always work sensibly when word-wrapped lines are included in the selection range.</p>
+
+
 </section>
 
 <section id=regular><h2>Regular expressions</h2>
@@ -620,7 +642,7 @@ Up to <strong><em>d</em></strong> decimal places will be shown, but no fewer tha
 
 <p>The <strong>Overwrite selection</strong> checkbox at the bottom left of the dialog controls whether the results of the conversion replace the selected timestamps (checked) or whether one or more new columns are added to the right of the selection to hold the results (default, unchecked).</p>
 
-<p><em>Note: The <strong>Timestamps...</strong> command does not work properly on older versions of Windows. <strong>Columns++</strong> attempts to detect this and disable the menu item on those systems. Based on Microsoft documentation, the author expects that it will be fully functional on Windows 10 version 1903/19H1 and later, and on Windows Server 2022 and later; it may work on some older systems with the exception of time zone functionality.</em></p>
+<p><em>Note: The <strong>Timestamps...</strong> command does not work properly on older versions of Windows. <strong>Columns++</strong> attempts to detect this and removes the menu item on those systems. Based on Microsoft documentation, the author expects that it will be fully functional on Windows 10 version 1903/19H1 and later, and on Windows Server 2022 and later; it may work on some older systems with the exception of time zone functionality.</em></p>
 
 <h3>From counter</h3>
 
