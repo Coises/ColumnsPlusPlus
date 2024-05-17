@@ -61,6 +61,13 @@ void __stdcall catchSelectionMouseUp(HWND hwnd, UINT, UINT_PTR uIDEvent, DWORD) 
     bypassNotifications = false;
 }
 
+static NPP::ShortcutKey SKUp      { true, true, false, VK_UP    };
+static NPP::ShortcutKey SKLeft    { true, true, false, VK_LEFT  };
+static NPP::ShortcutKey SKEnclose { true, true, false, VK_HOME  };
+static NPP::ShortcutKey SKExtend  { true, true, false, VK_END   };
+static NPP::ShortcutKey SKRight   { true, true, false, VK_RIGHT };
+static NPP::ShortcutKey SKDown    { true, true, false, VK_DOWN  };
+
 static struct MenuDefinition {
     FuncItem elasticEnabled          = {TEXT("Elastic tabstops"                   ), []() {cmdWrap(&ColumnsPlusPlusData::toggleElasticEnabled  );}, 0, false, 0};
     FuncItem elasticProfile          = {TEXT("Profile..."                         ), []() {cmdWrap(&ColumnsPlusPlusData::showElasticProfile    );}, 0, false, 0};
@@ -92,6 +99,12 @@ static struct MenuDefinition {
     FuncItem timeFormats             = {TEXT("Time formats..."                    ), []() {cmdWrap(&ColumnsPlusPlusData::showTimeFormatsDialog );}, 0, false, 0};
     FuncItem options                 = {TEXT("Options..."                         ), []() {cmdWrap(&ColumnsPlusPlusData::showOptionsDialog     );}, 0, false, 0};
     FuncItem about                   = {TEXT("Help/About..."                      ), []() {cmdWrap(&ColumnsPlusPlusData::showAboutDialog       );}, 0, false, 0};
+    FuncItem selectUp                = {TEXT("Select Up"        ), []() {cmdWrap(&ColumnsPlusPlusData::selectUp     );}, 0, false, &SKUp     };
+    FuncItem selectLeft              = {TEXT("Select Left"      ), []() {cmdWrap(&ColumnsPlusPlusData::selectLeft   );}, 0, false, &SKLeft   };
+    FuncItem selectRight             = {TEXT("Select Right"     ), []() {cmdWrap(&ColumnsPlusPlusData::selectRight  );}, 0, false, &SKRight  };
+    FuncItem selectDown              = {TEXT("Select Down"      ), []() {cmdWrap(&ColumnsPlusPlusData::selectDown   );}, 0, false, &SKDown   };
+    FuncItem selectEnclose           = {TEXT("Enclose Selection"), []() {cmdWrap(&ColumnsPlusPlusData::selectEnclose);}, 0, false, &SKEnclose};
+    FuncItem selectExtend            = {TEXT("Extend Selection" ), []() {cmdWrap(&ColumnsPlusPlusData::selectExtend );}, 0, false, &SKExtend };
 } menuDefinition;
 
 BOOL APIENTRY DllMain(HINSTANCE instance, DWORD reasonForCall, LPVOID) {
@@ -199,10 +212,12 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
             data.decimalSeparatorMenuItem = menuDefinition.decimalSeparatorIsComma._cmdID;
             data.elasticEnabledMenuItem   = menuDefinition.elasticEnabled         ._cmdID;
             data.clipFormatRectangular    = static_cast<CLIPFORMAT>(RegisterClipboardFormat(L"MSDEVColumnSelect"));
+            data.buildSelectionMenu(static_cast<int>((&menuDefinition.about - &menuDefinition.elasticEnabled) + 1),
+                                    static_cast<int>((&menuDefinition.search - &menuDefinition.elasticEnabled)));
             try { (void) std::format(L"{0:%F} {0:%T}", std::chrono::utc_clock::time_point(std::chrono::utc_clock::duration(0))); }
-            catch (...) /* Disable Timestamps command on older systems where it doesn't work */ {
-                EnableMenuItem(reinterpret_cast<HMENU>(SendMessage(data.nppData._nppHandle, NPPM_GETMENUHANDLE, 0, 0)),
-                                                       menuDefinition.timestamps._cmdID, MF_GRAYED);
+            catch (...) /* Remove Timestamps command on older systems where it doesn't work */ {
+                RemoveMenu(reinterpret_cast<HMENU>(SendMessage(data.nppData._nppHandle, NPPM_GETMENUHANDLE, 0, 0)),
+                           menuDefinition.timestamps._cmdID, MF_BYCOMMAND);
             }
             data.getReleases();
             if (data.showOnMenuBar) data.moveMenuToMenuBar();

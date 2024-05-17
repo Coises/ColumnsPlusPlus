@@ -435,12 +435,13 @@ public:
         Scintilla::Position end   = sci.LineEndPosition(line);
         Scintilla::Position lastI = begin;
         int                 lastX = px;
-        for (Scintilla::Position i = begin; i <= end; i = sci.PositionAfter(i)) {
+        for (Scintilla::Position i = begin;; i = sci.PositionAfter(i)) {
             int x = sci.PointXFromPosition(i);
             if (x == px) return i;
             if (x > px) return x - px > px - lastX ? lastI : i;
             lastI = i;
             lastX = x;
+            if (i >= end) break;
         }
         return end;
     }
@@ -649,6 +650,16 @@ public:
     void searchFind(bool postReplace = false);
     void searchReplace();
     void searchReplaceAll(bool partial = false, bool before = false);
+
+    // Selection.cpp
+
+    void buildSelectionMenu(int selectionItemIndex, int selectionMenuIndex);
+    void selectDown();
+    void selectEnclose();
+    void selectExtend();
+    void selectLeft();
+    void selectRight();
+    void selectUp();
 
     // Sort.cpp
 

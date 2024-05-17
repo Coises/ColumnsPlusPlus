@@ -44,6 +44,7 @@
     <ClCompile Include="..\src\RegularExpression.cpp" />
     <ClCompile Include="..\src\Search.cpp" />
     <ClCompile Include="..\src\Plugin.cpp" />
+    <ClCompile Include="..\src\Selection.cpp" />
     <ClCompile Include="..\src\Sort.cpp" />
     <ClCompile Include="..\src\TimeFormats.cpp" />
     <ClCompile Include="..\src\Timestamps.cpp" />
