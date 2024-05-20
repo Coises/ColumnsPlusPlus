@@ -23,6 +23,7 @@
 void __stdcall catchSelectionMouseUp(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
 
 struct ElasticProgressInfo {
+
     ColumnsPlusPlusData& data;
     DocumentData& dd;
     Scintilla::Line firstNeeded;
@@ -44,7 +45,9 @@ struct ElasticProgressInfo {
     Scintilla::LineCache lineCache;
     enum { LineCacheIgnore, LineCacheRemove, LineCacheRestore } lineCacheStatus;
 
-    ElasticProgressInfo(ColumnsPlusPlusData& data, DocumentData& dd) : data(data), dd(dd) {}
+    std::vector<char>* lineTabsSet;
+
+    ElasticProgressInfo(ColumnsPlusPlusData& data, DocumentData& dd) : data(data), dd(dd), lineTabsSet(data.getLineTabsSet()) {}
 
     Scintilla::Line processed() const { return step * stepSize + (secondTime ? lastNeeded - firstNeeded + 1 : 0); }
     Scintilla::Line objective() const { return lastNeeded - firstNeeded + (lastMonospaceFail < 0 ? 0 : lastMonospaceFail - firstNeeded + 1); }
@@ -129,8 +132,10 @@ INT_PTR CALLBACK elasticProgressDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
 
 void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNeeded, Scintilla::Line lastNeeded) {
     ElasticProgressInfo epi(*this, dd);
+    if (!epi.lineTabsSet) return;
     const Scintilla::Line lineCount     = sci.LineCount();
     const Scintilla::Line linesOnScreen = sci.LinesOnScreen();
+    if (epi.lineTabsSet->size() != static_cast<size_t>(lineCount)) epi.lineTabsSet->assign(lineCount, 0);
     epi.lineCacheStatus = sci.WrapMode() == Scintilla::Wrap::None ? ElasticProgressInfo::LineCacheIgnore : ElasticProgressInfo::LineCacheRemove;
     if (firstNeeded == -1) {
         epi.firstNeeded = sci.FirstVisibleLine();
@@ -166,6 +171,8 @@ bool ElasticProgressInfo::setTabstops(bool stepless) {
     Scintilla::Line lastToProcess  = stepless ? lastNeeded  : std::min(lastNeeded, firstToProcess + stepSize - 1);
     size_t tlbIndex = 0;
     for (Scintilla::Line lineNum = firstToProcess; lineNum <= lastToProcess; ++lineNum) {
+        if ((*lineTabsSet)[lineNum]) continue;
+        (*lineTabsSet)[lineNum] = 1;
         while (tlbIndex < dd.tabLayouts.size() && dd.tabLayouts[tlbIndex].lastLine < lineNum) ++tlbIndex;
         if (tlbIndex >= dd.tabLayouts.size() || dd.tabLayouts[tlbIndex].firstLine > lineNum) {
             sci.ClearTabStops(lineNum);
@@ -227,11 +234,18 @@ bool ElasticProgressInfo::setTabstops(bool stepless) {
               || (eolLimit                      && eolLimit < sci.PointXFromPosition(lineEnds) - pxStart + tabGap) ) {
                 lastMonospaceFail = lineNum;
                 if (eolLimit) tabOffsets.push_back(line.length());
+                bool lineTabsInvalidated = false;
                 size_t tabIndex = leadingTabCount;
                 size_t from = 0;
                 for (TabLayoutBlock* tlb = &dd.tabLayouts[tlbIndex]; tabIndex < tabOffsets.size(); ++tabIndex) {
                     int width = data.unwrappedWidth(lineStarts + from, lineStarts + tabOffsets[tabIndex]) + tabGap;
-                    if (width > tlb->width) tlb->width = width;
+                    if (width > tlb->width) {
+                        tlb->width = width;
+                        if (!lineTabsInvalidated) {
+                            for (Scintilla::Line ln = tlb->firstLine; ln <= tlb->lastLine; ++ln) (*lineTabsSet)[ln] = 0;
+                            lineTabsInvalidated = true;
+                        }
+                    }
                     size_t i = 0;
                     if (i < tlb->right.size() && tlb->right[i].lastLine < lineNum) ++i;
                     if (i >= tlb->right.size() || tlb->right[i].firstLine > lineNum) break;
@@ -264,6 +278,7 @@ void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
     int ccsym = settings.monospaceNoMnemonics && dd.assumeMonospace ? '!' : 0;
     if (sci.ControlCharSymbol() != ccsym) sci.SetControlCharSymbol(ccsym);
     ElasticProgressInfo epi(*this, dd);
+    if (epi.lineTabsSet) epi.lineTabsSet->assign(sci.LineCount(), 0);
     epi.isAnalyze   = true;
     epi.firstNeeded = 0;
     epi.lastNeeded  = sci.LineCount() - 1;
@@ -275,10 +290,6 @@ void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
         double projected = static_cast<double>(epi.objective() - epi.processed()) * static_cast<double>(after - before)
                          / (1000 * static_cast<double>(epi.stepSize));
         if (projected > timeLimit) {
-            // The mouse button up message avoids a problem where a flickering, wrong mouse cursor is shown outside of the text area.
-            // SCN_UPDATEUI is sent on mouse down and mouse move; when the dialog opens, Scintilla never gets the mouse up it expects.
-            // The cost of this is that you can no longer drag a rectangular selection once the threshold number of lines is exceeded.
-            SendMessage(activeScintilla, WM_LBUTTONUP, 0, 0);
             DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_ELASTIC_PROGRESS), nppData._nppHandle, elasticProgressDialogProc, reinterpret_cast<LPARAM>(&epi));
             break;
         }
@@ -418,7 +429,11 @@ void ColumnsPlusPlusData::scnModified(const Scintilla::NotificationData* scnp) {
             if (findTabLayoutBlock(ctd, scnp->position, scnp->length, tlb, width)) {
                 if (tlb) {
                     width += sci.TextWidth(STYLE_DEFAULT, std::string(ctd.settings.minimumSpaceBetweenColumns, ' ').data());
-                    if (width > tlb->width) tlb->width = width;
+                    if (width > tlb->width) {
+                        tlb->width = width;
+                        auto lineTabsSet = getLineTabsSet();
+                        if (lineTabsSet) for (Scintilla::Line ln = tlb->firstLine; ln <= tlb->lastLine; ++ln) (*lineTabsSet)[ln] = 0;
+                    }
                 }
                 return;
             }
@@ -554,12 +569,25 @@ void ColumnsPlusPlusData::bufferActivated() {
     else {
         int ccsym = settings.monospaceNoMnemonics && dd.assumeMonospace ? '!' : 0;
         if (sci.ControlCharSymbol() != ccsym) sci.SetControlCharSymbol(ccsym);
+        if (dd.tabLayouts.empty()) return;
+        auto lineTabsSet = getLineTabsSet();
+        if (!lineTabsSet) return;
+        Scintilla::Line lines = sci.LineCount();
+        for (Scintilla::Line i = 0; i < lines; ++i) {
+            int tab = sci.GetNextTabStop(i, 0);
+            if (tab != 0) return;
+        }
+        lineTabsSet->assign(lines, 0);
         reselectRectangularSelection(dd);
     }
 }
 
 
 void ColumnsPlusPlusData::fileClosed(const NMHDR* nmhdr) {
+    // If the file (buffer) is closed in one view but remains open in the other, or is moved from one view to the other,
+    // we still get this notification. So we have to check to see if the buffer is still open in either view.
+    auto position = SendMessage(nppData._nppHandle, NPPM_GETPOSFROMBUFFERID, nmhdr->idFrom, 0);
+    if (position != -1) return;
     for (auto i = documents.begin(); i != documents.end();)
         if (i->second.buffer == nmhdr->idFrom) documents.erase(i++);
         else ++i;

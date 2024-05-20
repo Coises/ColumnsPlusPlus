@@ -409,6 +409,9 @@ public:
     std::map<std::wstring, ElasticTabsProfile> profiles;
     std::map<std::wstring, std::wstring>       extensionToProfile = { {L"", L"*"}, {L"*", L"*"} };
 
+    std::vector<char> view1TabsSet;
+    std::vector<char> view2TabsSet;
+
     UpdateInformation     updateInfo;
     DocumentDataSettings  settings;    // these are the settings for the last active document, or else initial settings
     SearchData            searchData;  // status and settings remembered for the Find/Replace dialog
@@ -490,6 +493,12 @@ public:
 
     DocumentData* getDocument(const Scintilla::NotificationData* scnp) { return getDocument(reinterpret_cast<HWND>(scnp->nmhdr.hwndFrom)); }
 
+    std::vector<char>* getLineTabsSet() {
+        if (activeScintilla == nppData._scintillaMainHandle  ) return &view1TabsSet;
+        if (activeScintilla == nppData._scintillaSecondHandle) return &view2TabsSet;
+        return 0;
+    }
+
     RectangularSelection getRectangularSelection();
 
     bool fontSpacingChange(DocumentData& dd) {
@@ -500,6 +509,7 @@ public:
     }
 
     bool guessMonospaced() {
+        if (sci.Technology() != Scintilla::Technology::Default) return false;
         int width24b = sci.TextWidth(STYLE_DEFAULT, "                        ");
         int width24w = sci.TextWidth(STYLE_DEFAULT, "WWWWWWWWWWWWWWWWWWWWWWWW");
         if (width24b != width24w) return false;
