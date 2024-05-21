@@ -1,5 +1,28 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.1 -- May 21st, 2024
+
+### Fixes and improvements:
+
+* When DirectWrite is enabled in Notepad++ settings, "Best estimate" for monospaced font optimization will always be "no"; monospaced font optimizations don't appear to have any advantage with DirectWrite, and they can cause problems.
+
+* Improvements to the way tab settings are tracked can sometimes significantly speed up, or completely avoid, the "Setting tabstops" message box that interrupts editing when working with large rectangular selections in large files.
+
+* Fixed an error that caused settings for a document to be lost when it was moved from one view to the other or closed in one view while open in the other.
+
+* Fixed an omission that sometimes caused pasting a rectangular selection or a multiple selection to paste into the wrong columns in lines that were not visible on the screen. *This fix only works on Notepad++ versions 8.6 and higher. The work-around for pre-8.6 versions is to make a zero-width rectangular selection deep enough to cover all the lines into which you will paste before pasting.*
+
+### New features:
+
+* Added the [Selection](https://coises.github.io/ColumnsPlusPlus/help.htm#selectionmenu) submenu, which contains options to extend a rectangular section to the edges of the document (up, left, right or down), to enclose a selection (which can be a single or a multiple selection) in a rectangular selection, and to extend a selection either left to right or top to bottom. Default keyboard shortcuts are established, which can be changed or removed in the Shortcut Mapper in Notepad++.
+
+* Added the [Timestamps](https://coises.github.io/ColumnsPlusPlus/help.htm#timestamps) command and dialog. *This command may not be available on Windows versions older than Windows 10 version 1903/19H1. Columns++ will attempt to detect when it will not work and remove it from the menu, but it is possible that it will appear but be non-functional on some older systems.*
+
+### Notes:
+
+* Some new features and fixes are probably incompatible with the [BetterMultiSelection](https://github.com/dail8859/BetterMultiSelection) plugin. I believe that most if not all of that plugin's features are now incorporated natively in current versions of Notepad++; if there are specific problems you cannot solve without that plugin and you observe conflicts with Columns++, please open an issue in the GitHub repository for Columns++ and I will see if there is anything I can do about it.
+
+
 ## Version 1.0.6 -- March 26th, 2024
 
 * Avoid display errors that could occur when editing a wrapped line containing elastic tabstops. Under certain circumstances, an empty magenta line might appear following the edited line, or text at the end of the line might not be wrapped properly.
