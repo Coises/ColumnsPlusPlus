@@ -268,6 +268,8 @@ bool ElasticProgressInfo::setTabstops(bool stepless) {
 
 
 void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
+    ElasticProgressInfo epi(*this, dd);
+    if (!epi.lineTabsSet) return;
     dd.elasticAnalysisRequired   = false;
     dd.deleteWithoutLayoutChange = false;
     dd.width24b = sci.TextWidth(STYLE_DEFAULT, "                        ");
@@ -275,13 +277,21 @@ void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
     dd.width24w = sci.TextWidth(STYLE_DEFAULT, "WWWWWWWWWWWWWWWWWWWWWWWW");
     dd.assumeMonospace = dd.settings.monospace == ElasticTabsProfile::MonospaceBest ? guessMonospaced()
                        : dd.settings.monospace == ElasticTabsProfile::MonospaceAlways;
-    int ccsym = settings.monospaceNoMnemonics && dd.assumeMonospace ? '!' : 0;
-    if (sci.ControlCharSymbol() != ccsym) sci.SetControlCharSymbol(ccsym);
-    ElasticProgressInfo epi(*this, dd);
-    if (epi.lineTabsSet) epi.lineTabsSet->assign(sci.LineCount(), 0);
+    const int ccsym = settings.monospaceNoMnemonics && dd.assumeMonospace ? '!' : 0;
+    const Scintilla::Line lineCount = sci.LineCount();
+    if (bothViewsShowSameDocument()) {
+        view1TabsSet.assign(lineCount, 0);
+        view2TabsSet.assign(lineCount, 0);
+        SendMessage(nppData._scintillaMainHandle  , SCI_SETCONTROLCHARSYMBOL, ccsym, 0);
+        SendMessage(nppData._scintillaSecondHandle, SCI_SETCONTROLCHARSYMBOL, ccsym, 0);
+    }
+    else {
+        sci.SetControlCharSymbol(ccsym);
+        epi.lineTabsSet->assign(lineCount, 0);
+    }
     epi.isAnalyze   = true;
     epi.firstNeeded = 0;
-    epi.lastNeeded  = sci.LineCount() - 1;
+    epi.lastNeeded  = lineCount - 1;
     unsigned long long before, after;
     before = GetTickCount64();
     double timeLimit = elasticProgressTime;
@@ -432,7 +442,11 @@ void ColumnsPlusPlusData::scnModified(const Scintilla::NotificationData* scnp) {
                     if (width > tlb->width) {
                         tlb->width = width;
                         auto lineTabsSet = getLineTabsSet();
-                        if (lineTabsSet) for (Scintilla::Line ln = tlb->firstLine; ln <= tlb->lastLine; ++ln) (*lineTabsSet)[ln] = 0;
+                        if (lineTabsSet) {
+                            if (bothViewsShowSameDocument())
+                                 for (Scintilla::Line ln = tlb->firstLine; ln <= tlb->lastLine; ++ln) view1TabsSet[ln] = view2TabsSet[ln] = 0;
+                            else for (Scintilla::Line ln = tlb->firstLine; ln <= tlb->lastLine; ++ln) (*lineTabsSet)[ln] = 0;
+                        }
                     }
                 }
                 return;
@@ -609,9 +623,15 @@ void ColumnsPlusPlusData::modifyAll(const NMHDR* nmhdr) {
     bool visible2 = cdi2 < 0 ? false : bufferID == static_cast<UINT_PTR>(SendMessage(nppData._nppHandle, NPPM_GETBUFFERIDFROMPOS, cdi2, 1));
     if (visible1 || visible2) {
         DocumentData* ddp = getDocument(visible1 ? nppData._scintillaMainHandle : nppData._scintillaSecondHandle);
-        if (!ddp) return;
+        if (!ddp || !ddp->settings.elasticEnabled) return;
         analyzeTabstops(*ddp);
         setTabstops(*ddp);
+        if (visible1 && visible2) {
+            activeScintilla = nppData._scintillaSecondHandle;
+            pointerScintilla = SendMessage(activeScintilla, static_cast<UINT>(Scintilla::Message::GetDirectPointer), 0, 0);
+            sci.SetFnPtr(directStatusScintilla, pointerScintilla);
+            setTabstops(*ddp);
+        }
     }
     else for (auto i = documents.begin(); i != documents.end(); ++i) if (i->second.buffer == bufferID) {
         DocumentData& dd = i->second;
@@ -634,12 +654,30 @@ void ColumnsPlusPlusData::toggleElasticEnabled() {
         sci.SetTabIndents(0);
         analyzeTabstops(*ddp);
         setTabstops(*ddp);
-    } else {
+    } 
+    else {
         if (settings.overrideTabSize) sci.SetTabWidth(ddp->tabOriginal);
         sci.SetTabIndents(1);
         if (sci.ControlCharSymbol()) sci.SetControlCharSymbol(0);
         Scintilla::Line lineCount = sci.LineCount();
         for (Scintilla::Line lineNum = 0; lineNum < lineCount; ++lineNum) sci.ClearTabStops(lineNum);
+    }
+    if (bothViewsShowSameDocument()) {
+        activeScintilla = activeScintilla == nppData._scintillaMainHandle ? nppData._scintillaSecondHandle : nppData._scintillaMainHandle;
+        pointerScintilla = SendMessage(activeScintilla, static_cast<UINT>(Scintilla::Message::GetDirectPointer), 0, 0);
+        sci.SetFnPtr(directStatusScintilla, pointerScintilla);
+        if (settings.elasticEnabled) {
+            if (settings.overrideTabSize) sci.SetTabWidth(settings.minimumOrLeadingTabSize);
+            sci.SetTabIndents(0);
+            setTabstops(*ddp);
+        } 
+        else {
+            if (settings.overrideTabSize) sci.SetTabWidth(ddp->tabOriginal);
+            sci.SetTabIndents(1);
+            if (sci.ControlCharSymbol()) sci.SetControlCharSymbol(0);
+            Scintilla::Line lineCount = sci.LineCount();
+            for (Scintilla::Line lineNum = 0; lineNum < lineCount; ++lineNum) sci.ClearTabStops(lineNum);
+        }
     }
 }
 

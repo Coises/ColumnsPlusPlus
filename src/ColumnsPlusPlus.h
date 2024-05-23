@@ -493,6 +493,13 @@ public:
 
     DocumentData* getDocument(const Scintilla::NotificationData* scnp) { return getDocument(reinterpret_cast<HWND>(scnp->nmhdr.hwndFrom)); }
 
+    bool bothViewsShowSameDocument() {
+        intptr_t cdi1 = SendMessage(nppData._nppHandle, NPPM_GETCURRENTDOCINDEX, 0, 0);
+        intptr_t cdi2 = SendMessage(nppData._nppHandle, NPPM_GETCURRENTDOCINDEX, 0, 1);
+        if (cdi1 < 0 || cdi2 < 0) return false;
+        return SendMessage(nppData._nppHandle, NPPM_GETBUFFERIDFROMPOS, cdi1, 0) == SendMessage(nppData._nppHandle, NPPM_GETBUFFERIDFROMPOS, cdi2, 1);
+    }
+
     std::vector<char>* getLineTabsSet() {
         if (activeScintilla == nppData._scintillaMainHandle  ) return &view1TabsSet;
         if (activeScintilla == nppData._scintillaSecondHandle) return &view2TabsSet;

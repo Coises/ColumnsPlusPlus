@@ -1,5 +1,11 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.1.1 -- May 23rd, 2024
+
+* Fixed an error that caused elastic tabstop processing to be applied after using **Replace All** or **Replace All in All Opened Documents** in the Notepad++ **Search** dialog when elastic tabstops is not enabled. Expected to resolve issue #24. (Note: This error has been present since Columns++ version 1.0.4 when used with Notepad++ versions 8.6.5 or greater.)
+
+* Fixed some errors that could cause elastic tabstops layout to fail to update properly in the inactive view when the same document is visible in both views.
+
 ## Version 1.1 -- May 21st, 2024
 
 ### Fixes and improvements:
