@@ -22,6 +22,8 @@
 
 void __stdcall catchSelectionMouseUp(HWND hwnd, UINT uMsg, UINT_PTR idEvent, DWORD dwTime);
 
+namespace {
+
 struct ElasticProgressInfo {
 
     ColumnsPlusPlusData& data;
@@ -91,7 +93,7 @@ INT_PTR CALLBACK elasticProgressDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
     case WM_WINDOWPOSCHANGED:
         if (!epi.timerStarted && reinterpret_cast<WINDOWPOS*>(lParam)->flags & SWP_SHOWWINDOW) {
             epi.timerStarted = true;
-            SetTimer(hwndDlg, 1, 0, 0);
+            PostMessage(hwndDlg, WM_TIMER, 0, 0);
         }
         return FALSE;
 
@@ -105,14 +107,20 @@ INT_PTR CALLBACK elasticProgressDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
         break;
 
     case WM_TIMER:
-        KillTimer(hwndDlg, 1);
-        if (epi.isAnalyze ? epi.analyzeTabstops() : epi.setTabstops()) {
-            SendDlgItemMessage(hwndDlg, IDC_ELASTIC_PROGRESS_BAR, PBM_SETRANGE32, 0, epi.objective());
-            SendDlgItemMessage(hwndDlg, IDC_ELASTIC_PROGRESS_BAR, PBM_SETPOS, epi.processed(), 0);
-            SetTimer(hwndDlg, 1, 0, 0);
+    {
+        SetTimer(hwndDlg, 1, 0, 0);
+        auto before = GetTickCount64();
+        while (epi.isAnalyze ? epi.analyzeTabstops() : epi.setTabstops()) {
+            if (GetTickCount64() - before > 10) {
+                SendDlgItemMessage(hwndDlg, IDC_ELASTIC_PROGRESS_BAR, PBM_SETRANGE32, 0, epi.objective());
+                SendDlgItemMessage(hwndDlg, IDC_ELASTIC_PROGRESS_BAR, PBM_SETPOS, epi.processed(), 0);
+                return TRUE;
+            }
         }
-        else EndDialog(hwndDlg, 0);
+        KillTimer(hwndDlg, 1);
+        EndDialog(hwndDlg, 0);
         return TRUE;
+    }
 
     case WM_NOTIFY:
         switch (((LPNMHDR)lParam)->code) {
@@ -128,6 +136,8 @@ INT_PTR CALLBACK elasticProgressDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
     return FALSE;
 
 }
+
+} // end unnamed namespace
 
 
 void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNeeded, Scintilla::Line lastNeeded) {
@@ -148,15 +158,19 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
         unsigned long long before, after;
         before = GetTickCount64();
         double timeLimit = elasticProgressTime;
+        int stepCount = 0;
         while (epi.setTabstops()) {
             after = GetTickCount64();
+            ++stepCount;
+            if (after - before < 20) continue;
             double projected = static_cast<double>(epi.objective() - epi.processed()) * static_cast<double>(after - before)
-                             / (1000 * static_cast<double>(epi.stepSize));
+                / (1000 * static_cast<double>(stepCount * epi.stepSize));
             if (projected > timeLimit) {
                 DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_ELASTIC_PROGRESS), nppData._nppHandle, elasticProgressDialogProc, reinterpret_cast<LPARAM>(&epi));
                 break;
             }
             before = after;
+            stepCount = 0;
         }
     }
     sci.PointXFromPosition(0);  // This appears to clear a cache from which Scintilla may read a stale value for ChooseCaretX
@@ -295,15 +309,19 @@ void ColumnsPlusPlusData::analyzeTabstops(DocumentData& dd) {
     unsigned long long before, after;
     before = GetTickCount64();
     double timeLimit = elasticProgressTime;
+    int stepCount = 0;
     while (epi.analyzeTabstops()) {
         after = GetTickCount64();
+        ++stepCount;
+        if (after - before < 20) continue;
         double projected = static_cast<double>(epi.objective() - epi.processed()) * static_cast<double>(after - before)
-                         / (1000 * static_cast<double>(epi.stepSize));
+                         / (1000 * static_cast<double>(stepCount * epi.stepSize));
         if (projected > timeLimit) {
             DialogBoxParam(dllInstance, MAKEINTRESOURCE(IDD_ELASTIC_PROGRESS), nppData._nppHandle, elasticProgressDialogProc, reinterpret_cast<LPARAM>(&epi));
             break;
         }
         before = after;
+        stepCount = 0;
     }
 }
 
