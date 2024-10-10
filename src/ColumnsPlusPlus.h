@@ -381,9 +381,9 @@ public:
     int      width24d = 0;                        //     at which tabLayouts were calculated;
     int      width24w = 0;                        //     if these values change, full analysis is required
     int      tabOriginal;                         // set when buffer activated, used for restore when elasticTabsEnabled or overrideTabSize turned off
-    bool     elasticAnalysisRequired = false;
-    bool     deleteWithoutLayoutChange = false;
-    bool     assumeMonospace = false;             // set when assuming all fonts used are monospaced
+    bool     elasticAnalysisRequired   = false;   // set when the entire document must be re-analyzed for elastic tabstops layout
+    bool     deleteWithoutLayoutChange = false;   // set before delete if deleteWithout... are valid and indicate a matching delete does not change layout
+    bool     assumeMonospace           = false;   // set when assuming all fonts used are monospaced
     Scintilla::Position deleteWithoutLayoutChangePosition;
     Scintilla::Position deleteWithoutLayoutChangeLength;
 };
@@ -594,7 +594,7 @@ public:
 
     void analyzeTabstops(DocumentData& dd);
     bool findTabLayoutBlock(DocumentData& dd, Scintilla::Position position, Scintilla::Position length, TabLayoutBlock*& tlb, int& width);
-    void setTabstops(DocumentData& dd, Scintilla::Line firstNeeded = -1, Scintilla::Line lastNeeded = -1);
+    void setTabstops(DocumentData& dd, Scintilla::Line firstNeeded = -1, Scintilla::Line lastNeeded = -1, bool skipChooseCaretX = false);
 
     void afterSelectionMouseUp();
     void beforePaste();

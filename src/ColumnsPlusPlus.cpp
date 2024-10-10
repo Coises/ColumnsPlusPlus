@@ -140,7 +140,7 @@ INT_PTR CALLBACK elasticProgressDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
 } // end unnamed namespace
 
 
-void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNeeded, Scintilla::Line lastNeeded) {
+void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNeeded, Scintilla::Line lastNeeded, bool skipChooseCaretX) {
     ElasticProgressInfo epi(*this, dd);
     if (!epi.lineTabsSet) return;
     const Scintilla::Line lineCount     = sci.LineCount();
@@ -173,8 +173,10 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
             stepCount = 0;
         }
     }
-    sci.PointXFromPosition(0);  // This appears to clear a cache from which Scintilla may read a stale value for ChooseCaretX
-    sci.ChooseCaretX();
+    if (!skipChooseCaretX) /* avoid ChooseCaretX when nothing has changed, so up/down keys don't lose position crossing short lines */ {
+        sci.PointXFromPosition(0);  // This appears to clear a cache from which Scintilla may read a stale value for ChooseCaretX
+        sci.ChooseCaretX();
+    }
     if (epi.lineCacheStatus == ElasticProgressInfo::LineCacheRestore) sci.SetLayoutCache(epi.lineCache);
 }
 
@@ -503,7 +505,8 @@ void ColumnsPlusPlusData::scnUpdateUI(const Scintilla::NotificationData* scnp) {
     if (Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) syncFindButton();
     if (!ddp->settings.elasticEnabled) return;
     ddp->deleteWithoutLayoutChange = false;
-    if (ddp->elasticAnalysisRequired || fontSpacingChange(*ddp)) analyzeTabstops(*ddp);
+    const bool fullAnalysis = (ddp->elasticAnalysisRequired || fontSpacingChange(*ddp));
+    if (fullAnalysis) analyzeTabstops(*ddp);
     if (!selectionMouseUpTimerActive && Scintilla::FlagSet(scnp->updated, Scintilla::Update::Selection)) {
         Scintilla::SelectionMode selectionMode = sci.SelectionMode();
         if (selectionMode == Scintilla::SelectionMode::Rectangle || selectionMode == Scintilla::SelectionMode::Thin) {
@@ -514,7 +517,7 @@ void ColumnsPlusPlusData::scnUpdateUI(const Scintilla::NotificationData* scnp) {
             else reselectRectangularSelection(*ddp);
         }
     }
-    setTabstops(*ddp);
+    setTabstops(*ddp, -1, -1, !fullAnalysis);
 }
 
 
