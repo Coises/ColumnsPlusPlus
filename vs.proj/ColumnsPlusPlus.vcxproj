@@ -21,7 +21,6 @@
   <ItemGroup>
     <ClInclude Include="..\src\ColumnsPlusPlus.h" />
     <ClInclude Include="..\src\exprtk\exprtk.hpp" />
-    <ClInclude Include="..\src\Host\original\ScintillaCall.h" />
     <ClInclude Include="..\src\Host\ScintillaCall.h" />
     <ClInclude Include="..\src\nlohmann\json.hpp" />
     <ClInclude Include="..\src\Numeric.h" />

@@ -1,5 +1,13 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.1.3 -- October 13th, 2024
+
+* Corrected an error which caused the column position to be lost when navigating with cursor up or down keys over short lines with Elastic tabstops enabled. Addresses issue #25.
+
+* Updated Notepad++ include files to version 8.7, Scintilla include files to version 5.5.2, Boost.Regex to 1.86 and nlohmann/json to 3.11.3.
+
+* Updated the help to clarify how numbers are processed internally for calculations and what limits this places on accuracy of calculations.
+
 ## Version 1.1.2 -- May 27th, 2024
 
 * Fixed an error that sometimes caused elastic tabstops progress dialogs to be raised when not needed, and to run much more slowly than necessary.

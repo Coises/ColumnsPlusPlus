@@ -406,7 +406,7 @@ window.addEventListener("load", doPageLoad);
 
 <section id=calculation><h2>Calculation</h2>
 
-<p><strong>Columns++</strong> can add or average columns of numbers or perform calculations across rows; these are explained below. See <a href="#numberformats">Number formats</a> for details about how <strong>Columns++</strong> recognizes numbers.</p>
+<p><strong>Columns++</strong> can add or average columns of numbers or perform calculations across rows; these are explained below. See <a href="#numberformats">Number formats</a> for details about how <strong>Columns++</strong> recognizes numbers, how numbers are represented internally in calculations, and some limitations on the accuracy of calculations.</p>
 
 <h3>Calculating in columns</h3>
 
@@ -457,11 +457,7 @@ Close the dialog with the <strong>Yes</strong> button to copy the results to the
 
 <section id=formulas><h2>Formulas</h2>
 
-<p><strong>Formulas</strong> are representations of mathematical computations. <strong>Columns++</strong> uses the <a href="https://github.com/ArashPartow/exprtk">ExprTk (Expression Toolkit)</a> package to implement formulas used by the <a href="#calculation-rows">Calculate...</a> command and formulas in regular expression replacements for the <a href="#search">Search</a> functions. Following are descriptions of the variables and functions defined by <strong>Columns++</strong>, along with some general features of the syntax of ExprTk expressions.</p>
-
-<h3>Numeric values in formulas</h3>
-
-<p>Numeric values are represented internally as <a href="https://en.wikipedia.org/wiki/Double-precision_floating-point_format">double precision floating point</a> numbers. Any number up to 9,007,199,254,740,992 without a fraction or decimal, positive or negative, is represented exactly. Most fractions and decimals cannot be represented exactly, but in ordinary use, rounding to a reasonable number of decimal places (so that the total number of digits before and after the decimal is under 15) will make discrepancies irrelevant.</p>
+<p><strong>Formulas</strong> are representations of mathematical computations. <strong>Columns++</strong> uses the <a href="https://github.com/ArashPartow/exprtk">ExprTk (Expression Toolkit)</a> package to implement formulas used by the <a href="#calculation-rows">Calculate...</a> command and formulas in regular expression replacements for the <a href="#search">Search</a> functions. Following are descriptions of the variables and functions defined by <strong>Columns++</strong>, along with some general features of the syntax of ExprTk expressions. See <a href="#numberformats">Number formats</a> for details about how <strong>Columns++</strong> recognizes numbers, how numbers are represented internally in calculations, and some limitations on the accuracy of calculations.</p>
 
 <p>Wherever a numeric value is used, it is also possible for the value to be <em>Not-a-Number</em>, an indication that something which was expected to produce a number failed to do so. This can happen because you tried to get a number from the document, but the associated text could not be unambiguously interpreted as a number. It can also be the result of an undefined mathematical operation, such as dividing by zero. In most cases, if any of the inputs to an operation or function are <em>Not-a-Number</em>, the result is also <em>Not-a-Number</em>. When the result of a formula is <em>Not-a-Number</em>, <strong>Columns++</strong> does not insert any text (aside from a tab and/or spaces needed to keep columns aligned).</p>
 
@@ -636,6 +632,33 @@ Up to <strong><em>d</em></strong> decimal places will be shown, but no fewer tha
 
 </section>
 
+<section id=alignment><h2>Alignment</h2>
+
+<p><strong>Align left</strong>, <strong>Align right</strong>, <strong>Align numeric</strong> and <strong>Align...</strong> process rectangular selections. The selection can be a single column, or multiple columns separated by elastic tabs. (These commands can be used on selections that include traditional fixed tabs; but the results may not be as expected, since they treat tabs as logical separators, ignoring physical positioning.) Alignment is accomplished by adding and/or removing ASCII spaces at the beginning and/or end of a column; therefore, precise alignment is not always possible when using proportionally-spaced fonts.</p>
+
+<h3>Align numeric</h3>
+
+<p>Details about how numbers are recognized and interpreted are given in the section on <a href="#numberformats">Number formats</a>. The alignment of items which are not recognized as numbers is unchanged. The <strong>Decimal separator is comma</strong> item near the bottom of the <strong>Columns++</strong> menu determines whether the comma or the period is the decimal separator.</p>
+
+<p>The settings in the <a href="#timeformats">Time formats</a> dialog determine how numeric alignment proceeds when there are numbers with colons. The <strong>Numbers with one or two colons represent</strong> setting identifies which colon (days<strong>:</strong>hours, hours<strong>:</strong>minutes or minutes<strong>:</strong>seconds) is present in all numbers with colons; that colon is aligned across all lines. Numbers without colons are aligned according to the <strong>Time units: numbers with no colons represent</strong> setting, such that they line up with the position that same unit would occupy in a time-formatted number with four segments, all of which except days have two integer digits (e.g., “1:00:00:00”).</p>
+
+<h3>Custom alignment</h3>
+
+<p>The <strong>Align...</strong> command opens a dialog which allows you to specify a string of one or more characters, or a regular expression, to be aligned in the column or columns within a rectangular selection:</p>
+
+<table class=optionsTable>
+<tr><th>Align by</th><td><p>Specify a character, a string of characters, or a regular expression to be aligned in each column.</p>
+<p>Items in which this character string or regular expression does not match are not changed.</p>
+<p>Regular expression matches are aligned by the start (leftmost position) of the match. To align by some other part of the match, rewrite it using a lookbehind assertion or the <strong>\K</strong> directive. It does not matter what characters are included in the match, only the position at which it starts.</p></td></tr>
+<tr><th>First<br>Last<br>Regular&nbsp;expression</th><td>Choose whether to align using the first or the last occurrence of the <strong>Align by</strong> character or string in each row, or whether to interpret the <strong>Align by</strong> specification as a regular expression.</td></tr>
+<tr><th>Match&nbsp;case</th><td>Check to distinguish upper and lower case when the string to be matched includes letters.</td></tr>
+<tr><td colspan=2>The following settings can be useful when the column to be processed includes some lines which will not be aligned (because the <strong>Align by</strong> character, string or expression does not match). Since unmatched items are not changed, you can use the margin settings to control how the set of aligned items, taken together, is placed relative to the unmatched lines. In other situations, the default of <strong>0 Left</strong> is usually best.</td></tr>
+<tr><th>Margin</th><td>Specify number of space characters, if any, to be used as a margin between the edge of the column and the aligned items.</td></tr>
+<tr><th>Left<br>Right</th><td>Choose whether aligned items should be positioned relative to the left side or the right side of the column in which they occur. The margin is relative to this side of the column.</td></tr>
+</table>
+
+</section>
+
 <section id=timestamps><h2>Timestamps</h2>
 
 <p>The <strong>Timestamps...</strong> command opens a dialog that lets you convert between common timestamp formats. The command requires a rectangular selection, which can be a single column or multiple columns separated by tabs. The dialog is comprised of five sections: <strong>From counter</strong>, <strong>From date and time</strong>, <strong>Time zones and locale</strong>, <strong>To counter</strong> and <strong>To date and time</strong>.</p>
@@ -748,34 +771,6 @@ Up to <strong><em>d</em></strong> decimal places will be shown, but no fewer tha
 <p>All other characters are copied verbatim to the result.</p>
 
 </td></tr>
-</table>
-
-
-</section>
-
-<section id=alignment><h2>Alignment</h2>
-
-<p><strong>Align left</strong>, <strong>Align right</strong>, <strong>Align numeric</strong> and <strong>Align...</strong> process rectangular selections. The selection can be a single column, or multiple columns separated by elastic tabs. (These commands can be used on selections that include traditional fixed tabs; but the results may not be as expected, since they treat tabs as logical separators, ignoring physical positioning.) Alignment is accomplished by adding and/or removing ASCII spaces at the beginning and/or end of a column; therefore, precise alignment is not always possible when using proportionally-spaced fonts.</p>
-
-<h3>Align numeric</h3>
-
-<p>Details about how numbers are recognized and interpreted are given in the section on <a href="#numberformats">Number formats</a>. The alignment of items which are not recognized as numbers is unchanged. The <strong>Decimal separator is comma</strong> item near the bottom of the <strong>Columns++</strong> menu determines whether the comma or the period is the decimal separator.</p>
-
-<p>The settings in the <a href="#timeformats">Time formats</a> dialog determine how numeric alignment proceeds when there are numbers with colons. The <strong>Numbers with one or two colons represent</strong> setting identifies which colon (days<strong>:</strong>hours, hours<strong>:</strong>minutes or minutes<strong>:</strong>seconds) is present in all numbers with colons; that colon is aligned across all lines. Numbers without colons are aligned according to the <strong>Time units: numbers with no colons represent</strong> setting, such that they line up with the position that same unit would occupy in a time-formatted number with four segments, all of which except days have two integer digits (e.g., “1:00:00:00”).</p>
-
-<h3>Custom alignment</h3>
-
-<p>The <strong>Align...</strong> command opens a dialog which allows you to specify a string of one or more characters, or a regular expression, to be aligned in the column or columns within a rectangular selection:</p>
-
-<table class=optionsTable>
-<tr><th>Align by</th><td><p>Specify a character, a string of characters, or a regular expression to be aligned in each column.</p>
-<p>Items in which this character string or regular expression does not match are not changed.</p>
-<p>Regular expression matches are aligned by the start (leftmost position) of the match. To align by some other part of the match, rewrite it using a lookbehind assertion or the <strong>\K</strong> directive. It does not matter what characters are included in the match, only the position at which it starts.</p></td></tr>
-<tr><th>First<br>Last<br>Regular&nbsp;expression</th><td>Choose whether to align using the first or the last occurrence of the <strong>Align by</strong> character or string in each row, or whether to interpret the <strong>Align by</strong> specification as a regular expression.</td></tr>
-<tr><th>Match&nbsp;case</th><td>Check to distinguish upper and lower case when the string to be matched includes letters.</td></tr>
-<tr><td colspan=2>The following settings can be useful when the column to be processed includes some lines which will not be aligned (because the <strong>Align by</strong> character, string or expression does not match). Since unmatched items are not changed, you can use the margin settings to control how the set of aligned items, taken together, is placed relative to the unmatched lines. In other situations, the default of <strong>0 Left</strong> is usually best.</td></tr>
-<tr><th>Margin</th><td>Specify number of space characters, if any, to be used as a margin between the edge of the column and the aligned items.</td></tr>
-<tr><th>Left<br>Right</th><td>Choose whether aligned items should be positioned relative to the left side or the right side of the column in which they occur. The margin is relative to this side of the column.</td></tr>
 </table>
 
 </section>
@@ -903,6 +898,12 @@ defines an escape character for separated values. The character following an esc
 
 <p>Numbers can include thousands separators and decimals. The <strong>Decimal separator is comma</strong> item near the bottom of the <strong>Columns++</strong> menu determines whether the comma or the period is the decimal separator; thousands separators may be a space, an apostrophe, or whichever of comma or period is not the decimal separator. Numbers can also be times, using colons to separate days, hours, minutes and seconds.</p>
 
+<h3>Internal representation of numeric values and accuracy of calculations</h3>
+
+<p>When <strong>Columns++</strong> performs calculations, it represents numeric values internally as <a href="https://en.wikipedia.org/wiki/Double-precision_floating-point_format">double precision floating point</a> numbers. Any number up to 9,007,199,254,740,992 without a fraction or decimal, positive or negative, is represented exactly. Most fractions and decimals cannot be represented exactly, but in ordinary use, rounding to a reasonable number of decimal places (so that the total number of digits before and after the decimal is under 15) will make discrepancies irrelevant. Numeric results which exceed 9,007,199,254,740,992 in absolute value are represented in <a href="https://en.wikipedia.org/wiki/Scientific_notation">scientific notation</a>.</p>
+
+<h3>Recognizing numbers in documents</h3>
+
 <p>There is some flexibility in what can be included along with a number in a column or a regular expression match. Common currency signs can precede the number with or without a space, and a minus sign can precede or follow a currency sign. Non-numeric characters (such as units, like “mg” or “ft”) can follow the number. (These are not interpreted, though; <strong>Columns++</strong> will add 5 yards and 5 inches to get 10 without complaint.) Non-numeric characters can precede the number if they are separated from the number by at least one space.</p>
 
 <ul>
@@ -913,7 +914,7 @@ defines an escape character for separated values. The character following an esc
 
 <li>When sorting numerically, fields which cannot be unambiguously interpreted as numbers sort to the beginning.
 
-<li><strong>Align numeric</strong> uses slightly more lenient rules for recognizing numbers; the alignment of items which are not recognized as numbers is unchanged.
+<li><strong>Align numeric</strong> uses slightly more lenient rules for recognizing numbers; the alignment of items which are not recognized as numbers is unchanged. The limitations in the <i>Internal representation of numeric values and accuracy of calculations</i> section above do not apply to <strong>Align numeric</strong>, as this command does not convert numbers to internal representation.
 
 </ul>
 
