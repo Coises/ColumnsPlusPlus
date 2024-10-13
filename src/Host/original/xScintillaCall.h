@@ -20,8 +20,6 @@ struct TextRangeFull;
 struct TextToFindFull;
 struct RangeToFormatFull;
 
-class IDocumentEditable;
-
 using FunctionDirect = intptr_t(*)(intptr_t ptr, unsigned int iMessage, uintptr_t wParam, intptr_t lParam, int *pStatus);
 
 struct Failure {
@@ -209,8 +207,6 @@ public:
 	void StyleSetHotSpot(int style, bool hotspot);
 	void StyleSetCheckMonospaced(int style, bool checkMonospaced);
 	bool StyleGetCheckMonospaced(int style);
-	void StyleSetStretch(int style, Scintilla::FontStretch stretch);
-	Scintilla::FontStretch StyleGetStretch(int style);
 	void StyleSetInvisibleRepresentation(int style, const char *representation);
 	int StyleGetInvisibleRepresentation(int style, char *representation);
 	std::string StyleGetInvisibleRepresentation(int style);
@@ -247,22 +243,6 @@ public:
 	int CharacterCategoryOptimization();
 	void BeginUndoAction();
 	void EndUndoAction();
-	int UndoSequence();
-	int UndoActions();
-	void SetUndoSavePoint(int action);
-	int UndoSavePoint();
-	void SetUndoDetach(int action);
-	int UndoDetach();
-	void SetUndoTentative(int action);
-	int UndoTentative();
-	void SetUndoCurrent(int action);
-	int UndoCurrent();
-	void PushUndoActionType(int type, Position pos);
-	void ChangeLastUndoActionText(Position length, const char *text);
-	int UndoActionType(int action);
-	Position UndoActionPosition(int action);
-	int UndoActionText(int action, char *text);
-	std::string UndoActionText(int action);
 	void IndicSetStyle(int indicator, Scintilla::IndicatorStyle indicatorStyle);
 	Scintilla::IndicatorStyle IndicGetStyle(int indicator);
 	void IndicSetFore(int indicator, Colour fore);
@@ -322,8 +302,6 @@ public:
 	int AutoCGetMaxWidth();
 	void AutoCSetMaxHeight(int rowCount);
 	int AutoCGetMaxHeight();
-	void AutoCSetStyle(int style);
-	int AutoCGetStyle();
 	void SetIndent(int indentSize);
 	int Indent();
 	void SetUseTabs(bool useTabs);
@@ -542,9 +520,7 @@ public:
 	void Cancel();
 	void DeleteBack();
 	void Tab();
-	void LineIndent();
 	void BackTab();
-	void LineDedent();
 	void NewLine();
 	void FormFeed();
 	void VCHome();
@@ -585,8 +561,8 @@ public:
 	Position BraceMatchNext(Position pos, Position startPos);
 	bool ViewEOL();
 	void SetViewEOL(bool visible);
-	IDocumentEditable *DocPointer();
-	void SetDocPointer(IDocumentEditable *doc);
+	void *DocPointer();
+	void SetDocPointer(void *doc);
 	void SetModEventMask(Scintilla::ModificationFlags eventMask);
 	Position EdgeColumn();
 	void SetEdgeColumn(Position column);
@@ -605,9 +581,9 @@ public:
 	bool SelectionIsRectangle();
 	void SetZoom(int zoomInPoints);
 	int Zoom();
-	IDocumentEditable *CreateDocument(Position bytes, Scintilla::DocumentOption documentOptions);
-	void AddRefDocument(IDocumentEditable *doc);
-	void ReleaseDocument(IDocumentEditable *doc);
+	void *CreateDocument(Position bytes, Scintilla::DocumentOption documentOptions);
+	void AddRefDocument(void *doc);
+	void ReleaseDocument(void *doc);
 	Scintilla::DocumentOption DocumentOptions();
 	Scintilla::ModificationFlags ModEventMask();
 	void SetCommandEvents(bool commandEvents);
@@ -658,9 +634,7 @@ public:
 	void CopyRange(Position start, Position end);
 	void CopyText(Position length, const char *text);
 	void SetSelectionMode(Scintilla::SelectionMode selectionMode);
-	void ChangeSelectionMode(Scintilla::SelectionMode selectionMode);
 	Scintilla::SelectionMode SelectionMode();
-	void SetMoveExtendsSelection(bool moveExtendsSelection);
 	bool MoveExtendsSelection();
 	Position GetLineSelStartPosition(Line line);
 	Position GetLineSelEndPosition(Line line);
@@ -730,10 +704,6 @@ public:
 	void SetLayoutThreads(int threads);
 	int LayoutThreads();
 	void CopyAllowLine();
-	void CutAllowLine();
-	void SetCopySeparator(const char *separator);
-	int CopySeparator(char *separator);
-	std::string CopySeparator();
 	void *CharacterPointer();
 	void *RangePointer(Position start, Position lengthRange);
 	Position GapPosition();
@@ -793,7 +763,6 @@ public:
 	void ClearSelections();
 	void SetSelection(Position caret, Position anchor);
 	void AddSelection(Position caret, Position anchor);
-	int SelectionFromPoint(int x, int y);
 	void DropSelectionN(int selection);
 	void SetMainSelection(int selection);
 	int MainSelection();

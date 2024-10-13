@@ -1,7 +1,0 @@
-Source:
-https://github.com/boostorg/regex/releases/tag/boost-1.83.0
-
-using contents of include folder include, removed boost\regex\v4\
-
-Documentation:
-https://www.boost.org/doc/libs/1_83_0/libs/regex/doc/html/index.html
