@@ -38,8 +38,8 @@ Elastic tabstops can cause loading and editing to be slow for large files. Perfo
 
 ## Installation
 
-Columns++ will be available through the Notepad++ Plugins Admin interface soon. In the meantime:
+Columns++ is available through the Notepad++ Plugins Admin interface, though the version found there will not always be the newest.
 
-You can use the Quick Installer for the [latest release](https://github.com/Coises/ColumnsPlusPlus/releases/latest/) if you have Notepad++ (either 32-bit, 64-bit or both) installed in the default location(s).
+You can use the Quick Installer for the [latest stable release](https://github.com/Coises/ColumnsPlusPlus/releases/latest/) or the [newest (possibly less stable) release](https://github.com/Coises/ColumnsPlusPlus/releases) if you have Notepad++ (either 32-bit, 64-bit or both) installed in the default location(s).
 
 Otherwise, download an x86 or x64 zip file from the Releases section, depending on whether you're using 32-bit or 64-bit Notepad++. Unzip the file to a folder named __ColumnsPlusPlus__ (the name must be exactly this, or Notepad++ will not load the plugin) and copy that folder into the plugins directory where Notepad++ is installed (usually __C:\Program Files (x86)\Notepad++\plugins__ for 32-bit versions or __C:\Program Files\Notepad++\plugins__ for 64-bit versions).

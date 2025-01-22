@@ -68,7 +68,7 @@ https://opensource.org/licenses/MIT
 ===================================================================
 
 Columns++ uses the Boost.Regex Library
-(https://www.boost.org/doc/libs/1_83_0/libs/regex/).
+(https://www.boost.org/doc/libs/1_87_0/libs/regex/).
 
 Source code repository: https://github.com/boostorg/regex/
 

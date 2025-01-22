@@ -1,5 +1,11 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.1.4 -- January 22nd, 2025
+
+* Changed elastic tabstops processing to work correctly with Notepad++ version 8.7.6.
+
+* Changed About dialog to show build date and time rather than file date and time.
+
 ## Version 1.1.3 -- October 13th, 2024
 
 * Corrected an error which caused the column position to be lost when navigating with cursor up or down keys over short lines with Elastic tabstops enabled. Addresses issue #25.
