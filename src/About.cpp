@@ -15,6 +15,7 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "ColumnsPlusPlus.h"
+#include <chrono>
 #include "resource.h"
 #include "commctrl.h"
 #include "Shlwapi.h"
@@ -122,64 +123,39 @@ BOOL ColumnsPlusPlusData::aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam
             SetWindowPos(hwndDlg, HWND_TOP, (rcNpp.left + rcNpp.right + rcDlg.left - rcDlg.right) / 2,
                                             (rcNpp.top + rcNpp.bottom + rcDlg.top - rcDlg.bottom) / 2, 0, 0, SWP_NOSIZE);
 
-            std::wstring moduleFileName(MAX_PATH + 1, 0);
-            for (;;) {
-                size_t n = GetModuleFileName(dllInstance, moduleFileName.data(), static_cast<DWORD>(moduleFileName.length()));
-                if (n < moduleFileName.length()) {
-                    moduleFileName.resize(n);
-                    break;
-                }
-                if (n > 32768) {
-                    moduleFileName.clear();
-                    break;
-                }
-                moduleFileName.resize(2*moduleFileName.length());
-            }
-            if (moduleFileName.length()) {
-                int n = GetFileVersionInfoSize(moduleFileName.data(), 0);
-                if (n) {
-                    std::string versionInfo(n, 0);
-                    VS_FIXEDFILEINFO* fixedFileInfo;
-                    UINT size;
-                    GetFileVersionInfo(moduleFileName.data(), 0, n, versionInfo.data());
-                    if (VerQueryValue(versionInfo.data(), L"\\", reinterpret_cast<void**>(&fixedFileInfo), &size) && size > 0) {
-                        int versionPart1 = 0x0000ffff & (fixedFileInfo->dwProductVersionMS >> 16);
-                        int versionPart2 = 0x0000ffff & fixedFileInfo->dwProductVersionMS;
-                        int versionPart3 = 0x0000ffff & (fixedFileInfo->dwProductVersionLS >> 16);
-                        int versionPart4 = 0x0000ffff & fixedFileInfo->dwProductVersionLS;
-                        std::wstring version = L"This is version " + std::to_wstring(versionPart1)
-                                             + L"." + std::to_wstring(versionPart2);
-                        if (versionPart3 || versionPart4) version += L"." + std::to_wstring(versionPart3);
-                        if (versionPart4) version += L"." + std::to_wstring(versionPart4);
-                        if constexpr (sizeof(size_t) == 8) version += L" (x64)";
-                        else if constexpr (sizeof(size_t) == 4) version += L" (x86)";
-                        HANDLE file = CreateFile(moduleFileName.data(), GENERIC_READ, FILE_SHARE_READ, 0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
-                        if (file != INVALID_HANDLE_VALUE) {
-                            FILETIME fileTime;
-                            SYSTEMTIME sysTime;
-                            GetFileTime(file, 0, 0, &fileTime);
-                            CloseHandle(file);
-                            FileTimeToSystemTime(&fileTime, &sysTime);
-                            int dateLen = GetDateFormatEx(LOCALE_NAME_USER_DEFAULT, DATE_LONGDATE, &sysTime, 0, 0, 0, 0);
-                            if (dateLen) {
-                                std::wstring date(dateLen, 0);
-                                GetDateFormatEx(LOCALE_NAME_USER_DEFAULT, DATE_LONGDATE, &sysTime, 0, date.data(), dateLen, 0);
-                                date.resize(dateLen - 1);
-                                version += L".\n\nFile date: " + date;
-                                int timeLen = GetTimeFormatEx(LOCALE_NAME_USER_DEFAULT, 0, &sysTime, L"HH':'mm", 0, 0);
-                                if (timeLen) {
-                                    std::wstring time(timeLen, 0);
-                                    GetTimeFormatEx(LOCALE_NAME_USER_DEFAULT, 0, &sysTime, L"HH':'mm", time.data(), timeLen);
-                                    time.resize(timeLen - 1);
-                                    version += L" at " + time + L" UTC";
-                                }
+            {
+                std::wstring version;
+                VS_FIXEDFILEINFO* fixedFileInfo;
+                UINT size;
+                HRSRC hRes = FindResource(dllInstance, MAKEINTRESOURCE(VS_VERSION_INFO), RT_VERSION);
+                if (hRes) {
+                    HGLOBAL hGlobal = LoadResource(dllInstance, hRes);
+                    if (hGlobal) {
+                        void* pVersionInfo = LockResource(hGlobal);
+                        if (pVersionInfo) {
+                            if (VerQueryValue(pVersionInfo, L"\\", reinterpret_cast<void**>(&fixedFileInfo), &size) && size > 0) {
+                                int versionPart1 = 0x0000ffff & (fixedFileInfo->dwProductVersionMS >> 16);
+                                int versionPart2 = 0x0000ffff & fixedFileInfo->dwProductVersionMS;
+                                int versionPart3 = 0x0000ffff & (fixedFileInfo->dwProductVersionLS >> 16);
+                                int versionPart4 = 0x0000ffff & fixedFileInfo->dwProductVersionLS;
+                                version = L"This is version " + std::to_wstring(versionPart1)
+                                    + L"." + std::to_wstring(versionPart2);
+                                if (versionPart3 || versionPart4) version += L"." + std::to_wstring(versionPart3);
+                                if (versionPart4) version += L"." + std::to_wstring(versionPart4);
+                                if constexpr (sizeof(size_t) == 8) version += L" (x64)";
+                                else if constexpr (sizeof(size_t) == 4) version += L" (x86)";
+                                version += L".\n\n";
                             }
                         }
-                        version += L'.';
-                        SetDlgItemText(hwndDlg, IDC_ABOUT_VERSION, version.data());
                     }
                 }
+                auto pidh = reinterpret_cast<IMAGE_DOS_HEADER*>(dllInstance);
+                auto pnth = reinterpret_cast<IMAGE_NT_HEADERS*>(reinterpret_cast<char*>(pidh) + pidh->e_lfanew);
+                auto timepoint = std::chrono::sys_seconds(std::chrono::seconds(pnth->FileHeader.TimeDateStamp));
+                version += std::format(L"Build time: {0:%Y} {0:%b} {0:%d} at {0:%H}:{0:%M}:{0:%S} UTC.", timepoint);
+                SetDlgItemText(hwndDlg, IDC_ABOUT_VERSION, version.data());
             }
+
             SendDlgItemMessage(hwndDlg, IDC_ABOUT_HELP, BCM_SETNOTE, 0, reinterpret_cast<LPARAM>(
                 L"Open user documentation."));
             SendDlgItemMessage(hwndDlg, IDC_ABOUT_MORE, BCM_SETNOTE, 0, reinterpret_cast<LPARAM>(
