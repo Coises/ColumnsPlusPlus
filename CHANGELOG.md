@@ -1,5 +1,9 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.1.5 -- February 1st, 2025
+
+* Due to a change in Notepad++ 8.7.6, responsiveness is degraded when deleting character by character (e.g., using the backspace or delete key) in large files with elastic tabstops enabled. Notepad++ version 8.7.7 provides a way to mitigate this, which Columns++ 1.1.5 employs. (Send NPPM_ADDSCNMODIFIEDFLAGS when elastic tabstops is first enabled.)
+
 ## Version 1.1.4 -- January 22nd, 2025
 
 * Changed elastic tabstops processing to work correctly with Notepad++ version 8.7.6.
