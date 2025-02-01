@@ -586,6 +586,11 @@ void ColumnsPlusPlusData::bufferActivated() {
             || disableOverLines > 0 && disableOverLines < sci.LineCount() ) )
             settings.elasticEnabled = false;
         dd.settings = settings;
+        if (settings.elasticEnabled && !sentADDSCNMODIFIEDFLAGS) {
+            sentADDSCNMODIFIEDFLAGS = true;
+            SendMessage(nppData._nppHandle, NPPM_ADDSCNMODIFIEDFLAGS, 0,
+                SC_MOD_INSERTTEXT | SC_MOD_BEFOREDELETE | SC_MOD_DELETETEXT | SC_MOD_CHANGESTYLE);
+        }
     }
     else settings = dd.settings;
     SendMessage(nppData._nppHandle, NPPM_SETMENUITEMCHECK, elasticEnabledMenuItem, settings.elasticEnabled);
@@ -675,6 +680,11 @@ void ColumnsPlusPlusData::toggleElasticEnabled() {
         sci.SetTabIndents(0);
         analyzeTabstops(*ddp);
         setTabstops(*ddp);
+        if (!sentADDSCNMODIFIEDFLAGS) {
+            sentADDSCNMODIFIEDFLAGS = true;
+            SendMessage(nppData._nppHandle, NPPM_ADDSCNMODIFIEDFLAGS, 0,
+                SC_MOD_INSERTTEXT | SC_MOD_BEFOREDELETE | SC_MOD_DELETETEXT | SC_MOD_CHANGESTYLE);
+        }
     } 
     else {
         if (settings.overrideTabSize) sci.SetTabWidth(ddp->tabOriginal);

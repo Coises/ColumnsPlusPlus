@@ -404,6 +404,7 @@ public:
     int        elasticEnabledMenuItem;
     CLIPFORMAT clipFormatRectangular;         // The clipboard format which signals a rectangular selection; zero if attempt to register failed
     bool       selectionMouseUpTimerActive = false;
+    bool       sentADDSCNMODIFIEDFLAGS = false;
 
     std::map<void*       , DocumentData>       documents;
     std::map<std::wstring, ElasticTabsProfile> profiles;
