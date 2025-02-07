@@ -204,20 +204,20 @@ class RegularExpressionW : public RegularExpressionInterface {
         // p must not be less than 0 nor greater than or equal to end
 
         int length(intptr_t p) const {
-            unsigned char c1 = at(p);
+            const unsigned char c1 = at(p);
             if (isASCII(c1)) return 1;
-            if (pos + 1 >= end || isTrash(c1)) return 1;
-            unsigned char c2 = at(pos + 1);
+            if (p + 1 >= end || isTrash(c1)) return 1;
+            const unsigned char c2 = at(p + 1);
             if (!isTrail(c2)) return 1;
             if (isLead2(c1)) return 2;
             if (badPair(c1, c2)) return 1;
-            if (pos + 2 >= end) return 1;
-            unsigned char c3 = at(pos + 2);
+            if (p + 2 >= end) return 1;
+            const unsigned char c3 = at(p + 2);
             if (!isTrail(c3)) return 1;
             if (isLead3(c1)) return 3;
             if (isLead4(c1)) {
-                if (pos + 3 >= end) return 1;
-                unsigned char c4 = at(pos + 3);
+                if (p + 3 >= end) return 1;
+                const unsigned char c4 = at(p + 3);
                 if (!isTrail(c4)) return 1;
                 return 4;
             }
@@ -225,22 +225,19 @@ class RegularExpressionW : public RegularExpressionInterface {
         }
 
         // fix_position advances the iterator position if it is on a continuation byte within a valid character
-        // so that it points to the start of a valid character, or to an error byte.
+        // so that it points to the start of a valid character, the last byte of a four byte sequence
+        // (representing the second wide character of a UTF-16 surrogate pair), or to an error byte.
         // If this were not done, we could create an iterator that could never return to the same value
-        // after being incremented and decremented.
+        // after being incremented and decremented, which can break the regular expression algorithm.
 
         void fix_position() {
-            if (pos > 0 && pos < end && isTrail(at(pos)) && !isASCII(at(pos - 1))) {
-                int n = length(pos - 1);
-                if (n > 1) pos += n - 1;
-                else if (pos > 1) {
-                    n = length(pos - 2);
-                    if (n > 2) pos += n - 2;
-                    else if (pos > 3) {
-                        n = length(pos - 3);
-                        if (n > 3) ++pos;
-                    }
-                }
+            if (pos <= 0 || pos >= end || !isTrail(at(pos)) || isASCII(at(pos - 1))) return;  // either start byte or error byte
+            if (pos >= 3 && length(pos - 3) == 4) return;  // last byte of four-byte sequence allowed, represents high surrogate
+            int n = length(pos - 1);
+            if (n > 1) pos += n - 1;
+            else if (pos > 1) {
+                n = length(pos - 2);
+                if (n > 2) pos += n - 2;
             }
         }
 
