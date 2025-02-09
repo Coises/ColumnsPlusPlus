@@ -15,8 +15,12 @@
 // along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 #include "ColumnsPlusPlus.h"
-#include <boost/regex.hpp>
 #include "RegularExpression.h"
+
+#pragma warning( push )
+#pragma warning( disable : 4244 )
+#include <boost/regex.hpp>
+#pragma warning( pop )
 
 
 namespace utf8byte {
@@ -188,9 +192,12 @@ struct utf32_regex_traits {
     }
 
     string_type lookup_collatename(const char_type* p1, const char_type* p2) const {
-        std::string c = utf32to8(std::u32string_view(p1, p2));
-        c = boost::BOOST_REGEX_DETAIL_NS::lookup_default_collate_name(c);
-        return utf8to32(c);
+        std::wstring w;
+        for (const char_type* p = p1; p < p2; ++p) {
+            if (*p > 0xffff) return string_type();
+            w += static_cast<wchar_t>(*p);
+        }
+        return utf16to32(wideTraits.lookup_collatename(w.data(), w.data() + w.length()));
     }
 
     bool isctype(char_type c, char_class_type class_mask) const {
