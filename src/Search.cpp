@@ -178,8 +178,13 @@ void searchLayout(const SearchData& sd, const RECT& rcDialog) {
     RECT rect;
     for (int i : {IDC_FIND_WHAT, IDC_REPLACE_WITH}) {
         ctrl = GetDlgItem(sd.dialog, i);
+        DWORD sel1, sel2;
+        SendMessage(ctrl, CB_GETEDITSEL, reinterpret_cast<WPARAM>(&sel1) , reinterpret_cast<LPARAM>(&sel2));
+        std::wstring text = GetWindowString(ctrl);
         GetWindowRect(ctrl, &rect);
         SetWindowPos(ctrl, 0, 0, 0, rcDialog.right - rcDialog.left - sd.dialogComboWidth, rect.bottom-rect.top, SWP_NOMOVE|SWP_NOZORDER);
+        SetWindowText(ctrl, text.data());
+        SendMessage(ctrl, CB_SETEDITSEL, 0, MAKELPARAM(sel1, sel2));
     }
     for (int i : {IDOK, IDC_SEARCH_COUNT, IDC_SEARCH_REPLACE, IDC_SEARCH_REPLACE_ALL, IDCANCEL}) {
         ctrl = GetDlgItem(sd.dialog, i);
@@ -486,20 +491,6 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
         return FALSE;
     }
     
-    case WM_SIZING:
-        switch (wParam) {
-        case WMSZ_LEFT:
-        case WMSZ_TOPLEFT:
-        case WMSZ_BOTTOMLEFT:
-        case WMSZ_RIGHT:
-        case WMSZ_TOPRIGHT:
-        case WMSZ_BOTTOMRIGHT:
-            searchLayout(searchData, *reinterpret_cast<RECT*>(lParam));
-            return TRUE;
-        default:
-            return FALSE;
-        }
-
     case WM_SIZE:
     {
         RECT rcDialog;

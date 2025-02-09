@@ -100,13 +100,14 @@ inline std::wstring toWide(std::string_view s, unsigned int codepage) {
 }
 
 
-inline std::wstring GetDlgItemString(HWND hwndDlg, int item) {
-    HWND h = GetDlgItem(hwndDlg, item);
-    int n = GetWindowTextLength(h);
-    if (n <= 0) return L"";
-    std::wstring s(n, 0);
-    GetWindowText(h, s.data(), n + 1);
+inline std::wstring GetWindowString(HWND hWnd) {
+    std::wstring s(GetWindowTextLength(hWnd), 0);
+    if (!s.empty()) s.resize(GetWindowText(hWnd, s.data(), static_cast<int>(s.length() + 1)));
     return s;
+}
+
+inline std::wstring GetDlgItemString(HWND hwndDlg, int item) {
+    return GetWindowString(GetDlgItem(hwndDlg, item));
 }
 
 inline void showBalloonTip(HWND hwndDlg, int control, const std::wstring& text, bool combobox = false) {
@@ -124,7 +125,6 @@ inline void showBalloonTip(HWND hwndDlg, int control, const std::wstring& text, 
     ebt.pszText = text.data();
     SendMessage(hControl, EM_SHOWBALLOONTIP, 0, reinterpret_cast<LPARAM>(&ebt));
     SendMessage(hwndDlg, WM_NEXTDLGCTL, reinterpret_cast<WPARAM>(hControl), TRUE);
-
 }
 
 inline std::wstring updateComboHistory(HWND dialog, int control, std::vector<std::wstring>& history) {
