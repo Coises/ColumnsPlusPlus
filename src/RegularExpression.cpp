@@ -214,7 +214,7 @@ struct utf32_regex_traits {
     }
 
     bool isctype(char_type c, char_class_type class_mask) const {
-        if ((c >= 0xd000 && c <= 0xdfff) || c > 0x10FFFF) return false;  // error bytes
+        if ((c >= 0xd800 && c <= 0xdfff) || c > 0x10FFFF) return false;  // error bytes
         if (c > 0xffff) return class_mask & boost::BOOST_REGEX_DETAIL_NS::char_class_unicode;
         return wideTraits.isctype(static_cast<wchar_t>(c), class_mask);
     }
