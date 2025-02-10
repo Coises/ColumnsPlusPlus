@@ -22,6 +22,19 @@
 #include <boost/regex.hpp>
 #pragma warning( pop )
 
+namespace boost {
+    namespace BOOST_REGEX_DETAIL_NS {
+        template <> inline bool is_separator<char32_t>(char32_t c) {
+            return (c ==   0x0A)
+                || (c ==   0x0C)
+                || (c ==   0x0D)
+                || (c ==   0x85)
+                || (c == 0x2028)
+                || (c == 0x2029);
+        }
+    }
+}
+
 
 namespace utf8byte {
     bool isASCII(char c) { return (c & 0x80) == 0x00; }
