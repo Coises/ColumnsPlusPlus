@@ -17,6 +17,8 @@
 #include "ColumnsPlusPlus.h"
 #include "RegularExpression.h"
 
+#include "Unicode\UnicodeCharacterData.h"
+
 #pragma warning( push )
 #pragma warning( disable : 4244 )
 #include <boost/regex.hpp>
@@ -24,13 +26,17 @@
 
 namespace boost {
     namespace BOOST_REGEX_DETAIL_NS {
-        template <> inline bool is_separator<char32_t>(char32_t c) {
-            return (c ==   0x0A)
-                || (c ==   0x0C)
-                || (c ==   0x0D)
-                || (c ==   0x85)
-                || (c == 0x2028)
-                || (c == 0x2029);
+        template<> inline bool is_combining<char32_t>(char32_t c) {
+            return ((1Ui64 << (unicodeGenCat(c) + 32)) & (CatMask_Mc | CatMask_Me | CatMask_Mn));
+        }
+        template<> inline bool is_separator<char32_t>(char32_t c) {
+            return c == 0x0A || c == 0x0D;
+        }
+        template<> inline char32_t global_lower<char32_t>(char32_t c) {
+            return unicodeLower(c);
+        }
+        template<> inline char32_t global_upper<char32_t>(char32_t c)  {
+            return unicodeUpper(c);
         }
     }
 }
@@ -142,8 +148,191 @@ struct utf32_regex_traits {
     typedef std::size_t                 size_type;
     typedef std::basic_string<char32_t> string_type;
     typedef WideTraits::locale_type     locale_type;
-    typedef WideTraits::char_class_type char_class_type;
-    struct boost_extensions_tag {};
+    typedef uint64_t                    char_class_type;
+
+    static constexpr char_class_type mask_upper      = 0x0001;  // upper case
+    static constexpr char_class_type mask_lower      = 0x0002;  // lower case
+    static constexpr char_class_type mask_digit      = 0x0004;  // decimal digits
+    static constexpr char_class_type mask_punct      = 0x0008;  // punctuation characters
+    static constexpr char_class_type mask_cntrl      = 0x0010;  // control characters
+    static constexpr char_class_type mask_horizontal = 0x0020;  // horizontal space
+    static constexpr char_class_type mask_vertical   = 0x0040;  // vertical space
+    static constexpr char_class_type mask_xdigit     = 0x0080;  // hexadecimal digits
+    static constexpr char_class_type mask_alpha      = 0x0100;  // any linguistic character
+    static constexpr char_class_type mask_word       = 0x0200;  // word characters (alpha, number and underscore)
+    static constexpr char_class_type mask_graph      = 0x0400;  // any visible character
+    static constexpr char_class_type mask_ascii      = 0x0800;  // code points < 128
+    static constexpr char_class_type mask_unicode    = 0x1000;  // code points > 255
+
+    static constexpr char_class_type mask_blank = mask_horizontal;
+    static constexpr char_class_type mask_space = mask_horizontal | mask_vertical;
+    static constexpr char_class_type mask_alnum = mask_alpha | mask_digit;
+    static constexpr char_class_type mask_print = mask_graph | mask_space;
+
+    static constexpr char_class_type categoryMasks[] = {
+        CatMask_Cn,
+        CatMask_Cc | mask_cntrl,
+        CatMask_Cf | mask_cntrl,
+        CatMask_Co,
+        CatMask_Cs,
+        CatMask_Ll | mask_graph | mask_word | mask_alpha | mask_lower,
+        CatMask_Lm | mask_graph | mask_word | mask_alpha,
+        CatMask_Lo | mask_graph | mask_word | mask_alpha,
+        CatMask_Lt | mask_graph | mask_word | mask_alpha,
+        CatMask_Lu | mask_graph | mask_word | mask_alpha | mask_upper,
+        CatMask_Mc | mask_graph,
+        CatMask_Me | mask_graph,
+        CatMask_Mn | mask_graph,
+        CatMask_Nd | mask_graph | mask_word | mask_digit,
+        CatMask_Nl | mask_graph,
+        CatMask_No | mask_graph,
+        CatMask_Pc | mask_graph | mask_punct,
+        CatMask_Pd | mask_graph | mask_punct,
+        CatMask_Pe | mask_graph | mask_punct,
+        CatMask_Pf | mask_graph | mask_punct,
+        CatMask_Pi | mask_graph | mask_punct,
+        CatMask_Po | mask_graph | mask_punct,
+        CatMask_Ps | mask_graph | mask_punct,
+        CatMask_Sc | mask_graph | mask_punct,
+        CatMask_Sk | mask_graph | mask_punct,
+        CatMask_Sm | mask_graph | mask_punct,
+        CatMask_So | mask_graph | mask_punct,
+        CatMask_Zl | mask_vertical,
+        CatMask_Zp | mask_vertical,
+        CatMask_Zs | mask_horizontal
+    };
+
+    static constexpr char_class_type asciiMasks[] = {
+        /* 00 NUL   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 01 SOH   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 02 STX   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 03 ETX   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 04 EOT   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 05 ENQ   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 06 ACK   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 07 BEL   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 08 BS    */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 09 HT    */ CatMask_Cc | mask_ascii | mask_cntrl | mask_horizontal,
+        /* 0A LF    */ CatMask_Cc | mask_ascii | mask_cntrl | mask_vertical,
+        /* 0B VT    */ CatMask_Cc | mask_ascii | mask_cntrl | mask_vertical,
+        /* 0C FF    */ CatMask_Cc | mask_ascii | mask_cntrl | mask_vertical,
+        /* 0D CR    */ CatMask_Cc | mask_ascii | mask_cntrl | mask_vertical,
+        /* 0E SO    */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 0F SI    */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 10 DLE   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 11 DC1   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 12 DC2   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 13 DC3   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 14 DC4   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 15 NAK   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 16 SYN   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 17 ETB   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 18 CAN   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 19 EM    */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 1A SUB   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 1B ESC   */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 1C FS    */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 1D GS    */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 1E RS    */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 1F US    */ CatMask_Cc | mask_ascii | mask_cntrl,
+        /* 20 Space */ CatMask_Zs | mask_ascii | mask_horizontal,
+        /* 21 !     */ CatMask_Po | mask_ascii | mask_graph | mask_punct,
+        /* 22 "     */ CatMask_Po | mask_ascii | mask_graph | mask_punct,
+        /* 23 #     */ CatMask_Po | mask_ascii | mask_graph | mask_punct,
+        /* 24 $     */ CatMask_Sc | mask_ascii | mask_graph | mask_punct,
+        /* 25 %     */ CatMask_Po | mask_ascii | mask_graph | mask_punct,
+        /* 26 &     */ CatMask_Po | mask_ascii | mask_graph | mask_punct,
+        /* 27 '     */ CatMask_Po | mask_ascii | mask_graph | mask_punct,
+        /* 28 (     */ CatMask_Ps | mask_ascii | mask_graph | mask_punct,
+        /* 29 )     */ CatMask_Pe | mask_ascii | mask_graph | mask_punct,
+        /* 2A *     */ CatMask_Po | mask_ascii | mask_graph | mask_punct,
+        /* 2B +     */ CatMask_Sm | mask_ascii | mask_graph | mask_punct,
+        /* 2C ,     */ CatMask_Po | mask_ascii | mask_graph | mask_punct,
+        /* 2D -     */ CatMask_Pd | mask_ascii | mask_graph | mask_punct,
+        /* 2E .     */ CatMask_Po | mask_ascii | mask_graph | mask_punct,
+        /* 2F /     */ CatMask_Po | mask_ascii | mask_graph | mask_punct,
+        /* 30 0     */ CatMask_Nd | mask_ascii | mask_graph | mask_word | mask_digit | mask_xdigit,
+        /* 31 1     */ CatMask_Nd | mask_ascii | mask_graph | mask_word | mask_digit | mask_xdigit,
+        /* 32 2     */ CatMask_Nd | mask_ascii | mask_graph | mask_word | mask_digit | mask_xdigit,
+        /* 33 3     */ CatMask_Nd | mask_ascii | mask_graph | mask_word | mask_digit | mask_xdigit,
+        /* 34 4     */ CatMask_Nd | mask_ascii | mask_graph | mask_word | mask_digit | mask_xdigit,
+        /* 35 5     */ CatMask_Nd | mask_ascii | mask_graph | mask_word | mask_digit | mask_xdigit,
+        /* 36 6     */ CatMask_Nd | mask_ascii | mask_graph | mask_word | mask_digit | mask_xdigit,
+        /* 37 7     */ CatMask_Nd | mask_ascii | mask_graph | mask_word | mask_digit | mask_xdigit,
+        /* 38 8     */ CatMask_Nd | mask_ascii | mask_graph | mask_word | mask_digit | mask_xdigit,
+        /* 39 9     */ CatMask_Nd | mask_ascii | mask_graph | mask_word | mask_digit | mask_xdigit,
+        /* 3A :     */ CatMask_Po | mask_ascii | mask_graph | mask_punct,
+        /* 3B ;     */ CatMask_Po | mask_ascii | mask_graph | mask_punct,
+        /* 3C <     */ CatMask_Sm | mask_ascii | mask_graph | mask_punct,
+        /* 3D =     */ CatMask_Sm | mask_ascii | mask_graph | mask_punct,
+        /* 3E >     */ CatMask_Sm | mask_ascii | mask_graph | mask_punct,
+        /* 3F ?     */ CatMask_Po | mask_ascii | mask_graph | mask_punct,
+        /* 40 @     */ CatMask_Po | mask_ascii | mask_graph | mask_punct,
+        /* 41 A     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper | mask_xdigit,
+        /* 42 B     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper | mask_xdigit,
+        /* 43 C     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper | mask_xdigit,
+        /* 44 D     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper | mask_xdigit,
+        /* 45 E     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper | mask_xdigit,
+        /* 46 F     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper | mask_xdigit,
+        /* 47 G     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 48 H     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 49 I     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 4A J     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 4B K     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 4C L     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 4D M     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 4E N     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 4F O     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 50 P     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 51 Q     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 52 R     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 53 S     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 54 T     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 55 U     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 56 V     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 57 W     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 58 X     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 59 Y     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 5A Z     */ CatMask_Lu | mask_ascii | mask_graph | mask_word | mask_alpha | mask_upper,
+        /* 5B [     */ CatMask_Ps | mask_ascii | mask_graph | mask_punct,
+        /* 5C \     */ CatMask_Po | mask_ascii | mask_graph | mask_punct,
+        /* 5D ]     */ CatMask_Pe | mask_ascii | mask_graph | mask_punct,
+        /* 5E ^     */ CatMask_Sk | mask_ascii | mask_graph | mask_punct,
+        /* 5F _     */ CatMask_Pc | mask_ascii | mask_graph | mask_punct | mask_word,
+        /* 60 `     */ CatMask_Sk | mask_ascii | mask_graph | mask_punct,
+        /* 61 a     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower | mask_xdigit,
+        /* 62 b     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower | mask_xdigit,
+        /* 63 c     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower | mask_xdigit,
+        /* 64 d     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower | mask_xdigit,
+        /* 65 e     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower | mask_xdigit,
+        /* 66 f     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower | mask_xdigit,
+        /* 67 g     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 68 h     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 69 i     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 6A j     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 6B k     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 6C l     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 6D m     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 6E n     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 6F o     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 70 p     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 71 q     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 72 r     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 73 s     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 74 t     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 75 u     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 76 v     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 77 w     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 78 x     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 79 y     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 7A z     */ CatMask_Ll | mask_ascii | mask_graph | mask_word | mask_alpha | mask_lower,
+        /* 7B {     */ CatMask_Ps | mask_ascii | mask_graph | mask_punct,
+        /* 7C |     */ CatMask_Sm | mask_ascii | mask_graph | mask_punct,
+        /* 7D }     */ CatMask_Pe | mask_ascii | mask_graph | mask_punct,
+        /* 7E ~     */ CatMask_Sm | mask_ascii | mask_graph | mask_punct,
+        /* 7F DEL   */ CatMask_Cc | mask_ascii | mask_cntrl,
+    };
+
 
     utf32_regex_traits() {}
 
@@ -196,12 +385,116 @@ struct utf32_regex_traits {
     }
 
     char_class_type lookup_classname(const char_type* p1, const char_type* p2) const {
-        std::wstring w;
+        std::string name;
         for (const char_type* p = p1; p < p2; ++p) {
-            if (*p > 0xffff) return 0;
-            w += static_cast<wchar_t>(*p);
+            if (*p > 127) return 0;
+            name += static_cast<char>(std::tolower(static_cast<char>(*p)));
         }
-        return wideTraits.lookup_classname(w.data(), w.data() + w.length());
+        static const std::map<std::string, char_class_type> classnames = {
+            {"c*", CatMask_Cc | CatMask_Cf | CatMask_Cn | CatMask_Co},
+            {"l*", CatMask_Ll | CatMask_Lm | CatMask_Lo | CatMask_Lt | CatMask_Lu},
+            {"m*", CatMask_Mc | CatMask_Me | CatMask_Mn},
+            {"n*", CatMask_Nd | CatMask_Nl | CatMask_No},
+            {"p*", CatMask_Pc | CatMask_Pd | CatMask_Pe | CatMask_Pf | CatMask_Pi | CatMask_Po | CatMask_Ps},
+            {"s*", CatMask_Sc | CatMask_Sk | CatMask_Sm | CatMask_So},
+            {"z*", CatMask_Zl | CatMask_Zp | CatMask_Zs},
+            {"cc", CatMask_Cc},
+            {"cf", CatMask_Cf},
+            {"cn", CatMask_Cn},
+            {"co", CatMask_Co},
+            {"ll", CatMask_Ll},
+            {"lm", CatMask_Lm},
+            {"lo", CatMask_Lo},
+            {"lt", CatMask_Lt},
+            {"lu", CatMask_Lu},
+            {"mc", CatMask_Mc},
+            {"me", CatMask_Me},
+            {"mn", CatMask_Mn},
+            {"nd", CatMask_Nd},
+            {"nl", CatMask_Nl},
+            {"no", CatMask_No},
+            {"pc", CatMask_Pc},
+            {"pd", CatMask_Pd},
+            {"pe", CatMask_Pe},
+            {"pf", CatMask_Pf},
+            {"pi", CatMask_Pi},
+            {"po", CatMask_Po},
+            {"ps", CatMask_Ps},
+            {"sc", CatMask_Sc},
+            {"sk", CatMask_Sk},
+            {"sm", CatMask_Sm},
+            {"so", CatMask_So},
+            {"zl", CatMask_Zl},
+            {"zp", CatMask_Zp},
+            {"zs", CatMask_Zs},
+            {"ascii"                   , mask_ascii},
+            {"any"                     , 0x3fffffff00000000U},
+            {"assigned"                , 0x3fffffee00000000U},
+            {"other"                   , CatMask_Cc | CatMask_Cf | CatMask_Cn | CatMask_Co},
+            {"letter"                  , CatMask_Ll | CatMask_Lm | CatMask_Lo | CatMask_Lt | CatMask_Lu},
+            {"mark"                    , CatMask_Mc | CatMask_Me | CatMask_Mn},
+            {"number"                  , CatMask_Nd | CatMask_Nl | CatMask_No},
+            {"punctuation"             , CatMask_Pc | CatMask_Pd | CatMask_Pe | CatMask_Pf | CatMask_Pi | CatMask_Po | CatMask_Ps},
+            {"symbol"                  , CatMask_Sc | CatMask_Sk | CatMask_Sm | CatMask_So},
+            {"separator"               , CatMask_Zl | CatMask_Zp | CatMask_Zs},
+            {"control"                 , CatMask_Cc},
+            {"format"                  , CatMask_Cf},
+            {"not assigned"            , CatMask_Cn},
+            {"private use"             , CatMask_Co},
+            {"invalid"                 , CatMask_Cs},  // No surrogates in UTF-32, but we use some to hold invalid UTF-8 bytes
+            {"lowercase letter"        , CatMask_Ll},
+            {"modifier letter"         , CatMask_Lm},
+            {"other letter"            , CatMask_Lo},
+            {"titlecase"               , CatMask_Lt},
+            {"uppercase letter"        , CatMask_Lu},
+            {"spacing combining mark"  , CatMask_Mc},
+            {"enclosing mark"          , CatMask_Me},
+            {"non-spacing mark"        , CatMask_Mn},
+            {"decimal digit number"    , CatMask_Nd},
+            {"letter number"           , CatMask_Nl},
+            {"other number"            , CatMask_No},
+            {"connector punctuation"   , CatMask_Pc},
+            {"dash punctuation"        , CatMask_Pd},
+            {"close punctuation"       , CatMask_Pe},
+            {"final punctuation"       , CatMask_Pf},
+            {"initial punctuation"     , CatMask_Pi},
+            {"other punctuation"       , CatMask_Po},
+            {"open punctuation"        , CatMask_Ps},
+            {"currency symbol"         , CatMask_Sc},
+            {"modifier symbol"         , CatMask_Sk},
+            {"math symbol"             , CatMask_Sm},
+            {"other symbol"            , CatMask_So},
+            {"line separator"          , CatMask_Zl},
+            {"paragraph separator"     , CatMask_Zp},
+            {"space separator"         , CatMask_Zs},
+            {"alnum"   , mask_alnum     },
+            {"alpha"   , mask_alpha     },
+            {"blank"   , mask_blank     },
+            {"cntrl"   , mask_cntrl     },
+            {"d"       , mask_digit     },
+            {"digit"   , mask_digit     },
+            {"graph"   , mask_graph     },
+            {"h"       , mask_horizontal},
+            {"i"       , CatMask_Cs     },
+            {"l"       , mask_lower     },
+            {"lower"   , mask_lower     },
+            {"m"       , CatMask_Mc | CatMask_Me | CatMask_Mn},
+            {"o"       , mask_ascii     },
+            {"print"   , mask_print     },
+            {"punct"   , mask_punct     },
+            {"s"       , mask_space     },
+            {"space"   , mask_space     },
+            {"u"       , mask_upper     },
+            {"unicode" , mask_unicode   },
+            {"upper"   , mask_upper     },
+            {"v"       , mask_vertical  },
+            {"w"       , mask_word      },
+            {"word"    , mask_word      },
+            {"xdigit"  , mask_xdigit    },
+            {"y"       , 0x3fffffe600000000U}
+        };
+        if (classnames.contains(name)) return classnames.at(name);
+        return 0;
     }
 
     string_type lookup_collatename(const char_type* p1, const char_type* p2) const {
@@ -214,9 +507,12 @@ struct utf32_regex_traits {
     }
 
     bool isctype(char_type c, char_class_type class_mask) const {
-        if ((c >= 0xd800 && c <= 0xdfff) || c > 0x10FFFF) return false;  // error bytes
-        if (c > 0xffff) return class_mask & boost::BOOST_REGEX_DETAIL_NS::char_class_unicode;
-        return wideTraits.isctype(static_cast<wchar_t>(c), class_mask);
+        if (c < 128) return class_mask & asciiMasks[c];
+        if (c < 256) {
+            if (c == 0x85) return (class_mask & (CatMask_Cc | mask_cntrl | mask_vertical));
+        }
+        else if (class_mask & mask_unicode) return true;
+        return class_mask & categoryMasks[unicodeGenCat(c)];
     }
 
     int value(char_type c, int radix) const {
@@ -226,47 +522,6 @@ struct utf32_regex_traits {
     locale_type imbue(locale_type l) { return wideTraits.imbue(l); }
 
     locale_type getloc() const { return wideTraits.getloc(); }
-
-    boost::regex_constants::syntax_type syntax_type(char_type c) const {
-        return c > 0xffff ? boost::regex_constants::syntax_char : wideTraits.syntax_type(static_cast<wchar_t>(c));
-    }
-
-    boost::regex_constants::escape_syntax_type escape_syntax_type(char_type c) const {
-        return c > 0xffff ? boost::regex_constants::escape_type_identity : wideTraits.escape_syntax_type(static_cast<wchar_t>(c));
-    }
-
-    char_type translate(char_type c, bool ignoreCase) const {
-        if (c > 0xffff) return c;
-        return wideTraits.translate(static_cast<wchar_t>(c), ignoreCase);
-    }
-
-    intmax_t toi(const char_type*& p1, const char_type* p2, int radix) const {
-        std::intmax_t limit = (std::numeric_limits<std::intmax_t>::max)() / radix;
-        std::intmax_t next_value = value(*p1, radix);
-        if ((p1 == p2) || (next_value < 0) || (next_value >= radix)) return -1;
-        std::intmax_t result = 0;
-        while (p1 != p2)  {
-            next_value = value(*p1, radix);
-            if ((next_value < 0) || (next_value >= radix)) break;
-            result *= radix;
-            result += next_value;
-            ++p1;
-            if (result > limit) return -1;
-        }
-        return result;
-    }
-
-    std::string error_string(boost::regex_constants::error_type n) const { return wideTraits.error_string(n); }
-
-    char_type tolower(char_type c) const {
-        if (c > 0xffff) return c;
-        return wideTraits.tolower(static_cast<wchar_t>(c));
-    }
-
-    char_type toupper(char_type c) const {
-        if (c > 0xffff) return c;
-        return wideTraits.toupper(static_cast<wchar_t>(c));
-    }
 
 };
 
