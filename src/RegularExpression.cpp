@@ -498,12 +498,195 @@ struct utf32_regex_traits {
     }
 
     string_type lookup_collatename(const char_type* p1, const char_type* p2) const {
-        std::wstring w;
+        if (p2 - p1 < 2) return string_type(p1, p2);
+        static const std::map<std::string, char32_t> characters = {
+            {"ht"    , 0x0009},  // Horizontal Tab
+            {"lf"    , 0x000a},  // Line Feed
+            {"cr"    , 0x000d},  // Carriage Return
+                                 // from Notepad++ (ScintillaEditView.h):
+            {"nul"   , 0x0000},  // Null
+            {"soh"   , 0x0001},  // Start of Heading
+            {"stx"   , 0x0002},  // Start of Text
+            {"etx"   , 0x0003},  // End of Text
+            {"eot"   , 0x0004},  // End of Transmission
+            {"enq"   , 0x0005},  // Enquiry
+            {"ack"   , 0x0006},  // Acknowledge
+            {"bel"   , 0x0007},  // Bell
+            {"bs"    , 0x0008},  // Backspace
+            {"vt"    , 0x000b},  // Line Tabulation
+            {"ff"    , 0x000c},  // Form Feed
+            {"so"    , 0x000e},  // Shift Out
+            {"si"    , 0x000f},  // Shift In
+            {"dle"   , 0x0010},  // Data Link Escape
+            {"dc1"   , 0x0011},  // Device Control One
+            {"dc2"   , 0x0012},  // Device Control Two
+            {"dc3"   , 0x0013},  // Device Control Three
+            {"dc4"   , 0x0014},  // Device Control Four
+            {"nak"   , 0x0015},  // Negative Acknowledge
+            {"syn"   , 0x0016},  // Synchronous Idle
+            {"etb"   , 0x0017},  // End of Transmission Block
+            {"can"   , 0x0018},  // Cancel
+            {"em"    , 0x0019},  // End of Medium
+            {"sub"   , 0x001a},  // Substitute
+            {"esc"   , 0x001b},  // Escape
+            {"fs"    , 0x001c},  // Information Separator Four
+            {"gs"    , 0x001d},  // Information Separator Three
+            {"rs"    , 0x001e},  // Information Separator Two
+            {"us"    , 0x001f},  // Information Separator One
+            {"del"   , 0x007f},  // Delete
+            {"pad"   , 0x0080},  // Padding Character
+            {"hop"   , 0x0081},  // High Octet Preset
+            {"bph"   , 0x0082},  // Break Permitted Here
+            {"nbh"   , 0x0083},  // No Break Here
+            {"ind"   , 0x0084},  // Index
+            {"nel"   , 0x0085},  // Next Line
+            {"ssa"   , 0x0086},  // Start of Selected Area
+            {"esa"   , 0x0087},  // End of Selected Area
+            {"hts"   , 0x0088},  // Character (Horizontal) Tabulation Set
+            {"htj"   , 0x0089},  // Character (Horizontal) Tabulation With Justification
+            {"lts"   , 0x008a},  // Line (Vertical) Tabulation Set
+            {"pld"   , 0x008b},  // Partial Line Forward (Down)
+            {"plu"   , 0x008c},  // Partial Line Backward (Up)
+            {"ri"    , 0x008d},  // Reverse Line Feed (Index)
+            {"ss2"   , 0x008e},  // Single-Shift Two
+            {"ss3"   , 0x008f},  // Single-Shift Three
+            {"dcs"   , 0x0090},  // Device Control String
+            {"pu1"   , 0x0091},  // Private Use One
+            {"pu2"   , 0x0092},  // Private Use Two
+            {"sts"   , 0x0093},  // Set Transmit State
+            {"cch"   , 0x0094},  // Cancel Character
+            {"mw"    , 0x0095},  // Message Waiting
+            {"spa"   , 0x0096},  // Start of Protected Area
+            {"epa"   , 0x0097},  // End of Protected Area
+            {"sos"   , 0x0098},  // Start of String
+            {"sgci"  , 0x0099},  // Single Graphic Character Introducer
+            {"sci"   , 0x009a},  // Single Character Introducer
+            {"csi"   , 0x009b},  // Control Sequence Introducer
+            {"st"    , 0x009c},  // String Terminator
+            {"osc"   , 0x009d},  // Operating System Command
+            {"pm"    , 0x009e},  // Private Message
+            {"apc"   , 0x009f},  // Application Program Command
+            {"nbsp"  , 0x00a0},  // no-break space
+            {"shy"   , 0x00ad},  // soft hyphen
+            {"alm"   , 0x061c},  // arabic letter mark
+            {"sam"   , 0x070f},  // syriac abbreviation mark
+            {"ospm"  , 0x1680},  // ogham space mark
+            {"mvs"   , 0x180e},  // mongolian vowel separator
+            {"nqsp"  , 0x2000},  // en quad
+            {"mqsp"  , 0x2001},  // em quad
+            {"ensp"  , 0x2002},  // en space
+            {"emsp"  , 0x2003},  // em space
+            {"3/msp" , 0x2004},  // three-per-em space
+            {"4/msp" , 0x2005},  // four-per-em space
+            {"6/msp" , 0x2006},  // six-per-em space
+            {"fsp"   , 0x2007},  // figure space
+            {"psp"   , 0x2008},  // punctation space
+            {"thsp"  , 0x2009},  // thin space
+            {"hsp"   , 0x200a},  // hair space
+            {"zwsp"  , 0x200b},  // zero-width space
+            {"zwnj"  , 0x200c},  // zero-width non-joiner
+            {"zwj"   , 0x200d},  // zero-width joiner
+            {"lrm"   , 0x200e},  // left-to-right mark
+            {"rlm"   , 0x200f},  // right-to-left mark
+            {"ls"    , 0x2028},  // Line Separator
+            {"ps"    , 0x2029},  // Paragraph Separator
+            {"lre"   , 0x202a},  // left-to-right embedding
+            {"rle"   , 0x202b},  // right-to-left embedding
+            {"pdf"   , 0x202c},  // pop directional formatting
+            {"lro"   , 0x202d},  // left-to-right override
+            {"rlo"   , 0x202e},  // right-to-left override
+            {"nnbsp" , 0x202f},  // narrow no-break space
+            {"mmsp"  , 0x205f},  // medium mathematical space
+            {"wj"    , 0x2060},  // word joiner
+            {"(fa)"  , 0x2061},  // function application
+            {"(it)"  , 0x2062},  // invisible times
+            {"(is)"  , 0x2063},  // invisible separator
+            {"(ip)"  , 0x2064},  // invisible plus
+            {"lri"   , 0x2066},  // left-to-right isolate
+            {"rli"   , 0x2067},  // right-to-left isolate
+            {"fsi"   , 0x2068},  // first strong isolate
+            {"pdi"   , 0x2069},  // pop directional isolate
+            {"iss"   , 0x206a},  // inhibit symmetric swapping
+            {"ass"   , 0x206b},  // activate symmetric swapping
+            {"iafs"  , 0x206c},  // inhibit arabic form shaping
+            {"aafs"  , 0x206d},  // activate arabic form shaping
+            {"nads"  , 0x206e},  // national digit shapes
+            {"nods"  , 0x206f},  // nominal digit shapes
+            {"idsp"  , 0x3000},  // ideographic space
+            {"zwnbsp", 0xfeff},  // zero-width no-break space
+            {"iaa"   , 0xfff9},  // interlinear annotation anchor
+            {"ias"   , 0xfffa},  // interlinear annotation separator
+            {"iat"   , 0xfffb},  // interlinear annotation terminator
+                                 // other POSIX names, from Boost (regex_traits_default.hpp):
+            {"alert"               , 0x07},
+            {"backspace"           , 0x08},
+            {"tab"                 , 0x09},
+            {"newline"             , 0x0a},
+            {"vertical-tab"        , 0x0b},
+            {"form-feed"           , 0x0c},
+            {"carriage-return"     , 0x0d},
+            {"IS4"                 , 0x1c},
+            {"IS3"                 , 0x1d},
+            {"IS2"                 , 0x1e},
+            {"IS1"                 , 0x1f},
+            {"space"               , 0x20},
+            {"exclamation-mark"    , 0x21},
+            {"quotation-mark"      , 0x22},
+            {"number-sign"         , 0x23},
+            {"dollar-sign"         , 0x24},
+            {"percent-sign"        , 0x25},
+            {"ampersand"           , 0x26},
+            {"apostrophe"          , 0x27},
+            {"left-parenthesis"    , 0x28},
+            {"right-parenthesis"   , 0x29},
+            {"asterisk"            , 0x2a},
+            {"plus-sign"           , 0x2b},
+            {"comma"               , 0x2c},
+            {"hyphen"              , 0x2d},
+            {"period"              , 0x2e},
+            {"slash"               , 0x2f},
+            {"zero"                , 0x30},
+            {"one"                 , 0x31},
+            {"two"                 , 0x32},
+            {"three"               , 0x33},
+            {"four"                , 0x34},
+            {"five"                , 0x35},
+            {"six"                 , 0x36},
+            {"seven"               , 0x37},
+            {"eight"               , 0x38},
+            {"nine"                , 0x39},
+            {"colon"               , 0x3a},
+            {"semicolon"           , 0x3b},
+            {"less-than-sign"      , 0x3c},
+            {"equals-sign"         , 0x3d},
+            {"greater-than-sign"   , 0x3e},
+            {"question-mark"       , 0x3f},
+            {"commercial-at"       , 0x40},
+            {"left-square-bracket" , 0x5b},
+            {"backslash"           , 0x5c},
+            {"right-square-bracket", 0x5d},
+            {"circumflex"          , 0x5e},
+            {"underscore"          , 0x5f},
+            {"grave-accent"        , 0x60},
+            {"left-curly-bracket"  , 0x7b},
+            {"vertical-line"       , 0x7c},
+            {"right-curly-bracket" , 0x7d},
+            {"tilde"               , 0x7e}
+        };
+        std::string s;
         for (const char_type* p = p1; p < p2; ++p) {
-            if (*p > 0xffff) return string_type();
-            w += static_cast<wchar_t>(*p);
+            if (*p > 127) return string_type();
+            s += static_cast<char>(std::tolower(static_cast<char>(*p)));
         }
-        return utf16to32(wideTraits.lookup_collatename(w.data(), w.data() + w.length()));
+        if (characters.contains(s)) return string_type(1, characters.at(s));
+        if (p2 - p1 != 2) return string_type();
+        string_type digraph(p1, p2);
+        static const std::set<string_type> digraphs = {  // from Boost
+                  U"ae", U"ch", U"dz", U"lj", U"ll", U"nj", U"ss",
+                  U"Ae", U"Ch", U"Dz", U"Lj", U"Ll", U"Nj", U"Ss",
+                  U"AE", U"CH", U"DZ", U"LJ", U"LL", U"NJ", U"SS"
+        };
+        return digraphs.contains(digraph) ? digraph : string_type();
     }
 
     bool isctype(char_type c, char_class_type class_mask) const {
