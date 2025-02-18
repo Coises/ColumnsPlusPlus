@@ -1,6 +1,9 @@
 #include <cstdint>
-extern uint8_t unicode_category[];
-extern char32_t unicode_partner[];
+#include <map>
+extern const uint8_t unicode_category[];
+extern const std::map<char32_t, char32_t> unicode_fold;
+extern const std::map<char32_t, char32_t> unicode_lower;
+extern const std::map<char32_t, char32_t> unicode_upper;
 
 enum Unicode_Category : uint8_t {
     Category_Cn, // Unassigned              a reserved unassigned code point or a noncharacter
@@ -66,55 +69,34 @@ constexpr uint64_t CatMask_Zl = 1Ui64 << (Category_Zl + 32);
 constexpr uint64_t CatMask_Zp = 1Ui64 << (Category_Zp + 32);
 constexpr uint64_t CatMask_Zs = 1Ui64 << (Category_Zs + 32);
 
+constexpr uint8_t unicode_has_fold  = 0x80;
+constexpr uint8_t unicode_has_lower = 0x40;
+constexpr uint8_t unicode_has_upper = 0x20;
+
 inline Unicode_Category unicodeGenCat(char32_t c) {
-    if (c < unicode_exclude_from) return static_cast<Unicode_Category>(unicode_category[c]);
+    if (c < unicode_exclude_from) return static_cast<Unicode_Category>(0x1fUi8 & unicode_category[c]);
     if (c < unicode_exclude_to) return Category_Cn;
     if (c > unicode_last_codept)
         return (c >= 0xF0000 && c <=0xFFFFD) || (c >= 0x100000 && c <= 0x10FFFD) ? Category_Co : Category_Cn;
-    return static_cast<Unicode_Category>(unicode_category[c - (unicode_exclude_to - unicode_exclude_from)]);
+    return static_cast<Unicode_Category>(0x1fUi8 & unicode_category[c - (unicode_exclude_to - unicode_exclude_from)]);
+}
+
+inline char32_t unicode_casing_operation(char32_t c, const std::map<char32_t, char32_t>& map, uint8_t flag) {
+    if      (c < unicode_exclude_from) { if (!(flag & unicode_category[c])) return c; }
+    else if (c < unicode_exclude_to || c > unicode_last_codept) return c;
+    else if (!(flag & unicode_category[c - (unicode_exclude_to - unicode_exclude_from)])) return c;
+    if (auto i = map.find(c); i != map.end()) return i->second;
+    return c;
+}
+
+inline char32_t unicodeFold(char32_t c) {
+    return unicode_casing_operation(c, unicode_fold, unicode_has_fold);
 }
 
 inline char32_t unicodeLower(char32_t c) {
-    switch (unicodeGenCat(c)) {
-    case Category_Lu:
-        break;
-    case Category_Lt:
-        switch (c) {
-        case 0x01C5	: return 0x01C6;
-        case 0x01C8	: return 0x01C9;
-        case 0x01CB	: return 0x01CC;
-        case 0x01F2	: return 0x01F3;
-        }
-        break;
-    case Category_Nl:
-        return c >= 0x2160 && c < 0x2170 ? unicode_partner[c] : c;
-    case Category_So:
-        return c >= 0x24B6 && c < 0x24D0 ? unicode_partner[c] : c;
-    default:
-        return c;
-    }
-    return unicode_partner[c < unicode_exclude_from ? c : c - (unicode_exclude_to - unicode_exclude_from)];
+    return unicode_casing_operation(c, unicode_lower, unicode_has_lower);
 }
 
 inline char32_t unicodeUpper(char32_t c) {
-    switch (unicodeGenCat(c)) {
-    case Category_Ll:
-    case Category_Mn:
-        break;
-    case Category_Lt:
-        switch (c) {
-        case 0x01C5	: return 0x01C4;
-        case 0x01C8	: return 0x01C7;
-        case 0x01CB	: return 0x01CA;
-        case 0x01F2	: return 0x01F1;
-        }
-        return c;
-    case Category_Nl:
-        return c >= 0x2170 && c < 0x2180 ? unicode_partner[c] : c;
-    case Category_So:
-        return c >= 0x24D0 && c < 0x24E9 ? unicode_partner[c] : c;
-    default:
-        return c;
-    }
-    return unicode_partner[c < unicode_exclude_from ? c : c - (unicode_exclude_to - unicode_exclude_from)];
+    return unicode_casing_operation(c, unicode_upper, unicode_has_upper);
 }

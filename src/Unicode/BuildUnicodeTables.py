@@ -1,4 +1,5 @@
 ucd = open("UnicodeData.txt")
+ucf = open("CaseFolding.txt")
 out = open("UnicodeCharacterData.cpp", "w")
 hdr = open("UnicodeCharacterData.h", "w")
 
@@ -7,24 +8,35 @@ excludeTo   = 0XE0000
 stopAt      = 0XF0000
 
 codeCategory = []
-codePartner  = []
-codeParNotes = []
+caseFold     = []
+caseLower    = []
+caseUpper    = []
+foldPoints   = set()
 
 def codeEntry(codept, fields) :
     global codeCategory
-    global codePartner 
-    global codeParNotes
-    codeCategory.append(f"/* {codept:>5X} */ Category_{fields[2]},\n")
-    if (fields[12] == "") :
-        if (fields[13] == "") :
-            codePartner.append(f"/* {codept:>5X} */ {codept:#X},\n")
-        else:
-            codePartner.append(f"/* {codept:>5X} */ 0X{fields[13]},\n")
-    elif (fields[13] == "") :
-        codePartner.append(f"/* {codept:>5X} */ 0X{fields[12]},\n")
-    else :
-        codePartner.append(f"/* {codept:>5X} */ 0X200000,\n")
-        codeParNotes.append(f"// Code point {codept:>5X} has upper case {fields[12]} and lower case {fields[13]}\n")
+    global caseLower
+    global caseUpper
+    global foldPoints
+    tag = " + unicode_has_fold" if codept in foldPoints else ""
+    if (fields[13] != "") :
+        caseLower.append("{" + f"{codept:#X}, 0X{fields[13]}" + "},\n")
+        tag += " + unicode_has_lower"
+    if (fields[12] != "") :
+        caseUpper.append("{" + f"{codept:#X}, 0X{fields[12]}" + "},\n")
+        tag += " + unicode_has_upper"
+    codeCategory.append(f"/* {codept:>5X} */ Category_{fields[2]}{tag},\n")
+
+for line in ucf:
+    if line[0:1] == "#" :
+        continue
+    fields = line.split("; ")
+    if len(fields) < 3 or (fields[1] != "C" and fields[1] != "S") :
+        continue
+    caseFold.append("{" + f"0X{fields[0]}, 0X{fields[2]}" + "},\n")
+    foldPoints.add(int(fields[0], 16))
+
+ucf.close()
 
 last = -1;
 
@@ -32,8 +44,6 @@ for line in ucd:
     fields = line.split(";")
     codept = int(fields[0], 16)
     if codept >= stopAt :
-        codeCategory[-1] = codeCategory[-1][0:-2]
-        codePartner[-1] = codePartner[-1][0:-2]
         break
     if fields[1].find(", Last>") >= 0 :
         for i in range(last + 1, codept) :
@@ -43,24 +53,29 @@ for line in ucd:
             if codept >= excludeFrom and last <= excludeFrom :
                 if codept < excludeTo :
                     out.write(f"** ERROR: Code point {codept:X} within exclusion zone; table will be broken! **\n");
-                codeCategory.append(("0," * (codept - last - 1 - (excludeTo - excludeFrom))) + "\n")
-                codePartner.append(("0," * (codept - last - 1 - (excludeTo - excludeFrom))) + "\n")
+                reps = codept - last - 1 - (excludeTo - excludeFrom)
             else :
-                codeCategory.append(("0," * (codept - last - 1)) + "\n")
-                codePartner.append(("0," * (codept - last - 1)) + "\n")
+                reps = codept - last - 1
+            rep1 = reps // 40
+            rep2 = reps % 40
+            if (rep1 > 0) :
+                codeCategory.append((("0," * 40)  + "\n") * rep1)
+            if (rep2 > 0) :
+                codeCategory.append(("0," * rep2) + "\n")
     codeEntry(codept, fields)
     last = codept
     
 ucd.close()
 
-out.write('#include "UnicodeCharacterData.h"\n\n')
-out.write("// Partner special cases:\n")
-out.writelines(codeParNotes)
-out.write("\nuint8_t unicode_category[] = {\n")
+out.write('#include "UnicodeCharacterData.h"\n\nconst uint8_t unicode_category[] = {\n')
 out.writelines(codeCategory)
-out.write("\n};\n\nchar32_t unicode_partner[] = {\n")
-out.writelines(codePartner)
-out.write("\n};\n")
+out.write("};\n\nconst std::map<char32_t, char32_t> unicode_fold = {\n")
+out.writelines(caseFold)
+out.write("};\n\nconst std::map<char32_t, char32_t> unicode_lower = {\n")
+out.writelines(caseLower)
+out.write("};\n\nconst std::map<char32_t, char32_t> unicode_upper = {\n")
+out.writelines(caseUpper)
+out.write("};\n")
 out.close()
 
 hdr.write("#pragma once\n\n")

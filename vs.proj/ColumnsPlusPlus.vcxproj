@@ -30,6 +30,7 @@
     <ClInclude Include="..\src\Timestamps.h" />
     <ClInclude Include="..\src\Unicode\UnicodeCharacterData.h" />
     <ClInclude Include="..\src\Unicode\UnicodeCharacterDataFixed.h" />
+    <ClInclude Include="..\src\Unicode\UnicodeRegexTraits.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\About.cpp" />
@@ -52,6 +53,7 @@
     <ClCompile Include="..\src\Timestamps.cpp" />
     <ClCompile Include="..\src\TimestampsHelpers.cpp" />
     <ClCompile Include="..\src\Unicode\UnicodeCharacterData.cpp" />
+    <ClCompile Include="..\src\Unicode\UnicodeRegexTraits.cpp" />
     <ClCompile Include="..\src\Update.cpp" />
   </ItemGroup>
   <ItemGroup>
