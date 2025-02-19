@@ -81,7 +81,7 @@ struct utf32_regex_traits {
         std::wstring wc;
         for (const char_type* p = p1; p < p2; ++p) {
             if (*p > 0xffff) {
-                wc += static_cast<wchar_t>(0xD800 | (*p >> 10));
+                wc += static_cast<wchar_t>(0xD800 | ((*p - 0x10000) >> 10));
                 wc += static_cast<wchar_t>(0xDC00 | (*p & 0x3ff));
             }
             else wc += static_cast<wchar_t>(*p);
@@ -104,7 +104,7 @@ struct utf32_regex_traits {
         std::wstring wc;
         for (const char_type* p = p1; p < p2; ++p) {
             if (*p > 0xffff) {
-                wc += static_cast<wchar_t>(0xD800 | (*p >> 10));
+                wc += static_cast<wchar_t>(0xD800 | ((*p - 0x10000) >> 10));
                 wc += static_cast<wchar_t>(0xDC00 | (*p & 0x3ff));
             }
             else wc += static_cast<wchar_t>(*p);
