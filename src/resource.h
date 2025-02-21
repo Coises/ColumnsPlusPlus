@@ -18,6 +18,7 @@
 #define IDD_SORT                        129
 #define IDD_TIME_FORMATS                131
 #define IDD_ELASTIC_PROGRESS            133
+#define IDD_SEARCH_PROGRESS             134
 #define IDD_ALIGN                       135
 #define IDD_CHECKING_FOR_UPDATES        139
 #define IDD_TIMESTAMP                   141
@@ -271,14 +272,16 @@
 #define IDC_TIMESTAMP_TO_EXAMPLE        1297
 #define IDC_TIMESTAMP_TO_DATETIME       1298
 #define IDC_TIMESTAMP_OVERWRITE         1299
+#define IDC_SEARCH_PROGRESS_BAR         1300
+#define IDC_SEARCH_PROGRESS_MESSAGE     1301
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        143
+#define _APS_NEXT_RESOURCE_VALUE        144
 #define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1300
+#define _APS_NEXT_CONTROL_VALUE         1302
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
