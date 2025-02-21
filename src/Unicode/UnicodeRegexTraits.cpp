@@ -3,7 +3,7 @@
 const utf32_regex_traits::char_class_type utf32_regex_traits::categoryMasks[] = {
     CatMask_Cn,
     CatMask_Cc | mask_cntrl,
-    CatMask_Cf | mask_cntrl,
+    CatMask_Cf,
     CatMask_Co,
     CatMask_Cs,
     CatMask_Ll | mask_graph | mask_word | mask_alpha | mask_lower,
@@ -272,6 +272,10 @@ const std::map<std::string, utf32_regex_traits::char_type> utf32_regex_traits::c
     {"ht"    , 0x0009},  // Horizontal Tab
     {"lf"    , 0x000a},  // Line Feed
     {"cr"    , 0x000d},  // Carriage Return
+    {"sflo"  , 0x1bca0}, // Shorthand Format Letter Overlap
+    {"sfco"  , 0x1bca1}, // Shorthand Format Continuing Overlap
+    {"sfds"  , 0x1bca2}, // Shorthand Format Down Step
+    {"sfus"  , 0x1bca3}, // Shorthand Format Up Step
                          // from Notepad++ (ScintillaEditView.h):
     {"nul"   , 0x0000},  // Null
     {"soh"   , 0x0001},  // Start of Heading
