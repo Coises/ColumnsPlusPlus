@@ -11,6 +11,8 @@ Columns++ uses [JSON for Modern C++](https://github.com/nlohmann/json) by Niels 
 
 Columns++ uses the [Boost.Regex library](https://github.com/boostorg/regex/), which is released under the [Boost Software License, Version 1.0](https://www.boost.org/LICENSE_1_0.txt).
 
+Columns++ uses some files from the [Unicode Character Database](https://www.unicode.org/ucd/), which is released under the [Unicode License](https://www.unicode.org/license.txt).
+
 ## Purpose
 
 Columns++ is designed to provide some helpful functions for editing text or data that is lined up visually in columns, so that you can make a rectangular selection of the column(s) you want to process.

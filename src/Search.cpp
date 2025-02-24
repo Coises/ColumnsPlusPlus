@@ -141,11 +141,6 @@ namespace {
 } // end unnamed namespace
 
 
-
-
-
-std::regex rxFormat("\\s*(\\d{1,2}[t]?|t)?(?:([.,])(?:((\\d{1,2})?-)?(\\d{1,2}))?)?\\s*:(.*)", std::regex::optimize);
-
 class RegexCalc {
 public:
 
@@ -213,11 +208,10 @@ void ColumnsPlusPlusData::showSearchDialog() {
                       ::searchDialogProc, reinterpret_cast<LPARAM>(this));
 }
 
-const std::wregex rxExtended(
-    L"([^\\\\]*)(\\\\([0nrt\\\\]|b[01]{1,8}|d\\d{1,3}|o[0-7]{1,3}|u[\\da-fA-F]{1,4}|U[\\da-fA-F]{1,6}|x[\\da-fA-F]{1,2}|))(.*)",
-    std::wregex::optimize);
-
 std::string expandExtendedSearchString(const std::wstring& original, UINT codepage) {
+    static const std::wregex rxExtended(
+        L"([^\\\\]*)(\\\\([0nrt\\\\]|b[01]{1,8}|d\\d{1,3}|o[0-7]{1,3}|u[\\da-fA-F]{1,4}|U[\\da-fA-F]{1,6}|x[\\da-fA-F]{1,2}|))(.*)",
+        std::wregex::optimize);
     std::wstring s = original;
     std::string r;
     while (s.length()) {
@@ -759,6 +753,8 @@ std::vector<std::string> prepareReplace(ColumnsPlusPlusData& data) {
 }
 
 bool prepareSubstitutions(ColumnsPlusPlusData& data, const std::vector<std::string>& sciRepl) {
+    static const std::regex
+        rxFormat("\\s*(\\d{1,2}[t]?|t)?(?:([.,])(?:((\\d{1,2})?-)?(\\d{1,2}))?)?\\s*:(.*)", std::regex::optimize);
     auto& rc = *data.searchData.regexCalc;
     if (sciRepl == rc.replacement) return true;
     rc.clear();
@@ -905,55 +901,7 @@ void showRange(ColumnsPlusPlusData& data, Scintilla::Position foundStart, Scinti
 }
 
 
-void SearchProgressInfo::searchMultiple(bool replacing, bool partial, bool before) {
-
-    auto& sci = data.sci;
-
-    if (!data.searchRegionReady()) {
-        if (!convertSelectionToSearchRegion(data)) return;
-        data.searchData.wrap = false;
-    }
-    sci.CallTipCancel();
-
-    partialStart = partial && !before ? sci.SelectionEnd()   : 0;
-    partialEnd   = partial &&  before ? sci.SelectionStart() : sci.Length();
-    position     = partialStart;
-    message      = replacing ? L"Matches replaced" : selecting ? L"Matches selected" : L"Matches found";
-
-    if (data.searchData.mode == SearchData::Regex) {
-        task  = replacing ? &SearchProgressInfo::rxReplacing : &SearchProgressInfo::rxCounting;
-        usesK = doesRegexUseK(data.searchData.findHistory.back());
-        rx.find(data.searchData.findHistory.back(), data.searchData.matchCase);
-    }
-    else {
-        task = replacing ? &SearchProgressInfo::scReplacing : &SearchProgressInfo::scCounting;
-        find = prepareFind(data);
-    }
-
-    if (replacing) sci.BeginUndoAction();
-
-    unsigned long long tickBefore, tickAfter;
-    Scintilla::Position posBefore = partialStart;
-    tickBefore = GetTickCount64();
-    double tickLimit = 2;
-    while ((this->*task)()) {
-        tickAfter = GetTickCount64();
-        if (tickAfter - tickBefore < 20 || position == posBefore) continue;
-        double projected =
-            static_cast<double>(partialEnd - position) * static_cast<double>(tickAfter - tickBefore)
-            / (1000 * static_cast<double>(position - posBefore));
-        if (projected > tickLimit) {
-            DialogBoxParam(data.dllInstance, MAKEINTRESOURCE(IDD_SEARCH_PROGRESS), data.nppData._nppHandle,
-                searchProgressDialogProc, reinterpret_cast<LPARAM>(this));
-            break;
-        }
-        posBefore  = position;
-        tickBefore = tickAfter;
-    }
-
-    if (replacing) sci.EndUndoAction();
-
-}
+// Main dialog button command functions
 
 
 void ColumnsPlusPlusData::searchCount(bool select, bool partial, bool before) {
@@ -1118,7 +1066,60 @@ void ColumnsPlusPlusData::searchReplaceAll(bool partial, bool before) {
       : std::format(userLocale, L"{:Ld} replacements made.", spi.count) );
 }
 
-namespace {
+
+// SearchProgressInfo member functions
+
+
+void SearchProgressInfo::searchMultiple(bool replacing, bool partial, bool before) {
+
+    auto& sci = data.sci;
+
+    if (!data.searchRegionReady()) {
+        if (!convertSelectionToSearchRegion(data)) return;
+        data.searchData.wrap = false;
+    }
+    sci.CallTipCancel();
+
+    partialStart = partial && !before ? sci.SelectionEnd() : 0;
+    partialEnd = partial && before ? sci.SelectionStart() : sci.Length();
+    position = partialStart;
+    message = replacing ? L"Matches replaced" : selecting ? L"Matches selected" : L"Matches found";
+
+    if (data.searchData.mode == SearchData::Regex) {
+        task = replacing ? &SearchProgressInfo::rxReplacing : &SearchProgressInfo::rxCounting;
+        usesK = doesRegexUseK(data.searchData.findHistory.back());
+        rx.find(data.searchData.findHistory.back(), data.searchData.matchCase);
+    }
+    else {
+        task = replacing ? &SearchProgressInfo::scReplacing : &SearchProgressInfo::scCounting;
+        find = prepareFind(data);
+    }
+
+    if (replacing) sci.BeginUndoAction();
+
+    unsigned long long tickBefore, tickAfter;
+    Scintilla::Position posBefore = partialStart;
+    tickBefore = GetTickCount64();
+    double tickLimit = 2;
+    while ((this->*task)()) {
+        tickAfter = GetTickCount64();
+        if (tickAfter - tickBefore < 20 || position == posBefore) continue;
+        double projected =
+            static_cast<double>(partialEnd - position) * static_cast<double>(tickAfter - tickBefore)
+            / (1000 * static_cast<double>(position - posBefore));
+        if (projected > tickLimit) {
+            DialogBoxParam(data.dllInstance, MAKEINTRESOURCE(IDD_SEARCH_PROGRESS), data.nppData._nppHandle,
+                searchProgressDialogProc, reinterpret_cast<LPARAM>(this));
+            break;
+        }
+        posBefore = position;
+        tickBefore = tickAfter;
+    }
+
+    if (replacing) sci.EndUndoAction();
+
+}
+
 
 bool SearchProgressInfo::scCounting() {
     auto& sci = data.sci;
@@ -1144,6 +1145,7 @@ bool SearchProgressInfo::scCounting() {
     else position = indicatorEnd;
     return position < partialEnd;
 }
+
 
 bool SearchProgressInfo::rxCounting() {
     auto& sci = data.sci;
@@ -1181,6 +1183,7 @@ bool SearchProgressInfo::rxCounting() {
     return position < partialEnd;
 }
 
+
 bool SearchProgressInfo::scReplacing() {
     auto& sci = data.sci;
     auto& searchData = data.searchData;
@@ -1211,6 +1214,7 @@ bool SearchProgressInfo::scReplacing() {
     else position = indicatorEnd;
     return position < partialEnd;
 }
+
 
 bool SearchProgressInfo::rxReplacing() {
     auto& sci = data.sci;
@@ -1253,6 +1257,4 @@ bool SearchProgressInfo::rxReplacing() {
     }
     else position = indicatorEnd;
     return position < partialEnd;
-}
-
 }

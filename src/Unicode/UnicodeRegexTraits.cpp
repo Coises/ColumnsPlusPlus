@@ -265,7 +265,8 @@ const std::map<std::string, utf32_regex_traits::char_class_type> utf32_regex_tra
     {"w"       , mask_word      },
     {"word"    , mask_word      },
     {"xdigit"  , mask_xdigit    },
-    {"y"       , 0x3fffffe600000000U}
+    {"y"       , 0x3fffffe600000000U},
+    {"defined" , 0x3fffffe600000000U}
 };
 
 const std::map<std::string, utf32_regex_traits::char_type> utf32_regex_traits::character_names = {

@@ -42,16 +42,16 @@ class RegularExpression {
 public:
     RegularExpression(ColumnsPlusPlusData& data);
     ~RegularExpression() { if (rex) delete rex; }
-    virtual bool         can_search(                                                 ) const {return rex->can_search(                );}
-    virtual std::wstring find      (const std::wstring& s, bool caseSensitive = false)       {return rex->find      (s, caseSensitive);}
-    virtual std::string  format    (const std::string& replacement                   ) const {return rex->format    (replacement     );}
-    virtual void         invalidate(                                                 )       {       rex->invalidate(                );}
-    virtual intptr_t     length    (int n = 0                                        ) const {return rex->length    (n               );}
-    virtual size_t       mark_count(                                                 ) const {return rex->mark_count(                );}
-    virtual intptr_t     position  (int n = 0                                        ) const {return rex->position  (n               );}
-    virtual bool         search    (std::string_view s, size_t from = 0              )       {return rex->search    (s, from         );}
-    virtual bool         search    (intptr_t from, intptr_t to, intptr_t start       )       {return rex->search    (from, to, start );}
-    virtual size_t       size      (                                                 ) const {return rex->size      (                );}
-    virtual std::string  str       (int n = 0                                        ) const {return rex->str       (n               );}
-    virtual std::string  str       (std::string_view n                               ) const {return rex->str       (n               );}
+    bool         can_search(                                                 ) const {return rex->can_search(                );}
+    std::wstring find      (const std::wstring& s, bool caseSensitive = false)       {return rex->find      (s, caseSensitive);}
+    std::string  format    (const std::string& replacement                   ) const {return rex->format    (replacement     );}
+    void         invalidate(                                                 )       {       rex->invalidate(                );}
+    intptr_t     length    (int n = 0                                        ) const {return rex->length    (n               );}
+    size_t       mark_count(                                                 ) const {return rex->mark_count(                );}
+    intptr_t     position  (int n = 0                                        ) const {return rex->position  (n               );}
+    bool         search    (std::string_view s, size_t from = 0              )       {return rex->search    (s, from         );}
+    bool         search    (intptr_t from, intptr_t to, intptr_t start       )       {return rex->search    (from, to, start );}
+    size_t       size      (                                                 ) const {return rex->size      (                );}
+    std::string  str       (int n = 0                                        ) const {return rex->str       (n               );}
+    std::string  str       (std::string_view n                               ) const {return rex->str       (n               );}
 };

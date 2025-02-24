@@ -1,6 +1,7 @@
 #include <cstdint>
 #include <map>
-extern const uint8_t unicode_category[];
+
+extern const uint16_t unicode_character_data[];
 extern const std::map<char32_t, char32_t> unicode_fold;
 extern const std::map<char32_t, char32_t> unicode_lower;
 extern const std::map<char32_t, char32_t> unicode_upper;
@@ -69,22 +70,61 @@ constexpr uint64_t CatMask_Zl = 1Ui64 << (Category_Zl + 32);
 constexpr uint64_t CatMask_Zp = 1Ui64 << (Category_Zp + 32);
 constexpr uint64_t CatMask_Zs = 1Ui64 << (Category_Zs + 32);
 
-constexpr uint8_t unicode_has_fold  = 0x80;
-constexpr uint8_t unicode_has_lower = 0x40;
-constexpr uint8_t unicode_has_upper = 0x20;
+enum Unicode_Grapheme_Cluster_Break : uint8_t {
+    GraphBreak_Other,
+    GraphBreak_CR,
+    GraphBreak_LF,
+    GraphBreak_Control,
+    GraphBreak_Extend,
+    GraphBreak_Prepend,
+    GraphBreak_Regional_Indicator,
+    GraphBreak_SpacingMark,
+    GraphBreak_ZWJ,
+    GraphBreak_L,
+    GraphBreak_LV,
+    GraphBreak_LVT,
+    GraphBreak_T,
+    GraphBreak_V
+};
+
+constexpr int GraphBreakShift = 8;
+
+enum Unicode_Indic_Conjunct_Break : uint8_t {
+    IndicBreak_None,
+    IndicBreak_Consonant,
+    IndicBreak_Extend,
+    IndicBreak_Linker
+};
+
+constexpr int IndicBreakShift = 12;
+
+constexpr uint16_t unicode_cat_bits  = 0x001F;
+constexpr uint16_t unicode_has_fold  = 0x0020;
+constexpr uint16_t unicode_has_lower = 0x0040;
+constexpr uint16_t unicode_has_upper = 0x0080;
+constexpr uint16_t unicode_gcb_bits  = 0x0F00;
+constexpr uint16_t unicode_icb_bits  = 0x3000;
+constexpr uint16_t unicode_extended_pictographic = 0x4000;
 
 inline Unicode_Category unicodeGenCat(char32_t c) {
-    if (c < unicode_exclude_from) return static_cast<Unicode_Category>(0x1fUi8 & unicode_category[c]);
+    if (c < unicode_exclude_from) return static_cast<Unicode_Category>(unicode_cat_bits & unicode_character_data[c]);
     if (c < unicode_exclude_to) return Category_Cn;
     if (c > unicode_last_codept)
         return (c >= 0xF0000 && c <=0xFFFFD) || (c >= 0x100000 && c <= 0x10FFFD) ? Category_Co : Category_Cn;
-    return static_cast<Unicode_Category>(0x1fUi8 & unicode_category[c - (unicode_exclude_to - unicode_exclude_from)]);
+    return static_cast<Unicode_Category>(
+        unicode_cat_bits & unicode_character_data[c - (unicode_exclude_to - unicode_exclude_from)] );
 }
 
-inline char32_t unicode_casing_operation(char32_t c, const std::map<char32_t, char32_t>& map, uint8_t flag) {
-    if      (c < unicode_exclude_from) { if (!(flag & unicode_category[c])) return c; }
+inline bool unicodeExtPict(char32_t c) {
+    if (c < unicode_exclude_from) return unicode_extended_pictographic & unicode_character_data[c];
+    if (c < unicode_exclude_to || c > unicode_last_codept) return false;
+    return unicode_extended_pictographic & unicode_character_data[c - (unicode_exclude_to - unicode_exclude_from)];
+}
+
+inline char32_t unicode_casing_operation(char32_t c, const std::map<char32_t, char32_t>& map, uint16_t flag) {
+    if      (c < unicode_exclude_from) { if (!(flag & unicode_character_data[c])) return c; }
     else if (c < unicode_exclude_to || c > unicode_last_codept) return c;
-    else if (!(flag & unicode_category[c - (unicode_exclude_to - unicode_exclude_from)])) return c;
+    else if (!(flag & unicode_character_data[c - (unicode_exclude_to - unicode_exclude_from)])) return c;
     if (auto i = map.find(c); i != map.end()) return i->second;
     return c;
 }
@@ -99,4 +139,20 @@ inline char32_t unicodeLower(char32_t c) {
 
 inline char32_t unicodeUpper(char32_t c) {
     return unicode_casing_operation(c, unicode_upper, unicode_has_upper);
+}
+
+inline Unicode_Grapheme_Cluster_Break unicodeGCB(char32_t c) {
+    if (c < unicode_exclude_from)
+        return static_cast<Unicode_Grapheme_Cluster_Break>((unicode_gcb_bits & unicode_character_data[c]) >> GraphBreakShift);
+    if (c < unicode_exclude_to || c > unicode_last_codept) return GraphBreak_Other;
+    return static_cast<Unicode_Grapheme_Cluster_Break>(
+        (unicode_gcb_bits & unicode_character_data[c - (unicode_exclude_to - unicode_exclude_from)]) >> GraphBreakShift);
+}
+
+inline Unicode_Indic_Conjunct_Break unicodeICB(char32_t c) {
+    if (c < unicode_exclude_from)
+        return static_cast<Unicode_Indic_Conjunct_Break>((unicode_icb_bits & unicode_character_data[c]) >> IndicBreakShift);
+    if (c < unicode_exclude_to || c > unicode_last_codept) return IndicBreak_None;
+    return static_cast<Unicode_Indic_Conjunct_Break>(
+        (unicode_icb_bits & unicode_character_data[c - (unicode_exclude_to - unicode_exclude_from)]) >> IndicBreakShift);
 }

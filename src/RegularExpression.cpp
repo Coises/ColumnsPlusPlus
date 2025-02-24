@@ -366,6 +366,7 @@ class RegularExpressionU : public RegularExpressionInterface {
     };
 
     friend class DocumentIterator;
+    friend bool multipleCluster(const DocumentIterator&, const DocumentIterator&);
 
     intptr_t    end = 0;
     intptr_t    gap = 0;
@@ -485,3 +486,104 @@ RegularExpression::RegularExpression(ColumnsPlusPlusData& data) {
     if (data.sci.CodePage() == 0) rex = new RegularExpressionA(data);
                              else rex = new RegularExpressionU(data);
     }
+
+
+// Fix for combining characters must go here since it must be specialized on the document iterator
+
+enum class PairClusters {yes, no, maybe};
+
+inline PairClusters pairCluster(const char32_t c1, const char32_t c2) {
+    using enum PairClusters;
+    if (c1 < unicode_first_GraphBreak_complex && c2 < unicode_first_GraphBreak_complex)
+        return c1 == '\r' && c2 == '\n' ? yes : no;
+    const auto gb1 = unicodeGCB(c1);
+    const auto gb2 = unicodeGCB(c2);
+    if (gb1 == GraphBreak_CR || gb1 == GraphBreak_LF || gb1 == GraphBreak_Control) return no;
+    if (gb2 == GraphBreak_CR || gb2 == GraphBreak_LF || gb2 == GraphBreak_Control) return no;
+    if ( (gb1 == GraphBreak_L && (gb2 == GraphBreak_L || gb2 == GraphBreak_V || gb2 == GraphBreak_LV || gb2 == GraphBreak_LVT))
+     || ((gb1 == GraphBreak_LV || gb1 == GraphBreak_V) && (gb2 == GraphBreak_V || gb2 == GraphBreak_T))
+     || ((gb1 == GraphBreak_LVT || gb1 == GraphBreak_T) && gb2 == GraphBreak_T) )
+        return yes;
+    if (gb2 == GraphBreak_Extend || gb2 == GraphBreak_ZWJ) return yes;
+    if (gb1 == GraphBreak_Prepend || gb2 == GraphBreak_SpacingMark) return yes;
+    if (gb1 == GraphBreak_Regional_Indicator && gb2 == GraphBreak_Regional_Indicator) return maybe;
+    if (gb1 == GraphBreak_ZWJ && unicodeExtPict(c2)) return maybe;
+    const auto ib1 = unicodeICB(c1);
+    const auto ib2 = unicodeICB(c2);
+    if ((ib1 == IndicBreak_Extend || ib1 == IndicBreak_Linker) && ib2 == IndicBreak_Consonant) return maybe;
+    return no;
+}
+
+inline bool multipleCluster(const RegularExpressionU::DocumentIterator& position,
+                            const RegularExpressionU::DocumentIterator& backstop) {
+
+    const char32_t c = *position;
+
+    if (unicodeGCB(c) == GraphBreak_Regional_Indicator) {
+        auto p = position;
+        size_t count = 0;
+        while (p != backstop && unicodeGCB(*--p) == GraphBreak_Regional_Indicator) ++count;
+        return count & 1;
+    }
+
+    if (unicodeExtPict(c)) {
+        auto p = position;
+        if (p == backstop || *--p != 0x200D) return false;
+        while (p != backstop && unicodeGCB(*--p) == GraphBreak_Extend);
+        return unicodeExtPict(*p);
+    }
+
+    if (unicodeICB(c) == IndicBreak_Consonant) {
+        bool foundLinker = false;
+        auto p = position;
+        while (p != backstop) {
+            --p;
+            switch (unicodeICB(*p)) {
+            case IndicBreak_Consonant :
+                return foundLinker;
+            case IndicBreak_Extend:
+                break;
+            case IndicBreak_Linker:
+                foundLinker = true;
+                break;
+            case IndicBreak_None:
+                return false;
+            }
+        }
+        return false;
+    }
+
+    return false;
+}
+
+template <>
+bool boost::BOOST_REGEX_DETAIL_NS::perl_matcher<RegularExpressionU::DocumentIterator,
+    std::allocator<boost::sub_match<RegularExpressionU::DocumentIterator>>, utf32_regex_traits>::match_combining() {
+
+    if (position == last) return false;
+
+    char32_t c1 = *position;
+
+    if (position != backstop) /* we could be within a grapheme; if so, we must return false */ {
+        auto prior = position;
+        --prior;
+        char32_t c0 = *prior;
+        PairClusters pc01 = pairCluster(c0, c1);
+        if (pc01 == PairClusters::yes) return false;
+        if (pc01 == PairClusters::maybe && multipleCluster(position, backstop)) return false;
+    }
+
+    for (char32_t c2; ++position != last; c1 = c2) {
+        c2 = *position;
+        PairClusters pc12 = pairCluster(c1, c2);
+        if (pc12 == PairClusters::no) break;
+        if (pc12 == PairClusters::yes) continue;
+        if (!multipleCluster(position, backstop)) break;
+    }
+
+    pstate = pstate->next.p;
+    return true;
+
+}
+
+

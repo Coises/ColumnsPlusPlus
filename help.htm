@@ -88,6 +88,11 @@ table.justAlign       {border: none; margin: 0; border-collapse: collapse;}
 table.justAlign td    {border:none; padding: 0; font: inherit;}
 table.justAlign td+td {padding: 0 0 0 1em;}
 
+table.charnames          {border: none; margin: 1em 0 1em 1em; width: calc(100% - 1em - 2px); border-collapse: collapse;}
+table.charnames th       {padding: 0 .5em 0 .5em; font-weight: bold;   text-align: left; vertical-align: top; border: 1px solid black;}
+table.charnames td       {padding: 0 .5em 0 .5em; font-weight: normal; text-align: left; vertical-align: top; border: 1px solid black;}
+table.charnames tr td:first-child + td {text-align: right; font-family: monospace;}
+
 ul    {margin: 0 0 .5em 0;}
 ul li {margin: .25em 0;}
 
@@ -161,7 +166,7 @@ window.addEventListener("load", doPageLoad);
 
 <p><strong>Columns++</strong> is a plugin for <a href="https://notepad-plus-plus.org/">Notepad++</a> which offers features for working with text and data arranged in columns, including an implementation of elastic tabstops, enhanced searching and sorting, column alignment and numeric calulations. Like <strong>Notepad++</strong>, <strong>Columns++</strong> is released under the <a href="https://www.gnu.org/licenses/gpl.html">GNU General Public License</a> (either <a href="https://www.gnu.org/licenses/gpl-3.0.html">version 3</a> of the License, or, at your option, any later version). <strong>Columns++</strong> was first released by <a href="http://www.coises.com/">Randall Joseph Fellmy</a> in 2023; you can find the source code  on <a href="https://github.com/Coises/ColumnsPlusPlus">GitHub</a>.</p>
 
-<p><strong>Columns++</strong> uses the <a href="https://github.com/ArashPartow/exprtk">C++ Mathematical Expression Toolkit Library (ExprTk)</a> by <a href="https://www.partow.net/">Arash Partow</a>, which is released under the <a href="https://www.opensource.org/licenses/MIT">MIT license</a>; <a href="https://github.com/nlohmann/json">JSON for Modern C++</a> by <a href="https://nlohmann.me">Niels Lohmann</a>, which is released under the <a href="https://www.opensource.org/licenses/MIT">MIT license</a>; and the <a href="https://github.com/boostorg/regex/">Boost.Regex library</a>, which is released under the <a href="https://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>.
+<p><strong>Columns++</strong> uses the <a href="https://github.com/ArashPartow/exprtk">C++ Mathematical Expression Toolkit Library (ExprTk)</a> by <a href="https://www.partow.net/">Arash Partow</a>, which is released under the <a href="https://www.opensource.org/licenses/MIT">MIT license</a>; <a href="https://github.com/nlohmann/json">JSON for Modern C++</a> by <a href="https://nlohmann.me">Niels Lohmann</a>, which is released under the <a href="https://www.opensource.org/licenses/MIT">MIT license</a>; the <a href="https://github.com/boostorg/regex/">Boost.Regex library</a>, which is released under the <a href="https://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>; and some files from the <a href="https://www.unicode.org/ucd/">Unicode Character Database</a>, which is released under the <a href="https://www.unicode.org/license.txt">Unicode License V3</a>.
 
 </section>
 
@@ -297,7 +302,193 @@ window.addEventListener("load", doPageLoad);
 
 <p>Matches for regular expressions using the <strong>\K</strong> directive are never replaced when performing stepwise Find and Replace in <strong>Notepad++</strong>. In the <strong>Search in indicated region</strong> dialog in <strong>Columns++</strong>, such matches can be replaced if you do not click outside the dialog between finding the match and replacing it.</p>
 
-<p>Regular expressions are matched as UTF-16 sequences for Unicode documents, and as byte sequences for other documents. (This is the same as in <strong>Notepad++</strong>.) Scintilla (the display control used in <strong>Notepad++</strong>) handles Unicode as UTF-8. When displaying Unicode documents that contain invalid UTF-8, Scintilla displays each byte that cannot be decoded as a hexadecimal code in reversed colors. When matching a regular expression, <strong>Columns++</strong> processes each of these bytes as if it were the Unicode replacement character, U+FFFD (<strong>&#xfffd;</strong>). <strong>Notepad++</strong> ignores errors in Unicode text when matching regular expressions.</p>
+<h3>Unicode</h3>
+
+<p>There are some significant differences in the way <strong>Columns++</strong> and <strong>Notepad++</strong> match regular expressions in Unicode documents. <strong>Columns++</strong> treats the document text as a series of Unicode code points (i.e., UTF-32) while <strong>Notepad++</strong> treats it as UTF-16. Most of the differences are related to this change.</p>
+
+<p>There are no surrogate pairs in <strong>Columns++</strong> regular expressions; each code point matches as a single character. To enter any Unicode character in hexadecimal notation, use the full code point; for example, enter &#x1f642; as <code>\x{1f642}</code>. (The surrogate pair, <code>\x{d83d}\x{de42}</code>, which must be used in <strong>Notepad++</strong> search, <em>will not match</em> in <strong>Columns++</strong>.)</p>
+
+<p><strong>Scintilla</strong>, the display control used in <strong>Notepad++</strong>, represents Unicode internally as UTF-8. (This is true whether the file containing the document is UTF-8, UTF-16 or anything else other than “ANSI.”) When displaying Unicode documents that contain invalid UTF-8, Scintilla shows each byte that cannot be decoded as a hexadecimal code in reversed colors. When matching a regular expression, <strong>Columns++</strong> treats each of these error bytes as if it were the Unicode code point formed by adding <code>0xdc00</code> to the invalid byte. These code points are in the surrogate range and are invalid as Unicode characters. (It is possible to match one of these error bytes by prefixing <code>dc</code> to the hexadecimal value; e.g., <code>0xf7</code> is never a valid <em>byte</em> in UTF-8, but it can be found as <code>\x{dcf7}</code>.)</p>
+
+<p>The period (<code>.</code>) matches any one code point except the characters which end lines in Scintilla: carriage return (<code>\x0d</code> or <code>\r</code>) and newline (also called line feed, <code>\x0a</code> or <code>\n</code>). This corresponds to the <a href="https://npp-user-manual.org/docs/searching/#single-character-matches">documented</a> behavior of the period, but not the actual behavior in Notepad++ (where there are several other control characters it does not match). Use <code>\X</code> to match a character including any combining code points (marks) which follow it. (In Notepad++ search, <code>.</code> and <code>\X</code> do not work as expected when the code points involved are outside the basic multilingual plane, that is, 0x10000 or greater.)</p>
+
+<p>The <a href="https://www.boost.org/doc/libs/release/libs/regex/doc/html/boost_regex/syntax/character_classes/optional_char_class_names.html">Unicode character classes</a> and these escape sequences, negations (which match characters not in the class) and character classes are added:</p>
+
+<table class=optionsTable>
+<tr><th>escape</th><th>negation</th><th>character class</th><th>meaning</th></tr>
+<tr><td><code>\i</code></td><td><code>\I</code></td><td><code>[[:invalid:]]</code></td><td>a byte in an invalid UTF-8 sequence</td></tr>
+<tr><td><code>\m</code></td><td><code>\M</code></td><td><code>[[:mark:]]</code></td><td>a combining mark, which displays as part of the previous character</td></tr>
+<tr><td><code>\o</code></td><td><code>\O</code></td><td><code>[[:ascii:]]</code></td><td>an ASCII character, code points 0 through 127</td></tr>
+<tr><td><code>\y</code></td><td><code>\Y</code></td><td><code>[[:defined:]]</code></td><td>any Unicode code point that is assigned and is not a surrogate or a private use character</td></tr>
+</table>
+
+<p>Some symbolic names for <a href="https://www.boost.org/doc/libs/release/libs/regex/doc/html/boost_regex/syntax/perl_syntax.html#boost_regex.syntax.perl_syntax.collating_elements">collating elements</a> have been added, including all the abbreviations used to display invisible characters; all can be entered in any mix of upper and lower case. This is the full list:</p>
+
+<table class=charnames>
+<tr><th>expression</th><th>code pt</th><th>common name</th></tr>
+<tr><td><code>[[.nul.]]</code></td>                                      <td>   00</td><td>null</td></tr>
+<tr><td><code>[[.soh.]]</code></td>                                      <td>   01</td><td>start of heading</td></tr>
+<tr><td><code>[[.stx.]]</code></td>                                      <td>   02</td><td>start of text</td></tr>
+<tr><td><code>[[.etx.]]</code></td>                                      <td>   03</td><td>end of text</td></tr>
+<tr><td><code>[[.eot.]]</code></td>                                      <td>   04</td><td>end of transmission</td></tr>
+<tr><td><code>[[.enq.]]</code></td>                                      <td>   05</td><td>enquiry</td></tr>
+<tr><td><code>[[.ack.]]</code></td>                                      <td>   06</td><td>acknowledge</td></tr>
+<tr><td><code>[[.bel.]]</code><br><code>[[.alert.]]</code></td>          <td>   07</td><td>bell</td></tr>
+<tr><td><code>[[.bs.]]</code><br><code>[[.backspace.]]</code></td>       <td>   08</td><td>backspace</td></tr>
+<tr><td><code>[[.ht.]]</code><br><code>[[.tab.]]</code></td>             <td>   09</td><td>horizontal tab</td></tr>
+<tr><td><code>[[.lf.]]</code><br><code>[[.newline.]]</code></td>         <td>   0a</td><td>line feed,<br>new line</td></tr>
+<tr><td><code>[[.vt.]]</code><br><code>[[.vertical-tab.]]</code></td>    <td>   0b</td><td>line tabulation,<br>vertical tab</td></tr>
+<tr><td><code>[[.ff.]]</code><br><code>[[.form-feed.]]</code></td>       <td>   0c</td><td>form feed</td></tr>
+<tr><td><code>[[.cr.]]</code><br><code>[[.carriage-return.]]</code></td> <td>   0d</td><td>carriage return</td></tr>
+<tr><td><code>[[.so.]]</code></td>                                       <td>   0e</td><td>shift out</td></tr>
+<tr><td><code>[[.si.]]</code></td>                                       <td>   0f</td><td>shift in</td></tr>
+<tr><td><code>[[.dle.]]</code></td>                                      <td>   10</td><td>data link escape</td></tr>
+<tr><td><code>[[.dc1.]]</code></td>                                      <td>   11</td><td>device control one</td></tr>
+<tr><td><code>[[.dc2.]]</code></td>                                      <td>   12</td><td>device control two</td></tr>
+<tr><td><code>[[.dc3.]]</code></td>                                      <td>   13</td><td>device control three</td></tr>
+<tr><td><code>[[.dc4.]]</code></td>                                      <td>   14</td><td>device control four</td></tr>
+<tr><td><code>[[.nak.]]</code></td>                                      <td>   15</td><td>negative acknowledge</td></tr>
+<tr><td><code>[[.syn.]]</code></td>                                      <td>   16</td><td>synchronous idle</td></tr>
+<tr><td><code>[[.etb.]]</code></td>                                      <td>   17</td><td>end of transmission block</td></tr>
+<tr><td><code>[[.can.]]</code></td>                                      <td>   18</td><td>cancel</td></tr>
+<tr><td><code>[[.em.]]</code></td>                                       <td>   19</td><td>end of medium</td></tr>
+<tr><td><code>[[.sub.]]</code></td>                                      <td>   1a</td><td>substitute</td></tr>
+<tr><td><code>[[.esc.]]</code></td>                                      <td>   1b</td><td>escape</td></tr>
+<tr><td><code>[[.fs.]]</code><br><code>[[.IS4.]]</code></td>             <td>   1c</td><td>information separator four</td></tr>
+<tr><td><code>[[.gs.]]</code><br><code>[[.IS3.]]</code></td>             <td>   1d</td><td>information separator three</td></tr>
+<tr><td><code>[[.rs.]]</code><br><code>[[.IS2.]]</code></td>             <td>   1e</td><td>information separator two</td></tr>
+<tr><td><code>[[.us.]]</code><br><code>[[.IS1.]]</code></td>             <td>   1f</td><td>information separator one</td></tr>
+<tr><td><code>[[.space.]]</code></td>                                    <td>   20</td><td></td></tr>
+<tr><td><code>[[.exclamation-mark.]]</code></td>                         <td>   21</td><td>&#x21;</td></tr>
+<tr><td><code>[[.quotation-mark.]]</code></td>                           <td>   22</td><td>&#x22;</td></tr>
+<tr><td><code>[[.number-sign.]]</code></td>                              <td>   23</td><td>&#x23;</td></tr>
+<tr><td><code>[[.dollar-sign.]]</code></td>                              <td>   24</td><td>&#x24;</td></tr>
+<tr><td><code>[[.percent-sign.]]</code></td>                             <td>   25</td><td>&#x25;</td></tr>
+<tr><td><code>[[.ampersand.]]</code></td>                                <td>   26</td><td>&#x26;</td></tr>
+<tr><td><code>[[.apostrophe.]]</code></td>                               <td>   27</td><td>&#x27;</td></tr>
+<tr><td><code>[[.left-parenthesis.]]</code></td>                         <td>   28</td><td>&#x28;</td></tr>
+<tr><td><code>[[.right-parenthesis.]]</code></td>                        <td>   29</td><td>&#x29;</td></tr>
+<tr><td><code>[[.asterisk.]]</code></td>                                 <td>   2a</td><td>&#x2a;</td></tr>
+<tr><td><code>[[.plus-sign.]]</code></td>                                <td>   2b</td><td>&#x2b;</td></tr>
+<tr><td><code>[[.comma.]]</code></td>                                    <td>   2c</td><td>&#x2c;</td></tr>
+<tr><td><code>[[.hyphen.]]</code></td>                                   <td>   2d</td><td>&#x2d;</td></tr>
+<tr><td><code>[[.period.]]</code></td>                                   <td>   2e</td><td>&#x2e;</td></tr>
+<tr><td><code>[[.slash.]]</code></td>                                    <td>   2f</td><td>&#x2f;</td></tr>
+<tr><td><code>[[.zero.]]</code></td>                                     <td>   30</td><td>&#x30;</td></tr>
+<tr><td><code>[[.one.]]</code></td>                                      <td>   31</td><td>&#x31;</td></tr>
+<tr><td><code>[[.two.]]</code></td>                                      <td>   32</td><td>&#x32;</td></tr>
+<tr><td><code>[[.three.]]</code></td>                                    <td>   33</td><td>&#x33;</td></tr>
+<tr><td><code>[[.four.]]</code></td>                                     <td>   34</td><td>&#x34;</td></tr>
+<tr><td><code>[[.five.]]</code></td>                                     <td>   35</td><td>&#x35;</td></tr>
+<tr><td><code>[[.six.]]</code></td>                                      <td>   36</td><td>&#x36;</td></tr>
+<tr><td><code>[[.seven.]]</code></td>                                    <td>   37</td><td>&#x37;</td></tr>
+<tr><td><code>[[.eight.]]</code></td>                                    <td>   38</td><td>&#x38;</td></tr>
+<tr><td><code>[[.nine.]]</code></td>                                     <td>   39</td><td>&#x39;</td></tr>
+<tr><td><code>[[.colon.]]</code></td>                                    <td>   3a</td><td>&#x3a;</td></tr>
+<tr><td><code>[[.semicolon.]]</code></td>                                <td>   3b</td><td>&#x3b;</td></tr>
+<tr><td><code>[[.less-than-sign.]]</code></td>                           <td>   3c</td><td>&#x3c;</td></tr>
+<tr><td><code>[[.equals-sign.]]</code></td>                              <td>   3d</td><td>&#x3d;</td></tr>
+<tr><td><code>[[.greater-than-sign.]]</code></td>                        <td>   3e</td><td>&#x3e;</td></tr>
+<tr><td><code>[[.question-mark.]]</code></td>                            <td>   3f</td><td>&#x3f;</td></tr>
+<tr><td><code>[[.commercial-at.]]</code></td>                            <td>   40</td><td>&#x40;</td></tr>
+<tr><td><code>[[.left-square-bracket.]]</code></td>                      <td>   5b</td><td>&#x5b;</td></tr>
+<tr><td><code>[[.backslash.]]</code></td>                                <td>   5c</td><td>&#x5c;</td></tr>
+<tr><td><code>[[.right-square-bracket.]]</code></td>                     <td>   5d</td><td>&#x5d;</td></tr>
+<tr><td><code>[[.circumflex.]]</code></td>                               <td>   5e</td><td>&#x5e;</td></tr>
+<tr><td><code>[[.underscore.]]</code></td>                               <td>   5f</td><td>&#x5f;</td></tr>
+<tr><td><code>[[.grave-accent.]]</code></td>                             <td>   60</td><td>&#x60;</td></tr>
+<tr><td><code>[[.left-curly-bracket.]]</code></td>                       <td>   7b</td><td>&#x7b;</td></tr>
+<tr><td><code>[[.vertical-line.]]</code></td>                            <td>   7c</td><td>&#x7c;</td></tr>
+<tr><td><code>[[.right-curly-bracket.]]</code></td>                      <td>   7d</td><td>&#x7d;</td></tr>
+<tr><td><code>[[.tilde.]]</code></td>                                    <td>   7e</td><td>&#x7e;</td></tr>
+<tr><td><code>[[.del.]]</code></td>                                      <td>   7f</td><td>delete</td></tr>
+<tr><td><code>[[.pad.]]</code></td>                                      <td>   80</td><td>padding character</td></tr>
+<tr><td><code>[[.hop.]]</code></td>                                      <td>   81</td><td>high octet preset</td></tr>
+<tr><td><code>[[.bph.]]</code></td>                                      <td>   82</td><td>break permitted here</td></tr>
+<tr><td><code>[[.nbh.]]</code></td>                                      <td>   83</td><td>no break here</td></tr>
+<tr><td><code>[[.ind.]]</code></td>                                      <td>   84</td><td>index</td></tr>
+<tr><td><code>[[.nel.]]</code></td>                                      <td>   85</td><td>next line</td></tr>
+<tr><td><code>[[.ssa.]]</code></td>                                      <td>   86</td><td>start of selected area</td></tr>
+<tr><td><code>[[.esa.]]</code></td>                                      <td>   87</td><td>end of selected area</td></tr>
+<tr><td><code>[[.hts.]]</code></td>                                      <td>   88</td><td>character (horizontal) tabulation set</td></tr>
+<tr><td><code>[[.htj.]]</code></td>                                      <td>   89</td><td>character (horizontal) tabulation with justification</td></tr>
+<tr><td><code>[[.lts.]]</code></td>                                      <td>   8a</td><td>line (vertical) tabulation set</td></tr>
+<tr><td><code>[[.pld.]]</code></td>                                      <td>   8b</td><td>partial line forward (down)</td></tr>
+<tr><td><code>[[.plu.]]</code></td>                                      <td>   8c</td><td>partial line backward (up)</td></tr>
+<tr><td><code>[[.ri.]]</code></td>                                       <td>   8d</td><td>reverse line feed (index)</td></tr>
+<tr><td><code>[[.ss2.]]</code></td>                                      <td>   8e</td><td>single-shift two</td></tr>
+<tr><td><code>[[.ss3.]]</code></td>                                      <td>   8f</td><td>single-shift three</td></tr>
+<tr><td><code>[[.dcs.]]</code></td>                                      <td>   90</td><td>device control string</td></tr>
+<tr><td><code>[[.pu1.]]</code></td>                                      <td>   91</td><td>private use one</td></tr>
+<tr><td><code>[[.pu2.]]</code></td>                                      <td>   92</td><td>private use two</td></tr>
+<tr><td><code>[[.sts.]]</code></td>                                      <td>   93</td><td>set transmit state</td></tr>
+<tr><td><code>[[.cch.]]</code></td>                                      <td>   94</td><td>cancel character</td></tr>
+<tr><td><code>[[.mw.]]</code></td>                                       <td>   95</td><td>message waiting</td></tr>
+<tr><td><code>[[.spa.]]</code></td>                                      <td>   96</td><td>start of protected area</td></tr>
+<tr><td><code>[[.epa.]]</code></td>                                      <td>   97</td><td>end of protected area</td></tr>
+<tr><td><code>[[.sos.]]</code></td>                                      <td>   98</td><td>start of string</td></tr>
+<tr><td><code>[[.sgci.]]</code></td>                                     <td>   99</td><td>single graphic character introducer</td></tr>
+<tr><td><code>[[.sci.]]</code></td>                                      <td>   9a</td><td>single character introducer</td></tr>
+<tr><td><code>[[.csi.]]</code></td>                                      <td>   9b</td><td>control sequence introducer</td></tr>
+<tr><td><code>[[.st.]]</code></td>                                       <td>   9c</td><td>string terminator</td></tr>
+<tr><td><code>[[.osc.]]</code></td>                                      <td>   9d</td><td>operating system command</td></tr>
+<tr><td><code>[[.pm.]]</code></td>                                       <td>   9e</td><td>private message</td></tr>
+<tr><td><code>[[.apc.]]</code></td>                                      <td>   9f</td><td>application program command</td></tr>
+<tr><td><code>[[.nbsp.]]</code></td>                                     <td>   a0</td><td>no-break space</td></tr>
+<tr><td><code>[[.shy.]]</code></td>                                      <td>   ad</td><td>soft hyphen</td></tr>
+<tr><td><code>[[.alm.]]</code></td>                                      <td> 061c</td><td>arabic letter mark</td></tr>
+<tr><td><code>[[.sam.]]</code></td>                                      <td> 070f</td><td>syriac abbreviation mark</td></tr>
+<tr><td><code>[[.ospm.]]</code></td>                                     <td> 1680</td><td>ogham space mark</td></tr>
+<tr><td><code>[[.mvs.]]</code></td>                                      <td> 180e</td><td>mongolian vowel separator</td></tr>
+<tr><td><code>[[.nqsp.]]</code></td>                                     <td> 2000</td><td>en quad</td></tr>
+<tr><td><code>[[.mqsp.]]</code></td>                                     <td> 2001</td><td>em quad</td></tr>
+<tr><td><code>[[.ensp.]]</code></td>                                     <td> 2002</td><td>en space</td></tr>
+<tr><td><code>[[.emsp.]]</code></td>                                     <td> 2003</td><td>em space</td></tr>
+<tr><td><code>[[.3/msp.]]</code></td>                                    <td> 2004</td><td>three-per-em space</td></tr>
+<tr><td><code>[[.4/msp.]]</code></td>                                    <td> 2005</td><td>four-per-em space</td></tr>
+<tr><td><code>[[.6/msp.]]</code></td>                                    <td> 2006</td><td>six-per-em space</td></tr>
+<tr><td><code>[[.fsp.]]</code></td>                                      <td> 2007</td><td>figure space</td></tr>
+<tr><td><code>[[.psp.]]</code></td>                                      <td> 2008</td><td>punctation space</td></tr>
+<tr><td><code>[[.thsp.]]</code></td>                                     <td> 2009</td><td>thin space</td></tr>
+<tr><td><code>[[.hsp.]]</code></td>                                      <td> 200a</td><td>hair space</td></tr>
+<tr><td><code>[[.zwsp.]]</code></td>                                     <td> 200b</td><td>zero-width space</td></tr>
+<tr><td><code>[[.zwnj.]]</code></td>                                     <td> 200c</td><td>zero-width non-joiner</td></tr>
+<tr><td><code>[[.zwj.]]</code></td>                                      <td> 200d</td><td>zero-width joiner</td></tr>
+<tr><td><code>[[.lrm.]]</code></td>                                      <td> 200e</td><td>left-to-right mark</td></tr>
+<tr><td><code>[[.rlm.]]</code></td>                                      <td> 200f</td><td>right-to-left mark</td></tr>
+<tr><td><code>[[.ls.]]</code></td>                                       <td> 2028</td><td>line separator</td></tr>
+<tr><td><code>[[.ps.]]</code></td>                                       <td> 2029</td><td>paragraph separator</td></tr>
+<tr><td><code>[[.lre.]]</code></td>                                      <td> 202a</td><td>left-to-right embedding</td></tr>
+<tr><td><code>[[.rle.]]</code></td>                                      <td> 202b</td><td>right-to-left embedding</td></tr>
+<tr><td><code>[[.pdf.]]</code></td>                                      <td> 202c</td><td>pop directional formatting</td></tr>
+<tr><td><code>[[.lro.]]</code></td>                                      <td> 202d</td><td>left-to-right override</td></tr>
+<tr><td><code>[[.rlo.]]</code></td>                                      <td> 202e</td><td>right-to-left override</td></tr>
+<tr><td><code>[[.nnbsp.]]</code></td>                                    <td> 202f</td><td>narrow no-break space</td></tr>
+<tr><td><code>[[.mmsp.]]</code></td>                                     <td> 205f</td><td>medium mathematical space</td></tr>
+<tr><td><code>[[.wj.]]</code></td>                                       <td> 2060</td><td>word joiner</td></tr>
+<tr><td><code>[[.(fa).]]</code></td>                                     <td> 2061</td><td>function application</td></tr>
+<tr><td><code>[[.(it).]]</code></td>                                     <td> 2062</td><td>invisible times</td></tr>
+<tr><td><code>[[.(is).]]</code></td>                                     <td> 2063</td><td>invisible separator</td></tr>
+<tr><td><code>[[.(ip).]]</code></td>                                     <td> 2064</td><td>invisible plus</td></tr>
+<tr><td><code>[[.lri.]]</code></td>                                      <td> 2066</td><td>left-to-right isolate</td></tr>
+<tr><td><code>[[.rli.]]</code></td>                                      <td> 2067</td><td>right-to-left isolate</td></tr>
+<tr><td><code>[[.fsi.]]</code></td>                                      <td> 2068</td><td>first strong isolate</td></tr>
+<tr><td><code>[[.pdi.]]</code></td>                                      <td> 2069</td><td>pop directional isolate</td></tr>
+<tr><td><code>[[.iss.]]</code></td>                                      <td> 206a</td><td>inhibit symmetric swapping</td></tr>
+<tr><td><code>[[.ass.]]</code></td>                                      <td> 206b</td><td>activate symmetric swapping</td></tr>
+<tr><td><code>[[.iafs.]]</code></td>                                     <td> 206c</td><td>inhibit arabic form shaping</td></tr>
+<tr><td><code>[[.aafs.]]</code></td>                                     <td> 206d</td><td>activate arabic form shaping</td></tr>
+<tr><td><code>[[.nads.]]</code></td>                                     <td> 206e</td><td>national digit shapes</td></tr>
+<tr><td><code>[[.nods.]]</code></td>                                     <td> 206f</td><td>nominal digit shapes</td></tr>
+<tr><td><code>[[.idsp.]]</code></td>                                     <td> 3000</td><td>ideographic space</td></tr>
+<tr><td><code>[[.zwnbsp.]]</code></td>                                   <td> feff</td><td>zero-width no-break space</td></tr>
+<tr><td><code>[[.iaa.]]</code></td>                                      <td> fff9</td><td>interlinear annotation anchor</td></tr>
+<tr><td><code>[[.ias.]]</code></td>                                      <td> fffa</td><td>interlinear annotation separator</td></tr>
+<tr><td><code>[[.iat.]]</code></td>                                      <td> fffb</td><td>interlinear annotation terminator</td></tr>
+<tr><td><code>[[.sflo.]]</code></td>                                     <td>1bca0</td><td>shorthand format letter overlap</td></tr>
+<tr><td><code>[[.sfco.]]</code></td>                                     <td>1bca1</td><td>shorthand format continuing overlap</td></tr>
+<tr><td><code>[[.sfds.]]</code></td>                                     <td>1bca2</td><td>shorthand format down step</td></tr>
+<tr><td><code>[[.sfus.]]</code></td>                                     <td>1bca3</td><td>shorthand format up step</td></tr></table>
 
 </section>
 

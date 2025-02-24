@@ -1,30 +1,49 @@
-ucd = open("UnicodeData.txt")
-ucf = open("CaseFolding.txt")
-out = open("UnicodeCharacterData.cpp", "w")
-hdr = open("UnicodeCharacterData.h", "w")
+import re
+
+ucd = open("UCD\\UnicodeData.txt"          , encoding='utf-8')
+ucf = open("UCD\\CaseFolding.txt"          , encoding='utf-8')
+ucg = open("UCD\\GraphemeBreakProperty.txt", encoding='utf-8')
+dcp = open("UCD\\DerivedCoreProperties.txt", encoding='utf-8')
+emj = open("UCD\\emoji-data.txt"           , encoding='utf-8')
+out = open("UnicodeCharacterData.cpp", "w" , encoding='utf-8')
+hdr = open("UnicodeCharacterData.h", "w"   , encoding='utf-8')
+
+dcpParse = re.compile(r"([0-9a-fA-F]++)(?:\.\.([0-9a-fA-F]++))?+\s*+;\s*+InCB\s*+;\s*+(\w++)");
+emojiParse = re.compile(r"([0-9a-fA-F]++)(?:\.\.([0-9a-fA-F]++))?+\s*+;\s*+Extended_Pictographic\b");
+graphParse = re.compile(r"([0-9a-fA-F]++)(?:\.\.([0-9a-fA-F]++))?+\s*+;\s*+(\w++)");
 
 excludeFrom = 0X32400
 excludeTo   = 0XE0000
 stopAt      = 0XF0000
+firstGraphBreakComplex = 0x200000
 
 codeCategory = []
 caseFold     = []
 caseLower    = []
 caseUpper    = []
+graphBreak   = dict()
+indicBreak   = dict()
 foldPoints   = set()
+extPict      = set()
 
 def codeEntry(codept, fields) :
     global codeCategory
     global caseLower
     global caseUpper
     global foldPoints
-    tag = " + unicode_has_fold" if codept in foldPoints else ""
+    tag = f" | (GraphBreak_{graphBreak[codept]} << GraphBreakShift)" if codept in graphBreak else ""
+    if codept in indicBreak :
+        tag += f" | (IndicBreak_{indicBreak[codept]} << IndicBreakShift)"
+    if codept in foldPoints :
+        tag += " | unicode_has_fold"
     if (fields[13] != "") :
         caseLower.append("{" + f"{codept:#X}, 0X{fields[13]}" + "},\n")
-        tag += " + unicode_has_lower"
+        tag += " | unicode_has_lower"
     if (fields[12] != "") :
         caseUpper.append("{" + f"{codept:#X}, 0X{fields[12]}" + "},\n")
-        tag += " + unicode_has_upper"
+        tag += " | unicode_has_upper"
+    if codept in extPict :
+        tag += " | unicode_extended_pictographic"
     codeCategory.append(f"/* {codept:>5X} */ Category_{fields[2]}{tag},\n")
 
 for line in ucf:
@@ -37,6 +56,41 @@ for line in ucf:
     foldPoints.add(int(fields[0], 16))
 
 ucf.close()
+
+for line in ucg:
+    gm = graphParse.match(line)
+    if not gm :
+        continue
+    cp1 = int(gm.group(1), 16)
+    cp2 = cp1 if not gm.group(2) else int(gm.group(2), 16)
+    for cp in range(cp1, cp2 + 1) :
+        graphBreak[cp] = gm.group(3)
+    if firstGraphBreakComplex > cp1 and gm.group(3) != "Control" and  gm.group(3) != "CR" and  gm.group(3) != "LF" :
+        firstGraphBreakComplex = cp1
+        
+ucg.close()
+
+for line in dcp:
+    indic = dcpParse.match(line)
+    if not indic :
+        continue
+    cp1 = int(indic.group(1), 16)
+    cp2 = cp1 if not indic.group(2) else int(indic.group(2), 16)
+    for cp in range(cp1, cp2 + 1) :
+        indicBreak[cp] = indic.group(3)
+
+dcp.close()
+
+for line in emj:
+    emoji = emojiParse.match(line)
+    if not emoji :
+        continue
+    cp1 = int(emoji.group(1), 16)
+    cp2 = cp1 if not emoji.group(2) else int(emoji.group(2), 16)
+    for cp in range(cp1, cp2 + 1) :
+        extPict.add(cp)
+
+emj.close()
 
 last = -1;
 
@@ -67,7 +121,7 @@ for line in ucd:
     
 ucd.close()
 
-out.write('#include "UnicodeCharacterData.h"\n\nconst uint8_t unicode_category[] = {\n')
+out.write('#include "UnicodeCharacterData.h"\n\nconst uint16_t unicode_character_data[] = {\n')
 out.writelines(codeCategory)
 out.write("};\n\nconst std::map<char32_t, char32_t> unicode_fold = {\n")
 out.writelines(caseFold)
@@ -79,8 +133,9 @@ out.write("};\n")
 out.close()
 
 hdr.write("#pragma once\n\n")
-hdr.write(f"constexpr char32_t unicode_exclude_from = {excludeFrom:#X};\n")
-hdr.write(f"constexpr char32_t unicode_exclude_to   = {excludeTo:#X};\n")
-hdr.write(f"constexpr char32_t unicode_last_codept  = {last:#X};\n\n")
+hdr.write(f"constexpr char32_t unicode_exclude_from             = {excludeFrom:#X};\n")
+hdr.write(f"constexpr char32_t unicode_exclude_to               = {excludeTo:#X};\n")
+hdr.write(f"constexpr char32_t unicode_last_codept              = {last:#X};\n")
+hdr.write(f"constexpr char32_t unicode_first_GraphBreak_complex = {firstGraphBreakComplex:>#7X};\n\n")
 hdr.write('#include "UnicodeCharacterDataFixed.h"\n')
 hdr.close()
