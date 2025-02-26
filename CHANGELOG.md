@@ -1,6 +1,6 @@
 # Columns++ for Notepad++ -- Releases
 
-## Version 1.2 -- 
+## Version 1.2 -- February 26th, 2025
 
 This version is focused on improving the behavior of regular expressions for Unicode documents:
 
