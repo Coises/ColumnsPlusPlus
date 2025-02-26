@@ -184,8 +184,12 @@ const utf32_regex_traits::char_class_type utf32_regex_traits::asciiMasks[] = {
     /* 7E ~     */ CatMask_Sm | mask_ascii | mask_graph | mask_punct,
     /* 7F DEL   */ CatMask_Cc | mask_ascii | mask_cntrl,
 };
-        
+
+
 const std::map<std::string, utf32_regex_traits::char_class_type> utf32_regex_traits::classnames = {
+
+    // Unicode general categories - short names:
+
     {"c*", CatMask_Cc | CatMask_Cf | CatMask_Cn | CatMask_Co},
     {"l*", CatMask_Ll | CatMask_Lm | CatMask_Lo | CatMask_Lt | CatMask_Lu},
     {"m*", CatMask_Mc | CatMask_Me | CatMask_Mn},
@@ -222,6 +226,9 @@ const std::map<std::string, utf32_regex_traits::char_class_type> utf32_regex_tra
     {"zl", CatMask_Zl},
     {"zp", CatMask_Zp},
     {"zs", CatMask_Zs},
+
+    // Unicode character class names:
+
     {"ascii"                   , mask_ascii},
     {"any"                     , 0x3fffffff00000000U},
     {"assigned"                , 0x3fffffee00000000U},
@@ -236,7 +243,6 @@ const std::map<std::string, utf32_regex_traits::char_class_type> utf32_regex_tra
     {"format"                  , CatMask_Cf},
     {"not assigned"            , CatMask_Cn},
     {"private use"             , CatMask_Co},
-    {"invalid"                 , CatMask_Cs},  // No surrogates in UTF-32, but we use some to hold invalid UTF-8 bytes
     {"lowercase letter"        , CatMask_Ll},
     {"modifier letter"         , CatMask_Lm},
     {"other letter"            , CatMask_Lo},
@@ -262,6 +268,9 @@ const std::map<std::string, utf32_regex_traits::char_class_type> utf32_regex_tra
     {"line separator"          , CatMask_Zl},
     {"paragraph separator"     , CatMask_Zp},
     {"space separator"         , CatMask_Zs},
+
+    // POSIX/Boost class names and escapes:
+
     {"alnum"   , mask_alnum     },
     {"alpha"   , mask_alpha     },
     {"blank"   , mask_blank     },
@@ -270,11 +279,8 @@ const std::map<std::string, utf32_regex_traits::char_class_type> utf32_regex_tra
     {"digit"   , mask_digit     },
     {"graph"   , mask_graph     },
     {"h"       , mask_horizontal},
-    {"i"       , CatMask_Cs     },
     {"l"       , mask_lower     },
     {"lower"   , mask_lower     },
-    {"m"       , CatMask_Mc | CatMask_Me | CatMask_Mn},
-    {"o"       , mask_ascii     },
     {"print"   , mask_print     },
     {"punct"   , mask_punct     },
     {"s"       , mask_space     },
@@ -286,11 +292,20 @@ const std::map<std::string, utf32_regex_traits::char_class_type> utf32_regex_tra
     {"w"       , mask_word      },
     {"word"    , mask_word      },
     {"xdigit"  , mask_xdigit    },
+
+    // additional for Columns++:
+
     {"y"       , 0x3fffffe600000000U},
-    {"defined" , 0x3fffffe600000000U}
+    {"defined" , 0x3fffffe600000000U},
+    {"i"       , CatMask_Cs},           // Surrogates are not valid in UTF-8, but we use xDC80-xDCFF
+    {"invalid" , CatMask_Cs},           // to represent invalid UTF-8 bytes
+    {"o"       , mask_ascii}
+
 };
 
+
 const std::map<std::string, utf32_regex_traits::char_type> utf32_regex_traits::character_names = {
+
     {"ht"    , 0x0009},  // Horizontal Tab
     {"lf"    , 0x000a},  // Line Feed
     {"cr"    , 0x000d},  // Carriage Return
@@ -298,7 +313,9 @@ const std::map<std::string, utf32_regex_traits::char_type> utf32_regex_traits::c
     {"sfco"  , 0x1bca1}, // Shorthand Format Continuing Overlap
     {"sfds"  , 0x1bca2}, // Shorthand Format Down Step
     {"sfus"  , 0x1bca3}, // Shorthand Format Up Step
-                         // from Notepad++ (ScintillaEditView.h):
+
+    // from Notepad++ (ScintillaEditView.h):
+
     {"nul"   , 0x0000},  // Null
     {"soh"   , 0x0001},  // Start of Heading
     {"stx"   , 0x0002},  // Start of Text
@@ -412,7 +429,9 @@ const std::map<std::string, utf32_regex_traits::char_type> utf32_regex_traits::c
     {"iaa"   , 0xfff9},  // interlinear annotation anchor
     {"ias"   , 0xfffa},  // interlinear annotation separator
     {"iat"   , 0xfffb},  // interlinear annotation terminator
-                         // other POSIX names, from Boost (regex_traits_default.hpp):
+
+    // other POSIX names, from Boost (regex_traits_default.hpp):
+
     {"alert"               , 0x07},
     {"backspace"           , 0x08},
     {"tab"                 , 0x09},
@@ -466,8 +485,141 @@ const std::map<std::string, utf32_regex_traits::char_type> utf32_regex_traits::c
     {"left-curly-bracket"  , 0x7b},
     {"vertical-line"       , 0x7c},
     {"right-curly-bracket" , 0x7d},
-    {"tilde"               , 0x7e}
+    {"tilde"               , 0x7e},
+     
+    // invalid UTF-8 bytes:
+
+    {"x80"                 , 0xdc80},
+    {"x81"                 , 0xdc81},
+    {"x82"                 , 0xdc82},
+    {"x83"                 , 0xdc83},
+    {"x84"                 , 0xdc84},
+    {"x85"                 , 0xdc85},
+    {"x86"                 , 0xdc86},
+    {"x87"                 , 0xdc87},
+    {"x88"                 , 0xdc88},
+    {"x89"                 , 0xdc89},
+    {"x8a"                 , 0xdc8a},
+    {"x8b"                 , 0xdc8b},
+    {"x8c"                 , 0xdc8c},
+    {"x8d"                 , 0xdc8d},
+    {"x8e"                 , 0xdc8e},
+    {"x8f"                 , 0xdc8f},
+    {"x90"                 , 0xdc90},
+    {"x91"                 , 0xdc91},
+    {"x92"                 , 0xdc92},
+    {"x93"                 , 0xdc93},
+    {"x94"                 , 0xdc94},
+    {"x95"                 , 0xdc95},
+    {"x96"                 , 0xdc96},
+    {"x97"                 , 0xdc97},
+    {"x98"                 , 0xdc98},
+    {"x99"                 , 0xdc99},
+    {"x9a"                 , 0xdc9a},
+    {"x9b"                 , 0xdc9b},
+    {"x9c"                 , 0xdc9c},
+    {"x9d"                 , 0xdc9d},
+    {"x9e"                 , 0xdc9e},
+    {"x9f"                 , 0xdc9f},
+    {"xa0"                 , 0xdca0},
+    {"xa1"                 , 0xdca1},
+    {"xa2"                 , 0xdca2},
+    {"xa3"                 , 0xdca3},
+    {"xa4"                 , 0xdca4},
+    {"xa5"                 , 0xdca5},
+    {"xa6"                 , 0xdca6},
+    {"xa7"                 , 0xdca7},
+    {"xa8"                 , 0xdca8},
+    {"xa9"                 , 0xdca9},
+    {"xaa"                 , 0xdcaa},
+    {"xab"                 , 0xdcab},
+    {"xac"                 , 0xdcac},
+    {"xad"                 , 0xdcad},
+    {"xae"                 , 0xdcae},
+    {"xaf"                 , 0xdcaf},
+    {"xb0"                 , 0xdcb0},
+    {"xb1"                 , 0xdcb1},
+    {"xb2"                 , 0xdcb2},
+    {"xb3"                 , 0xdcb3},
+    {"xb4"                 , 0xdcb4},
+    {"xb5"                 , 0xdcb5},
+    {"xb6"                 , 0xdcb6},
+    {"xb7"                 , 0xdcb7},
+    {"xb8"                 , 0xdcb8},
+    {"xb9"                 , 0xdcb9},
+    {"xba"                 , 0xdcba},
+    {"xbb"                 , 0xdcbb},
+    {"xbc"                 , 0xdcbc},
+    {"xbd"                 , 0xdcbd},
+    {"xbe"                 , 0xdcbe},
+    {"xbf"                 , 0xdcbf},
+    {"xc0"                 , 0xdcc0},
+    {"xc1"                 , 0xdcc1},
+    {"xc2"                 , 0xdcc2},
+    {"xc3"                 , 0xdcc3},
+    {"xc4"                 , 0xdcc4},
+    {"xc5"                 , 0xdcc5},
+    {"xc6"                 , 0xdcc6},
+    {"xc7"                 , 0xdcc7},
+    {"xc8"                 , 0xdcc8},
+    {"xc9"                 , 0xdcc9},
+    {"xca"                 , 0xdcca},
+    {"xcb"                 , 0xdccb},
+    {"xcc"                 , 0xdccc},
+    {"xcd"                 , 0xdccd},
+    {"xce"                 , 0xdcce},
+    {"xcf"                 , 0xdccf},
+    {"xd0"                 , 0xdcd0},
+    {"xd1"                 , 0xdcd1},
+    {"xd2"                 , 0xdcd2},
+    {"xd3"                 , 0xdcd3},
+    {"xd4"                 , 0xdcd4},
+    {"xd5"                 , 0xdcd5},
+    {"xd6"                 , 0xdcd6},
+    {"xd7"                 , 0xdcd7},
+    {"xd8"                 , 0xdcd8},
+    {"xd9"                 , 0xdcd9},
+    {"xda"                 , 0xdcda},
+    {"xdb"                 , 0xdcdb},
+    {"xdc"                 , 0xdcdc},
+    {"xdd"                 , 0xdcdd},
+    {"xde"                 , 0xdcde},
+    {"xdf"                 , 0xdcdf},
+    {"xe0"                 , 0xdce0},
+    {"xe1"                 , 0xdce1},
+    {"xe2"                 , 0xdce2},
+    {"xe3"                 , 0xdce3},
+    {"xe4"                 , 0xdce4},
+    {"xe5"                 , 0xdce5},
+    {"xe6"                 , 0xdce6},
+    {"xe7"                 , 0xdce7},
+    {"xe8"                 , 0xdce8},
+    {"xe9"                 , 0xdce9},
+    {"xea"                 , 0xdcea},
+    {"xeb"                 , 0xdceb},
+    {"xec"                 , 0xdcec},
+    {"xed"                 , 0xdced},
+    {"xee"                 , 0xdcee},
+    {"xef"                 , 0xdcef},
+    {"xf0"                 , 0xdcf0},
+    {"xf1"                 , 0xdcf1},
+    {"xf2"                 , 0xdcf2},
+    {"xf3"                 , 0xdcf3},
+    {"xf4"                 , 0xdcf4},
+    {"xf5"                 , 0xdcf5},
+    {"xf6"                 , 0xdcf6},
+    {"xf7"                 , 0xdcf7},
+    {"xf8"                 , 0xdcf8},
+    {"xf9"                 , 0xdcf9},
+    {"xfa"                 , 0xdcfa},
+    {"xfb"                 , 0xdcfb},
+    {"xfc"                 , 0xdcfc},
+    {"xfd"                 , 0xdcfd},
+    {"xfe"                 , 0xdcfe},
+    {"xff"                 , 0xdcff}
+
 };
+
 
 const std::set<utf32_regex_traits::string_type> utf32_regex_traits::digraphs = {  // from Boost
     U"ae", U"ch", U"dz", U"lj", U"ll", U"nj", U"ss",

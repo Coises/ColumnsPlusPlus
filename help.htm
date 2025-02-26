@@ -308,7 +308,7 @@ window.addEventListener("load", doPageLoad);
 
 <p>There are no surrogate pairs in <strong>Columns++</strong> regular expressions; each code point matches as a single character. To enter any Unicode character in hexadecimal notation, use the full code point; for example, enter &#x1f642; as <code>\x{1f642}</code>. (The surrogate pair, <code>\x{d83d}\x{de42}</code>, which must be used in <strong>Notepad++</strong> search, <em>will not match</em> in <strong>Columns++</strong>.)</p>
 
-<p><strong>Scintilla</strong>, the display control used in <strong>Notepad++</strong>, represents Unicode internally as UTF-8. (This is true whether the file containing the document is UTF-8, UTF-16 or anything else other than “ANSI.”) When displaying Unicode documents that contain invalid UTF-8, Scintilla shows each byte that cannot be decoded as a hexadecimal code in reversed colors. When matching a regular expression, <strong>Columns++</strong> treats each of these error bytes as if it were the Unicode code point formed by adding <code>0xdc00</code> to the invalid byte. These code points are in the surrogate range and are invalid as Unicode characters. (It is possible to match one of these error bytes by prefixing <code>dc</code> to the hexadecimal value; e.g., <code>0xf7</code> is never a valid <em>byte</em> in UTF-8, but it can be found as <code>\x{dcf7}</code>.)</p>
+<p><strong>Scintilla</strong>, the display control used in <strong>Notepad++</strong>, represents Unicode internally as UTF-8. (This is true whether the file containing the document is UTF-8, UTF-16 or anything else other than “ANSI.”) When displaying Unicode documents that contain invalid UTF-8, Scintilla shows each byte that cannot be decoded as a hexadecimal code in reversed colors. You can match any of these bytes with <code>\i</code>; to match a specific byte, use the hexadecimal code Scintilla displays as a symbolic character name, e.g., <code>[[.xF7.]]</code>. (When matching a regular expression, <strong>Columns++</strong> treats each of these error bytes as if it were the Unicode code point formed by adding <code>0xdc00</code> to the invalid byte. These code points are in the surrogate range and are invalid as UTF-32 code units.)</p>
 
 <p>The period (<code>.</code>) matches any one code point except the characters which end lines in Scintilla: carriage return (<code>\x0d</code> or <code>\r</code>) and newline (also called line feed, <code>\x0a</code> or <code>\n</code>). This corresponds to the <a href="https://npp-user-manual.org/docs/searching/#single-character-matches">documented</a> behavior of the period, but not the actual behavior in Notepad++ (where there are several other control characters it does not match). Use <code>\X</code> to match a character including any combining code points (marks) which follow it. (In Notepad++ search, <code>.</code> and <code>\X</code> do not work as expected when the code points involved are outside the basic multilingual plane, that is, 0x10000 or greater.)</p>
 
@@ -317,7 +317,6 @@ window.addEventListener("load", doPageLoad);
 <table class=optionsTable>
 <tr><th>escape</th><th>negation</th><th>character class</th><th>meaning</th></tr>
 <tr><td><code>\i</code></td><td><code>\I</code></td><td><code>[[:invalid:]]</code></td><td>a byte in an invalid UTF-8 sequence</td></tr>
-<tr><td><code>\m</code></td><td><code>\M</code></td><td><code>[[:mark:]]</code></td><td>a combining mark, which displays as part of the previous character</td></tr>
 <tr><td><code>\o</code></td><td><code>\O</code></td><td><code>[[:ascii:]]</code></td><td>an ASCII character, code points 0 through 127</td></tr>
 <tr><td><code>\y</code></td><td><code>\Y</code></td><td><code>[[:defined:]]</code></td><td>any Unicode code point that is assigned and is not a surrogate or a private use character</td></tr>
 </table>
@@ -488,7 +487,9 @@ window.addEventListener("load", doPageLoad);
 <tr><td><code>[[.sflo.]]</code></td>                                     <td>1bca0</td><td>shorthand format letter overlap</td></tr>
 <tr><td><code>[[.sfco.]]</code></td>                                     <td>1bca1</td><td>shorthand format continuing overlap</td></tr>
 <tr><td><code>[[.sfds.]]</code></td>                                     <td>1bca2</td><td>shorthand format down step</td></tr>
-<tr><td><code>[[.sfus.]]</code></td>                                     <td>1bca3</td><td>shorthand format up step</td></tr></table>
+<tr><td><code>[[.sfus.]]</code></td>                                     <td>1bca3</td><td>shorthand format up step</td></tr>
+<tr><td><code>[[.x80.]]–[[.xff.]]</code></td>                            <td></td>     <td>invalid UTF-8 bytes</td></tr>
+</table>
 
 </section>
 

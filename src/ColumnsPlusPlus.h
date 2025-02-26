@@ -415,11 +415,11 @@ public:
         if (searchData.autoSetSelection) {
             if (sci.SelectionMode() != Scintilla::SelectionMode::Stream) return SearchRegionNotReady;
             if (sci.Selections() > 1) return SearchRegionNotReady;
-            if (sci.SelectionEmpty()) return SearchRegionImpliedAll;
         }
         if (sci.IndicatorValueAt(searchData.indicator, 0)) return SearchRegionReady;
         Scintilla::Position ie = sci.IndicatorEnd(searchData.indicator, 0);
-        return ie != 0 && ie != sci.Length() ? SearchRegionReady : SearchRegionNotReady;
+        if (ie != 0 && ie != sci.Length()) return SearchRegionReady;
+        return searchData.autoSetSelection && sci.SelectionEmpty() ? SearchRegionImpliedAll : SearchRegionNotReady;
     }
 
     void syncFindButton() {
