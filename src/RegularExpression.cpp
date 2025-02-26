@@ -1,20 +1,25 @@
 // This file is part of Columns++ for Notepad++.
-// Copyright 2023 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
+// Copyright 2023, 2025 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
 
-// This program is free software: you can redistribute it and/or modify
-// it under the terms of the GNU General Public License as published by
-// the Free Software Foundation, either version 3 of the License, or
-// at your option any later version.
+// The Columns++ source code contained in this file is independent of Notepad++ code.
+// It is released under the MIT (Expat) license:
 //
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program.  If not, see <https://www.gnu.org/licenses/>.
+// Permission is hereby granted, free of charge, to any person obtaining a copy of this software and 
+// associated documentation files (the "Software"), to deal in the Software without restriction, 
+// including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, 
+// and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, 
+// subject to the following conditions:
+// 
+// The above copyright notice and this permission notice shall be included in all copies or substantial 
+// portions of the Software.
+// 
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT 
+// LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+// IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, 
+// WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE 
+// SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-#include "ColumnsPlusPlus.h"
+#include "WindowsScintillaCommon.h"
 #include "RegularExpression.h"
 #include "Unicode\UnicodeRegexTraits.h"
 
@@ -157,14 +162,14 @@ class RegularExpressionA : public RegularExpressionInterface {
     const char* pt1 = 0;
     const char* pt2 = 0;
 
-    ColumnsPlusPlusData&                   data;
+    Scintilla::ScintillaCall&              sci;
     boost::regex                           aFind;
     boost::match_results<DocumentIterator> aMatch;
     bool                                   regexValid = false;
 
 public:
 
-    RegularExpressionA(ColumnsPlusPlusData& data) : data(data) {}
+    RegularExpressionA(Scintilla::ScintillaCall& sci) : sci(sci) {}
 
     bool can_search() const override { return regexValid; }
 
@@ -221,10 +226,10 @@ public:
     bool search(intptr_t from, intptr_t to, intptr_t start) override {
         if (!regexValid) return false;
         if (pt1 == 0 && pt2 == 0) {
-            end = data.sci.Length();
-            gap = data.sci.GapPosition();
-            pt1 = gap > 0 ? reinterpret_cast<const char*>(data.sci.RangePointer(0, gap)) : 0;
-            pt2 = gap < end ? reinterpret_cast<const char*>(data.sci.RangePointer(gap, end - gap)) - gap : 0;
+            end = sci.Length();
+            gap = sci.GapPosition();
+            pt1 = gap > 0 ? reinterpret_cast<const char*>(sci.RangePointer(0, gap)) : 0;
+            pt2 = gap < end ? reinterpret_cast<const char*>(sci.RangePointer(gap, end - gap)) - gap : 0;
         }
         try {
             return boost::regex_search(DocumentIterator(this, from), DocumentIterator(this, to), aMatch, aFind,
@@ -266,6 +271,8 @@ public:
 
 
 class RegularExpressionU : public RegularExpressionInterface {
+
+public:
 
     class DocumentIterator {
 
@@ -365,22 +372,23 @@ class RegularExpressionU : public RegularExpressionInterface {
 
     };
 
+private:
+
     friend class DocumentIterator;
-    friend bool multipleCluster(const DocumentIterator&, const DocumentIterator&);
 
     intptr_t    end = 0;
     intptr_t    gap = 0;
     const char* pt1 = 0;
     const char* pt2 = 0;
 
-    ColumnsPlusPlusData&                             data;
+    Scintilla::ScintillaCall&                        sci;
     boost::basic_regex<char32_t, utf32_regex_traits> uFind;
     boost::match_results<DocumentIterator>           uMatch;
     bool                                             regexValid = false;
 
 public:
 
-    RegularExpressionU(ColumnsPlusPlusData& data) : data(data) {}
+    RegularExpressionU(Scintilla::ScintillaCall& sci) : sci(sci) {}
 
     bool can_search() const override { return regexValid; }
 
@@ -439,10 +447,10 @@ public:
     bool search(intptr_t from, intptr_t to, intptr_t start) override {
         if (!regexValid) return false;
         if (pt1 == 0 && pt2 == 0) {
-            end = data.sci.Length();
-            gap = data.sci.GapPosition();
-            pt1 = gap > 0   ? reinterpret_cast<const char*>(data.sci.RangePointer(0  , gap      ))       : 0;
-            pt2 = gap < end ? reinterpret_cast<const char*>(data.sci.RangePointer(gap, end - gap)) - gap : 0;
+            end = sci.Length();
+            gap = sci.GapPosition();
+            pt1 = gap > 0   ? reinterpret_cast<const char*>(sci.RangePointer(0  , gap      ))       : 0;
+            pt2 = gap < end ? reinterpret_cast<const char*>(sci.RangePointer(gap, end - gap)) - gap : 0;
         }
         try {
             return boost::regex_search(DocumentIterator(this, from), DocumentIterator(this, to), uMatch, uFind,
@@ -482,108 +490,9 @@ public:
 
 };
 
-RegularExpression::RegularExpression(ColumnsPlusPlusData& data) {
-    if (data.sci.CodePage() == 0) rex = new RegularExpressionA(data);
-                             else rex = new RegularExpressionU(data);
-    }
+#include "RegularExpressionTS.h"
 
-
-// Fix for combining characters must go here since it must be specialized on the document iterator
-
-enum class PairClusters {yes, no, maybe};
-
-inline PairClusters pairCluster(const char32_t c1, const char32_t c2) {
-    using enum PairClusters;
-    if (c1 < unicode_first_GraphBreak_complex && c2 < unicode_first_GraphBreak_complex)
-        return c1 == '\r' && c2 == '\n' ? yes : no;
-    const auto gb1 = unicodeGCB(c1);
-    const auto gb2 = unicodeGCB(c2);
-    if (gb1 == GraphBreak_CR || gb1 == GraphBreak_LF || gb1 == GraphBreak_Control) return no;
-    if (gb2 == GraphBreak_CR || gb2 == GraphBreak_LF || gb2 == GraphBreak_Control) return no;
-    if ( (gb1 == GraphBreak_L && (gb2 == GraphBreak_L || gb2 == GraphBreak_V || gb2 == GraphBreak_LV || gb2 == GraphBreak_LVT))
-     || ((gb1 == GraphBreak_LV || gb1 == GraphBreak_V) && (gb2 == GraphBreak_V || gb2 == GraphBreak_T))
-     || ((gb1 == GraphBreak_LVT || gb1 == GraphBreak_T) && gb2 == GraphBreak_T) )
-        return yes;
-    if (gb2 == GraphBreak_Extend || gb2 == GraphBreak_ZWJ) return yes;
-    if (gb1 == GraphBreak_Prepend || gb2 == GraphBreak_SpacingMark) return yes;
-    if (gb1 == GraphBreak_Regional_Indicator && gb2 == GraphBreak_Regional_Indicator) return maybe;
-    if (gb1 == GraphBreak_ZWJ && unicodeExtPict(c2)) return maybe;
-    const auto ib1 = unicodeICB(c1);
-    const auto ib2 = unicodeICB(c2);
-    if ((ib1 == IndicBreak_Extend || ib1 == IndicBreak_Linker) && ib2 == IndicBreak_Consonant) return maybe;
-    return no;
+RegularExpression::RegularExpression(Scintilla::ScintillaCall& sci) {
+    if (sci.CodePage() == 0) rex = new RegularExpressionA(sci);
+                        else rex = new RegularExpressionU(sci);
 }
-
-inline bool multipleCluster(const RegularExpressionU::DocumentIterator& position,
-                            const RegularExpressionU::DocumentIterator& backstop) {
-
-    const char32_t c = *position;
-
-    if (unicodeGCB(c) == GraphBreak_Regional_Indicator) {
-        auto p = position;
-        size_t count = 0;
-        while (p != backstop && unicodeGCB(*--p) == GraphBreak_Regional_Indicator) ++count;
-        return count & 1;
-    }
-
-    if (unicodeExtPict(c)) {
-        auto p = position;
-        if (p == backstop || *--p != 0x200D) return false;
-        while (p != backstop && unicodeGCB(*--p) == GraphBreak_Extend);
-        return unicodeExtPict(*p);
-    }
-
-    if (unicodeICB(c) == IndicBreak_Consonant) {
-        bool foundLinker = false;
-        auto p = position;
-        while (p != backstop) {
-            --p;
-            switch (unicodeICB(*p)) {
-            case IndicBreak_Consonant :
-                return foundLinker;
-            case IndicBreak_Extend:
-                break;
-            case IndicBreak_Linker:
-                foundLinker = true;
-                break;
-            case IndicBreak_None:
-                return false;
-            }
-        }
-        return false;
-    }
-
-    return false;
-}
-
-template <>
-bool boost::BOOST_REGEX_DETAIL_NS::perl_matcher<RegularExpressionU::DocumentIterator,
-    std::allocator<boost::sub_match<RegularExpressionU::DocumentIterator>>, utf32_regex_traits>::match_combining() {
-
-    if (position == last) return false;
-
-    char32_t c1 = *position;
-
-    if (position != backstop) /* we could be within a grapheme; if so, we must return false */ {
-        auto prior = position;
-        --prior;
-        char32_t c0 = *prior;
-        PairClusters pc01 = pairCluster(c0, c1);
-        if (pc01 == PairClusters::yes) return false;
-        if (pc01 == PairClusters::maybe && multipleCluster(position, backstop)) return false;
-    }
-
-    for (char32_t c2; ++position != last; c1 = c2) {
-        c2 = *position;
-        PairClusters pc12 = pairCluster(c1, c2);
-        if (pc12 == PairClusters::no) break;
-        if (pc12 == PairClusters::yes) continue;
-        if (!multipleCluster(position, backstop)) break;
-    }
-
-    pstate = pstate->next.p;
-    return true;
-
-}
-
-

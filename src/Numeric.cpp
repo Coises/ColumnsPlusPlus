@@ -298,7 +298,7 @@ INT_PTR CALLBACK calculateDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
             h = GetDlgItem(hwndDlg, IDC_CALCULATE_REGEX);
             n = SendMessage(h, WM_GETTEXTLENGTH, 0, 0);
             if (n) {
-                RegularExpression rx(data);
+                RegularExpression rx(data.sci);
                 std::wstring w(n, 0);
                 SendMessage(h, WM_GETTEXT, n + 1, reinterpret_cast<LPARAM>(w.data()));
                 std::wstring error = rx.find(w, 0);

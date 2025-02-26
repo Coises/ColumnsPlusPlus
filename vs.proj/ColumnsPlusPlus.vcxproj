@@ -25,12 +25,14 @@
     <ClInclude Include="..\src\nlohmann\json.hpp" />
     <ClInclude Include="..\src\Numeric.h" />
     <ClInclude Include="..\src\RegularExpression.h" />
+    <ClInclude Include="..\src\RegularExpressionTS.h" />
     <ClInclude Include="..\src\resource.h" />
     <ClInclude Include="..\src\Search.h" />
     <ClInclude Include="..\src\Timestamps.h" />
     <ClInclude Include="..\src\Unicode\UnicodeCharacterData.h" />
     <ClInclude Include="..\src\Unicode\UnicodeCharacterDataFixed.h" />
     <ClInclude Include="..\src\Unicode\UnicodeRegexTraits.h" />
+    <ClInclude Include="..\src\WindowsScintillaCommon.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\src\About.cpp" />

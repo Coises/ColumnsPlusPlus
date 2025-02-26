@@ -47,7 +47,7 @@ namespace {
         intptr_t            count        = 0;
         bool                timerStarted = false;
 
-        SearchProgressInfo(ColumnsPlusPlusData& data) : data(data), rx(data) {}
+        SearchProgressInfo(ColumnsPlusPlusData& data) : data(data), rx(data.sci) {}
 
         bool scCounting();
         bool rxCounting();
@@ -330,7 +330,7 @@ bool updateFindHistory(ColumnsPlusPlusData& data) {
     s.resize(GetWindowText(h, s.data(), n + 1));
     std::wstring error = s.empty() ? L"Enter something to find." : L"";
     if (!s.empty() && data.searchData.mode == SearchData::Regex) {
-        RegularExpression rx(data);
+        RegularExpression rx(data.sci);
         error = rx.find(s);
     }
     if (!error.empty()) {
@@ -932,7 +932,7 @@ void ColumnsPlusPlusData::searchFind(bool postReplace) {
                                             : std::max(sci.Anchor(), sci.CurrentPos());
     Scintilla::Position cpTo;
     if (searchData.mode == SearchData::Regex) {
-        RegularExpression rx(*this);
+        RegularExpression rx(sci);
         rx.find(searchData.findHistory.back(), searchData.matchCase);
         for (;;) {
             cpTo = sci.IndicatorEnd(searchData.indicator, cpFrom);
@@ -1003,7 +1003,7 @@ void ColumnsPlusPlusData::searchReplace() {
         Scintilla::Position regionStart = sci.IndicatorStart(searchData.indicator, start);
         Scintilla::Position regionEnd   = sci.IndicatorEnd(searchData.indicator, start);
         Scintilla::Position cpMin       = searchData.findStep < 0 ? start : searchData.findStep;
-        RegularExpression rx(*this);
+        RegularExpression rx(sci);
         rx.find(searchData.findHistory.back(), searchData.matchCase);
         if (rx.search(cpMin, regionEnd, regionStart) && rx.position() == start && rx.length(0) == end - start) {
             std::string r = rx.format(sciRepl.size() == 1 ? sciRepl[0] : calculateSubstitutions(*this, rx, start));

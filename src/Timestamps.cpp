@@ -284,7 +284,7 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
                         showBalloonTip(hwndDlg, IDC_TIMESTAMP_FROM_PARSE, L"Enter a regular expression to use for parsing dates and times.", true);
                         return TRUE;
                     }
-                    RegularExpression rx(data);
+                    RegularExpression rx(data.sci);
                     std::wstring error = rx.find(dateParse);
                     if (!error.empty()) {
                         showBalloonTip(hwndDlg, IDC_TIMESTAMP_FROM_PARSE, error, true);

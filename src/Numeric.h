@@ -61,7 +61,7 @@ public:
     size_t currentEntry     = 0;
 
     CalculateHistory(ColumnsPlusPlusData& data)
-        : data(data), rx(data), origin(data.sci.Anchor() > data.sci.CurrentPos() ? data.sci.Selections() - 1 : 0) {}
+        : data(data), rx(data.sci), origin(data.sci.Anchor() > data.sci.CurrentPos() ? data.sci.Selections() - 1 : 0) {}
 
 
     // previous(n) - get the index of the entry in the cache corresponding to the line n lines previous to the current line,

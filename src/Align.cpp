@@ -284,7 +284,7 @@ INT_PTR CALLBACK alignDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
             s.resize(GetWindowText(h, s.data(), n + 1));
             std::wstring error = s.empty() ? L"Enter something to align." : L"";
             if (!s.empty() && IsDlgButtonChecked(hwndDlg, IDC_ALIGN_REGEX) == BST_CHECKED) {
-                RegularExpression rx(data);
+                RegularExpression rx(data.sci);
                 error = rx.find(s);
             }
             if (!error.empty()) {
@@ -329,7 +329,7 @@ void ColumnsPlusPlusData::alignCustom() {
     Scintilla::FindOption searchFlags = Scintilla::FindOption::None;
     if (align.matchCase) searchFlags |= Scintilla::FindOption::MatchCase;
 
-    RegularExpression rx(*this);
+    RegularExpression rx(sci);
     if (align.alignOn == AlignSettings::Regex) rx.find(align.history.back(), align.matchCase);
 
     struct Item {

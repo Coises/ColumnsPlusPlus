@@ -552,7 +552,7 @@ const std::chrono::time_zone* TimestampsCommon::zoneNamed(const std::wstring& na
 // TimestampsParse
 
 TimestampsParse::TimestampsParse(ColumnsPlusPlusData& data, const intptr_t action, const std::wstring locale)
-        : data(data), rx(data), action(action), localeWords(locale), codepage(data.sci.CodePage()) {
+        : data(data), rx(data.sci), action(action), localeWords(locale), codepage(data.sci.CodePage()) {
     if (data.timestamps.enableFromDatetime && data.timestamps.datePriority == TimestampSettings::DatePriority::custom)
         rx.find(data.timestamps.dateParse.back(), true);
 }

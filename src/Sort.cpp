@@ -193,7 +193,7 @@ void sortCommon(ColumnsPlusPlusData& data, const SortSettings& sortSettings, Rec
         capType .push_back(sortSettings.sortType);
     }
 
-    RegularExpression rx(data);
+    RegularExpression rx(data.sci);
     if (sortSettings.keyType == SortSettings::Regex) rx.find(sortSettings.regexHistory.back(), sortSettings.regexMatchCase);
 
     int lines = rs.size();
@@ -448,7 +448,7 @@ INT_PTR CALLBACK sortDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
                     auto n = SendMessage(h, WM_GETTEXTLENGTH, 0, 0);
                     std::wstring error = L"A regular expression is required to perform a regular expression sort.";
                     if (n) {
-                        RegularExpression rx(data);
+                        RegularExpression rx(data.sci);
                         std::wstring w(n, 0);
                         SendMessage(h, WM_GETTEXT, n + 1, reinterpret_cast<LPARAM>(w.data()));
                         error = rx.find(w, 0);
