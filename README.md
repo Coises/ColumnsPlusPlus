@@ -2,7 +2,7 @@
 
 Columns++ is a plugin for [Notepad++](https://github.com/notepad-plus-plus/notepad-plus-plus) which offers features for working with text and data arranged in columns, including an implementation of elastic tabstops, enhanced searching and sorting, column alignment and numeric calulations.
 
-Like Notepad++, Columns++ is released under the GNU General Public License (either version 3 of the License, or, at your option, any later version).
+Like Notepad++, Columns++ is released under the GNU General Public License (either version 3 of the License, or, at your option, any later version). Some original source code files which are not dependent on Notepad++ are released under the [MIT (Expat) license](https://www.opensource.org/licenses/MIT): see individual files for details.
 
 Columns++ uses the [C++ Mathematical Expression Toolkit Library
 (ExprTk)](https://github.com/ArashPartow/exprtk) by Arash Partow (https://www.partow.net/), which is released under the [MIT License](https://www.opensource.org/licenses/MIT).
@@ -22,7 +22,7 @@ The integrated implementation of __Elastic tabstops__ works to line up columns w
 ## Main Features
 
 * __Elastic tabstops:__ Columns++ includes a new implementation of Nick Gravgaard's [Elastic tabstops](https://nickgravgaard.com/elastic-tabstops/). _(Please note that as of this writing I have not communicated with Mr. Gravgaard about my implementation of his proposal, and no endorsement on his part is implied.)_
-* __Find and replace:__ Columns++ supports find and replace within regions, which can be defined by rectangular selections or multiple selections. Numeric formulas are supported in regular expression replacement strings.
+* __Find and replace:__ Columns++ supports find and replace within regions, which can be defined by rectangular selections or multiple selections. Numeric formulas are supported in regular expression replacement strings. Regular expressions in Unicode documents support code points beyond the basic multiligual plane, the Unicode General Category property, recognition of grapheme clusters and finding invalid UTF-8 sequences.
 * __Calculations:__ There are commands to add or average numbers in one or more columns and to insert the results of a calculation into each line of a rectangular selection.
 * __Alignment:__ You can left- or right-align text, or line up numbers.
 * __Sorting:__ Columns++ includes sort commands that work correctly with rectangular selections in files that use tabs. Sorts can be based on multiple columns or on regular expression capture groups.

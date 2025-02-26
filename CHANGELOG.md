@@ -1,5 +1,33 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.2 -- 
+
+This version is focused on improving the behavior of regular expressions for Unicode documents:
+
+* Matching is now based on Unicode code points rather than UTF-16 code units. Each Unicode code point is a single regular expression “character” — surrogate pairs are not used.
+
+* The hexadecimal representation for code points beyond the basic multiligual plane can be entered directly (e.g., `\x{1F642}` for 🙂) in both find and replace fields.
+
+* The [character classes documented for Unicode](https://www.boost.org/doc/libs/release/libs/regex/doc/html/boost_regex/syntax/character_classes/optional_char_class_names.html) work, with the exception of Cs/Surrogate. (Unpaired surrogates cannot yield valid UTF-8; Scintilla displays attepts to encode them — aka [WTF-8](https://en.wikipedia.org/wiki/UTF-8#WTF-8) — as three invalid bytes, and this regular expression implementation treats them the same way.)
+
+* These escapes are added:
+    +  `\i` - matches invalid UTF-8 bytes. (You can also use `[[:invalid:]]`.)
+    +  `\o` - matches ASCII characters (code points 0-127).
+    +  `\y` - matches defined characters (all except unassigned, invalid and private use — you can also use `[[:defined:]]`).
+    +  `\I`, `\O` and `\Y` match the complements of those classes.
+
+* `\X` reliably matches a “grapheme cluster” (what normal people call a character) regardless of how many Unicode code points (what the regular expression engine sees as a “character”) comprise it.
+
+* The Unicode character classes, named character classes and the `\l` and `\u` escapes are always case-sensitive, even when **Match case** is not checked or the `(?i)` modifier is used.
+
+* All the control character and non-printing character abbreviations that are shown (depending on **View** | **Show Symbol** settings) in reverse colors can be used as symbolic character names: e.g., `[[.NBSP.]]` will find non-breaking spaces.
+
+In the **Search in indicated region** dialog, for all documents and search modes:
+
+* Columns++ shows a progress dialog if the estimated time for a multiple search action (Count, Select, Replace All/Before/After) exceeds about two seconds.
+
+* When nothing is selected, no search region is set, and a stepwise find or replace is initiated with **Auto set** checked — causing the search region to be set to the entire document — the search now starts from the caret position instead of from the beginning or end of the document.
+
 ## Version 1.1.5 -- February 1st, 2025
 
 * Due to a change in Notepad++ 8.7.6, responsiveness is degraded when deleting character by character (e.g., using the backspace or delete key) in large files with elastic tabstops enabled. Notepad++ version 8.7.7 provides a way to mitigate this, which Columns++ 1.1.5 employs. (Send NPPM_ADDSCNMODIFIEDFLAGS when elastic tabstops is first enabled.)

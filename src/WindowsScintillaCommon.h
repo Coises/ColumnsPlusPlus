@@ -28,11 +28,10 @@
 #include <string>
 #include <vector>
 
+#define NOMINMAX
 #include <windows.h>
 #include <tchar.h>
 #include <commctrl.h>
-#undef min
-#undef max
 
 #include "Host\ScintillaTypes.h"
 #include "Host\ScintillaMessages.h"

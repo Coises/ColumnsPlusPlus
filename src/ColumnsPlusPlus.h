@@ -410,21 +410,25 @@ public:
         }
     }
 
-    bool searchRegionReady() {
+    enum SearchRegionStatus {SearchRegionNotReady, SearchRegionReady, SearchRegionImpliedAll};
+    SearchRegionStatus getSearchRegionStatus() {
         if (searchData.autoSetSelection) {
-            if (sci.SelectionMode() != Scintilla::SelectionMode::Stream) return false;
-            if (sci.Selections() > 1) return false;
+            if (sci.SelectionMode() != Scintilla::SelectionMode::Stream) return SearchRegionNotReady;
+            if (sci.Selections() > 1) return SearchRegionNotReady;
+            if (sci.SelectionEmpty()) return SearchRegionImpliedAll;
         }
-        if (sci.IndicatorValueAt(searchData.indicator, 0)) return true;
-        return sci.IndicatorEnd(searchData.indicator, 0) != 0 && sci.IndicatorEnd(searchData.indicator, 0) != sci.Length();
+        if (sci.IndicatorValueAt(searchData.indicator, 0)) return SearchRegionReady;
+        Scintilla::Position ie = sci.IndicatorEnd(searchData.indicator, 0);
+        return ie != 0 && ie != sci.Length() ? SearchRegionReady : SearchRegionNotReady;
     }
 
     void syncFindButton() {
         if (searchData.dialog) {
             bool backward = searchData.mode != SearchData::Regex && searchData.backward;
             HWND findButton = GetDlgItem(searchData.dialog, IDOK);
-            if (searchRegionReady() && !searchData.wrap) SetWindowText(findButton, backward ? L"Find Previous" : L"Find Next" );
-                                                    else SetWindowText(findButton, backward ? L"Find Last"     : L"Find First");
+            if (getSearchRegionStatus() == SearchRegionNotReady || searchData.wrap)
+                 SetWindowText(findButton, backward ? L"Find Last"     : L"Find First");
+            else SetWindowText(findButton, backward ? L"Find Previous" : L"Find Next" );
         }
     }
 

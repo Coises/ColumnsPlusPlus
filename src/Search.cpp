@@ -522,6 +522,11 @@ BOOL ColumnsPlusPlusData::searchDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wPara
             updateSearchSettings(searchData);
             updateSearchRegion(*this, true, true);
             return TRUE;
+        case IDC_SEARCH_SELECTION_AUTOSET:
+            searchData.autoSetSelection =
+                SendDlgItemMessage(searchData.dialog, IDC_SEARCH_SELECTION_AUTOSET, BM_GETCHECK, 0, 0) == BST_CHECKED;
+            syncFindButton();
+            break;
         case IDC_SEARCH_NORMAL:
         case IDC_SEARCH_EXTENDED:
         case IDC_SEARCH_REGEX:
@@ -919,9 +924,10 @@ void ColumnsPlusPlusData::searchCount(bool select, bool partial, bool before) {
 void ColumnsPlusPlusData::searchFind(bool postReplace) {
     bool fullSearch = searchData.wrap;
     Scintilla::Position documentLength = sci.Length();
-    if (!searchRegionReady()) {
+    SearchRegionStatus srs = getSearchRegionStatus();
+    if (srs != SearchRegionReady) {
         if (!convertSelectionToSearchRegion(*this)) return;
-        fullSearch = true;
+        fullSearch = srs == SearchRegionNotReady;
     }
     searchData.wrap = false;
     if (fullSearch) searchData.nullAt = -1;
@@ -991,7 +997,7 @@ void ColumnsPlusPlusData::searchFind(bool postReplace) {
 void ColumnsPlusPlusData::searchReplace() {
     std::vector<std::string> sciRepl = prepareReplace(*this);
     if (!prepareSubstitutions(*this, sciRepl)) return;
-    if (!searchRegionReady()) return searchFind();
+    if (getSearchRegionStatus() != SearchRegionReady) return searchFind();
     Scintilla::Position anchor = sci.Anchor();
     Scintilla::Position caret  = sci.CurrentPos();
     Scintilla::Position start  = std::min(anchor, caret);
@@ -1074,9 +1080,10 @@ void SearchProgressInfo::searchMultiple(bool replacing, bool partial, bool befor
 
     auto& sci = data.sci;
 
-    if (!data.searchRegionReady()) {
+    ColumnsPlusPlusData::SearchRegionStatus srs = data.getSearchRegionStatus();
+    if (srs != ColumnsPlusPlusData::SearchRegionReady) {
         if (!convertSelectionToSearchRegion(data)) return;
-        data.searchData.wrap = false;
+        data.searchData.wrap = srs == ColumnsPlusPlusData::SearchRegionNotReady;
     }
     sci.CallTipCancel();
 

@@ -16,6 +16,9 @@ but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 GNU General Public License for more details.
 
+Some original source code which is not dependent on Notepad++ is
+released under the MIT license; see individual files for details.
+
 ===================================================================
 
 Columns++ uses the C++ Mathematical Expression Toolkit Library
