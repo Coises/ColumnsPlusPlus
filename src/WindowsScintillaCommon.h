@@ -55,47 +55,55 @@ template< class T, class S > constexpr const T clamp_cast(const S& v) {
 
 
 inline std::string fromWide(std::wstring_view s, unsigned int codepage) {
+    constexpr unsigned int safeSize = std::numeric_limits<int>::max() / 4;
     std::string r;
-    size_t inputLength = s.length();
-    if (!inputLength) return r;
-    constexpr unsigned int safeSize = std::numeric_limits<int>::max() / 8;
-    size_t workingPoint = 0;
-    while (inputLength - workingPoint > safeSize) {
-        int ss = safeSize;
-        if (s[ss - 1] >= 0xD800 && s[ss - 1] <= 0xDBFF) --ss;  // proposed block ends with high surrogate: leave it for the next block
-        int segmentLength = WideCharToMultiByte(codepage, 0, s.data() + workingPoint, ss, 0, 0, 0, 0);
+    const wchar_t* start = s.data();
+    const wchar_t* stop = start + s.length();
+    while (start < stop) {
+        size_t remainingLength = stop - start;
+        int inputLength;
+        if (remainingLength <= safeSize) inputLength = static_cast<int>(remainingLength);
+        else {
+            inputLength = safeSize;
+            wchar_t wc = start[inputLength - 1];
+            if (wc >= 0xD800 && wc <= 0xDBFF) --inputLength;  // leave leading surrogate for next block
+        }
+        int outputLength = WideCharToMultiByte(codepage, 0, start, inputLength, 0, 0, 0, 0);
         size_t outputPoint = r.length();
-        r.resize(outputPoint + segmentLength);
-        WideCharToMultiByte(codepage, 0, s.data() + workingPoint, ss, r.data() + outputPoint, segmentLength, 0, 0);
-        workingPoint += ss;
+        r.resize(outputPoint + outputLength);
+        WideCharToMultiByte(codepage, 0, start, inputLength, r.data() + outputPoint, outputLength, 0, 0);
+        start += inputLength;
     }
-    int segmentLength = WideCharToMultiByte(codepage, 0, s.data() + workingPoint, static_cast<int>(inputLength - workingPoint), 0, 0, 0, 0);
-    size_t outputPoint = r.length();
-    r.resize(outputPoint + segmentLength);
-    WideCharToMultiByte(codepage, 0, s.data() + workingPoint, static_cast<int>(inputLength - workingPoint), r.data() + outputPoint, segmentLength, 0, 0);
     return r;
 }
 
-
 inline std::wstring toWide(std::string_view s, unsigned int codepage) {
-    std::wstring r;
-    size_t inputLength = s.length();
-    if (!inputLength) return r;
     constexpr unsigned int safeSize = std::numeric_limits<int>::max() / 2;
-    size_t workingPoint = 0;
-    while (inputLength - workingPoint > safeSize) {
-        int ss = safeSize;
-        if (codepage == CP_UTF8 && ((s[ss] & 0xC0) == 0x80)) while ((s[--ss] & 0xC0) == 0x80);  // find a first byte to start the next block
-        int segmentLength = MultiByteToWideChar(codepage, 0, s.data() + workingPoint, ss, 0, 0);
+    std::wstring r;
+    const char* start = s.data();
+    const char* stop = start + s.length();
+    while (start < stop) {
+        size_t remainingLength = stop - start;
+        int inputLength;
+        if (remainingLength <= safeSize)
+            inputLength = static_cast<int>(remainingLength);
+        else if (codepage == CP_UTF8) {
+            inputLength = safeSize;
+            int inputMinimum = safeSize - 3;
+            while ((start[inputLength] & 0xC0) == 0x80)
+                if (inputLength > inputMinimum) --inputLength;
+                else inputLength = safeSize;  // invalid utf-8; reset so we don't truncate possibly valid continuation before bad bytes
+        }
+        else {
+            inputLength = static_cast<int>(CharPrevExA(static_cast<WORD>(codepage), start, start + safeSize + 1, 0) - start);
+            if (!inputLength) inputLength = safeSize;  // make sure invalid input won't cause a crash or hard loop
+        }
+        int outputLength = MultiByteToWideChar(codepage, 0, start, inputLength, 0, 0);
         size_t outputPoint = r.length();
-        r.resize(outputPoint + segmentLength);
-        MultiByteToWideChar(codepage, 0, s.data() + workingPoint, ss, r.data() + outputPoint, segmentLength);
-        workingPoint += ss;
+        r.resize(outputPoint + outputLength);
+        MultiByteToWideChar(codepage, 0, start, inputLength, r.data() + outputPoint, outputLength);
+        start += inputLength;
     }
-    int segmentLength = MultiByteToWideChar(codepage, 0, s.data() + workingPoint, static_cast<int>(inputLength - workingPoint), 0, 0);
-    size_t outputPoint = r.length();
-    r.resize(outputPoint + segmentLength);
-    MultiByteToWideChar(codepage, 0, s.data() + workingPoint, static_cast<int>(inputLength - workingPoint), r.data() + outputPoint, segmentLength);
     return r;
 }
 
