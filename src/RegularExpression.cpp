@@ -22,6 +22,7 @@
 #include "WindowsScintillaCommon.h"
 #include "RegularExpression.h"
 #include "Unicode\UnicodeRegexTraits.h"
+#include <mbstring.h>
 
 
 namespace utf8byte {
@@ -62,6 +63,18 @@ std::basic_string<char32_t> utf16to32(const std::wstring_view w) {
         else u += w[i];
     }
     return u;
+}
+
+std::wstring utf32to16(const std::basic_string_view<char32_t> u) {
+    std::wstring w;
+    for (size_t i = 0; i < u.length(); ++i) {
+        if (u[i] >= 0x10000) {
+            w += static_cast<wchar_t>(0xD800 + ((u[i] - 0x10000) >> 10));
+            w += static_cast<wchar_t>(0xDC00 + (u[i] & 0x03FF));
+        }
+        else w += static_cast<wchar_t>(u[i]);
+    }
+    return w;
 }
 
 std::basic_string<char32_t> utf8to32(const std::string_view s) {
@@ -119,155 +132,6 @@ std::string utf32to8(const std::basic_string_view<char32_t> u) {
     }
     return s;
 }
-
-
-class RegularExpressionA : public RegularExpressionInterface {
-
-    class DocumentIterator {
-
-        intptr_t    pos;
-        intptr_t    gap;
-        const char* pt1;
-        const char* pt2;
-
-    public:
-
-        using iterator_category = std::bidirectional_iterator_tag;
-        using value_type = char;
-        using difference_type = ptrdiff_t;
-        using pointer = char*;
-        using reference = char&;
-
-        DocumentIterator() : pos(0), gap(0), pt1(0), pt2(0) {}
-        DocumentIterator(RegularExpressionA*     reba, intptr_t pos) : pos(pos), gap(reba->gap), pt1(reba->pt1), pt2(reba->pt2) {}
-        DocumentIterator(const DocumentIterator& di  , intptr_t pos) : pos(pos), gap(di.gap   ), pt1(di.pt1   ), pt2(di.pt2   ) {}
-
-        bool operator==(const DocumentIterator& other) const { return pos == other.pos; }
-        bool operator!=(const DocumentIterator& other) const { return pos != other.pos; }
-
-        DocumentIterator& operator++() { ++pos; return *this; }
-        DocumentIterator& operator--() { --pos; return *this; }
-
-        char operator*() const { return pos < gap ? pt1[pos] : pt2[pos]; }
-
-        intptr_t          position(           ) const { return pos; }
-        DocumentIterator& position(intptr_t at)       { pos = at; return *this; }
-
-    };
-
-    friend class DocumentIterator;
-
-    intptr_t    end = 0;
-    intptr_t    gap = 0;
-    const char* pt1 = 0;
-    const char* pt2 = 0;
-
-    Scintilla::ScintillaCall&              sci;
-    boost::regex                           aFind;
-    boost::match_results<DocumentIterator> aMatch;
-    bool                                   regexValid = false;
-
-public:
-
-    RegularExpressionA(Scintilla::ScintillaCall& sci) : sci(sci) {}
-
-    bool can_search() const override { return regexValid; }
-
-    std::wstring find(const std::wstring& s, bool caseSensitive = false) override {
-        try {
-            aFind.assign(fromWide(s, 0), (caseSensitive ? boost::regex_constants::normal  : boost::regex_constants::icase));
-        }
-        catch (const boost::regex_error& e) {
-            regexValid = false;
-            return toWide(e.what(), 0);
-        }
-        catch (...) {
-            regexValid = false;
-            return L"Undetermined error processing this regular expression.";
-        }
-        regexValid = true;
-        return L"";
-    }
-
-    std::string format(const std::string& replacement) const override { return aMatch.format(replacement, boost::format_all); }
-
-    void invalidate() override {
-        end = gap = 0;
-        pt1 = pt2 = 0;
-    }
-
-    intptr_t length(int n = 0) const override {
-        return aMatch.empty() || n < 0 || n >= static_cast<int>(aMatch.size()) ? -1 : aMatch[n].second.position() - aMatch[n].first.position();
-    }
-
-    size_t mark_count() const override { return !regexValid ? 0 : aFind.mark_count(); }
-
-    intptr_t position(int n = 0) const override { return aMatch.empty() || n < 0 || n >= static_cast<int>(aMatch.size()) ? -1 : aMatch[n].first.position(); }
-
-    bool search(std::string_view s, size_t from = 0) override {
-        if (!regexValid) return false;
-        end = gap = s.length();
-        pt1 = s.data();
-        pt2 = 0;
-        try {
-            return boost::regex_search(DocumentIterator(this, from), DocumentIterator(this, s.length()), aMatch, aFind,
-                boost::match_not_dot_newline, DocumentIterator(this, 0));
-        }
-        catch (const boost::regex_error& e) {
-            MessageBox(0, toWide(e.what(), 0).data(), L"Columns++: Error in regular expression search", MB_ICONERROR);
-        }
-        catch (...) {
-            MessageBox(0, L"An undetermined error occurred while performing a regular expression search.",
-                L"Columns++: Error in regular expression search", MB_ICONERROR);
-        }
-        return false;
-    }
-
-    bool search(intptr_t from, intptr_t to, intptr_t start) override {
-        if (!regexValid) return false;
-        if (pt1 == 0 && pt2 == 0) {
-            end = sci.Length();
-            gap = sci.GapPosition();
-            pt1 = gap > 0 ? reinterpret_cast<const char*>(sci.RangePointer(0, gap)) : 0;
-            pt2 = gap < end ? reinterpret_cast<const char*>(sci.RangePointer(gap, end - gap)) - gap : 0;
-        }
-        try {
-            return boost::regex_search(DocumentIterator(this, from), DocumentIterator(this, to), aMatch, aFind,
-                boost::match_not_dot_newline, DocumentIterator(this, start));
-        }
-        catch (const boost::regex_error& e) {
-            MessageBox(0, toWide(e.what(), 0).data(), L"Columns++: Error in regular expression search", MB_ICONERROR);
-        }
-        catch (...) {
-            MessageBox(0, L"An undetermined error occurred while performing a regular expression search.",
-                L"Columns++: Error in regular expression search", MB_ICONERROR);
-        }
-        return false;
-    }
-
-    size_t size() const override { return aMatch.size(); }
-
-    std::string str(int n) const override {
-        if (aMatch.empty() || n < 0 || n >= static_cast<int>(aMatch.size()) || !aMatch[n].matched) return "";
-        Scintilla::Position s1 = aMatch[n].first.position();
-        Scintilla::Position s2 = aMatch[n].second.position();
-        if (s2 <= gap) return std::string(pt1 + s1, pt1 + s2);
-        if (s1 >= gap) return std::string(pt2 + s1, pt2 + s2);
-        return std::string(pt1 + s1, pt1 + gap) + std::string(pt2 + gap, pt2 + s2);
-    }
-
-    std::string str(std::string_view n) const override {
-        if (aMatch.empty() || n.empty()) return "";
-        auto x = aMatch[n.data()];
-        if (!x.matched) return "";
-        Scintilla::Position s1 = x.first.position();
-        Scintilla::Position s2 = x.second.position();
-        if (s2 <= gap) return std::string(pt1 + s1, pt1 + s2);
-        if (s1 >= gap) return std::string(pt2 + s1, pt2 + s2);
-        return std::string(pt1 + s1, pt1 + gap) + std::string(pt2 + gap, pt2 + s2);
-    }
-
-};
 
 
 class RegularExpressionU : public RegularExpressionInterface {
@@ -490,9 +354,418 @@ public:
 
 };
 
+
+class RegularExpressionSBCS : public RegularExpressionInterface {
+
+public:
+
+    class DocumentIterator {
+
+        intptr_t    pos;
+        intptr_t    gap;
+        const char* pt1;
+        const char* pt2;
+
+    public:
+
+        using iterator_category = std::bidirectional_iterator_tag;
+        using value_type        = char32_t;
+        using difference_type   = ptrdiff_t;
+        using pointer           = char32_t*;
+        using reference         = char32_t&;
+
+        DocumentIterator() : pos(0), gap(0), pt1(0), pt2(0) {}
+        DocumentIterator(RegularExpressionSBCS* reba, intptr_t pos) : pos(pos), gap(reba->gap), pt1(reba->pt1), pt2(reba->pt2) {}
+        DocumentIterator(const DocumentIterator&  di, intptr_t pos) : pos(pos), gap(di.gap   ), pt1(di.pt1   ), pt2(di.pt2   ) {}
+
+        bool operator==(const DocumentIterator& other) const { return pos == other.pos; }
+        bool operator!=(const DocumentIterator& other) const { return pos != other.pos; }
+
+        intptr_t          position() const { return pos; }
+        DocumentIterator& position(Scintilla::Position at) { pos = at; return *this; }
+
+        DocumentIterator& operator++() { ++pos; return *this; }
+        DocumentIterator& operator--() { --pos; return *this; }
+
+        char32_t operator*() const {
+            static const struct Map {
+                char32_t value[256];
+                Map() {
+                    char sbc[1];
+                    wchar_t wide[2];
+                    for (int i = 0; i < 256; ++i) {
+                        sbc[0] = static_cast<unsigned char>(i);
+                        switch (MultiByteToWideChar(CP_ACP, MB_ERR_INVALID_CHARS, sbc, 1, wide, 2)) {
+                        case 1:
+                            value[i] = wide[0];
+                            break;
+                        case 2:
+                            value[i] = (static_cast<char32_t>(wide[0] & 0x7FF) << 10 | (wide[1] & 0x03FF)) + 0x10000;
+                            break;
+                        default:
+                            value[i] = 0xDC00 + static_cast<unsigned char>(sbc[0]);  /* Invalid: encode like Python surrogateescape */
+                        }
+                    }
+                }
+            } map;
+            return map.value[static_cast<unsigned char>(pos < gap ? pt1[pos] : pt2[pos])];
+        }
+
+    };
+
+private:
+
+    friend class DocumentIterator;
+
+    intptr_t    end = 0;
+    intptr_t    gap = 0;
+    const char* pt1 = 0;
+    const char* pt2 = 0;
+
+    Scintilla::ScintillaCall&                        sci;
+    boost::basic_regex<char32_t, utf32_regex_traits> uFind;
+    boost::match_results<DocumentIterator>           uMatch;
+    bool                                             regexValid = false;
+
+public:
+
+    RegularExpressionSBCS(Scintilla::ScintillaCall& sci) : sci(sci) {}
+
+    bool can_search() const override { return regexValid; }
+
+    std::wstring find(const std::wstring& s, bool caseSensitive = false) override {
+        try {
+            uFind.assign(utf16to32(s), (caseSensitive ? boost::regex_constants::normal : boost::regex_constants::icase));
+        }
+        catch (const boost::regex_error& e) {
+            regexValid = false;
+            return toWide(e.what(), CP_UTF8);
+        }
+        catch (...) {
+            regexValid = false;
+            return L"Undetermined error processing this regular expression.";
+        }
+        regexValid = true;
+        return L"";
+    }
+
+    std::string format(const std::string& replacement) const override {
+        return fromWide(utf32to16(uMatch.format(utf16to32(toWide(replacement, 0)), boost::format_all)), 0);
+    }
+
+    void invalidate() override {
+        end = gap = 0;
+        pt1 = pt2 = 0;
+    }
+
+    intptr_t length(int n = 0) const override {
+        return uMatch.empty() || n < 0 || n >= static_cast<int>(uMatch.size()) ? -1 : uMatch[n].second.position() - uMatch[n].first.position();
+    }
+
+    size_t mark_count() const override { return !regexValid ? 0 : uFind.mark_count(); }
+
+    intptr_t position(int n = 0) const override { return uMatch.empty() || n < 0 || n >= static_cast<int>(uMatch.size()) ? -1 : uMatch[n].first.position(); }
+
+    bool search(std::string_view s, size_t from = 0) override {
+        if (!regexValid) return false;
+        end = gap = s.length();
+        pt1 = s.data();
+        pt2 = 0;
+        try {
+            return boost::regex_search(DocumentIterator(this, from), DocumentIterator(this, s.length()), uMatch, uFind,
+                                       boost::match_not_dot_newline, DocumentIterator(this, 0));
+        }
+        catch (const boost::regex_error& e) {
+            MessageBox(0, toWide(e.what(), 0).data(), L"Columns++: Error in regular expression search", MB_ICONERROR);
+        }
+        catch (...) {
+            MessageBox(0, L"An undetermined error occurred while performing a regular expression search.",
+                          L"Columns++: Error in regular expression search", MB_ICONERROR);
+        }
+        return false;
+    }
+
+    bool search(intptr_t from, intptr_t to, intptr_t start) override {
+        if (!regexValid) return false;
+        if (pt1 == 0 && pt2 == 0) {
+            end = sci.Length();
+            gap = sci.GapPosition();
+            pt1 = gap > 0 ? reinterpret_cast<const char*>(sci.RangePointer(0, gap)) : 0;
+            pt2 = gap < end ? reinterpret_cast<const char*>(sci.RangePointer(gap, end - gap)) - gap : 0;
+        }
+        try {
+            return boost::regex_search(DocumentIterator(this, from), DocumentIterator(this, to), uMatch, uFind,
+                                       boost::match_not_dot_newline, DocumentIterator(this, start));
+        }
+        catch (const boost::regex_error& e) {
+            MessageBox(0, toWide(e.what(), 0).data(), L"Columns++: Error in regular expression search", MB_ICONERROR);
+        }
+        catch (...) {
+            MessageBox(0, L"An undetermined error occurred while performing a regular expression search.",
+                          L"Columns++: Error in regular expression search", MB_ICONERROR);
+        }
+        return false;
+    }
+
+    size_t size() const override { return uMatch.size(); }
+
+    std::string str(int n) const override {
+        if (uMatch.empty() || n < 0 || n >= static_cast<int>(uMatch.size()) || !uMatch[n].matched) return "";
+        Scintilla::Position s1 = uMatch[n].first.position();
+        Scintilla::Position s2 = uMatch[n].second.position();
+        if (s2 <= gap) return std::string(pt1 + s1, pt1 + s2);
+        if (s1 >= gap) return std::string(pt2 + s1, pt2 + s2);
+        return std::string(pt1 + s1, pt1 + gap) + std::string(pt2 + gap, pt2 + s2);
+    }
+
+    std::string str(std::string_view n) const override {
+        if (uMatch.empty() || n.empty()) return "";
+        auto x = uMatch[n.data()];
+        if (!x.matched) return "";
+        Scintilla::Position s1 = uMatch[n.data()].first.position();
+        Scintilla::Position s2 = uMatch[n.data()].second.position();
+        if (s2 <= gap) return std::string(pt1 + s1, pt1 + s2);
+        if (s1 >= gap) return std::string(pt2 + s1, pt2 + s2);
+        return std::string(pt1 + s1, pt1 + gap) + std::string(pt2 + gap, pt2 + s2);
+    }
+
+};
+
+
+class RegularExpressionDBCS : public RegularExpressionInterface {
+
+public:
+
+    class DocumentIterator {
+
+        intptr_t    pos;
+        intptr_t    end;
+        intptr_t    gap;
+        const char* pt1;
+        const char* pt2;
+
+        char at(intptr_t cp) const { return cp < gap ? pt1[cp] : pt2[cp]; }
+
+        bool canBeLead(intptr_t p) const {
+            static const struct Map {
+                bool lead[256];
+                Map() { for (int i = 0; i < 256; ++i) lead[i] = _ismbblead(i); }
+            } map;
+            return map.lead[static_cast<unsigned char>(at(p))];
+        }
+
+        bool canBeTrail(intptr_t p) const {
+            static const struct Map {
+                bool trail[256];
+                Map() { for (int i = 0; i < 256; ++i) trail[i] = _ismbbtrail(i); }
+            } map;
+            return map.trail[static_cast<unsigned char>(at(p))];
+        }
+
+        // length(p) returns the length of the sequence indexed by p if it is a valid sequence, or 1 if it is not a valid sequence
+        // p must not be less than 0 nor greater than or equal to end
+
+        int length(intptr_t p) const {
+            if (!canBeLead(p)) return 1;
+            return p + 1 < end && canBeTrail(p + 1) ? 2 : 1;
+        }
+
+        // fix_position advances the iterator position if it is on a trailing byte within a valid character
+        // so that it points to the start of a valid character or to an error byte.
+        // If this were not done, we could create an iterator that could never return to the same value
+        // after being incremented and decremented, which can break the regular expression algorithm.
+        // To synchronize, go backward to find a byte that cannot be a lead byte. Following that point are
+        // either valid pairs, or pairs of a lead byte and an invalid trail byte. If the string of bytes
+        // preceding pos that could be lead bytes is even in length, pos is a valid character position;
+        // if odd, either pos points to a trail byte or an error byte (invalid trail byte).
+
+        void fix_position() {
+            if (pos <= 0 || pos >= end || !canBeTrail(pos)) return;
+            intptr_t p = pos;
+            while (p > 0 && canBeLead(p - 1)) --p;
+            if (((pos - p) & 1)) ++pos;
+        }
+
+    public:
+
+        using iterator_category = std::bidirectional_iterator_tag;
+        using value_type        = char32_t;
+        using difference_type   = ptrdiff_t;
+        using pointer           = char32_t*;
+        using reference         = char32_t&;
+
+        DocumentIterator() : pos(0), end(0), gap(0), pt1(0), pt2(0) {}
+        DocumentIterator(RegularExpressionDBCS*  reba, intptr_t pos) : pos(pos), end(reba->end), gap(reba->gap), pt1(reba->pt1), pt2(reba->pt2) { fix_position(); }
+        DocumentIterator(const DocumentIterator& di  , intptr_t pos) : pos(pos), end(di.end   ), gap(di.gap   ), pt1(di.pt1   ), pt2(di.pt2   ) { fix_position(); }
+
+        bool operator==(const DocumentIterator& other) const { return pos == other.pos; }
+        bool operator!=(const DocumentIterator& other) const { return pos != other.pos; }
+
+        intptr_t          position() const { return pos; }
+        DocumentIterator& position(Scintilla::Position at) { pos = at; return *this; }
+
+        DocumentIterator& operator++() {
+            pos += length(pos);
+            return *this;
+        }
+
+        DocumentIterator& operator--() {  // logic for decrement is similar to fix_position above
+            if (pos <= 1) pos = 0;
+            else {
+                --pos;
+                if (canBeTrail(pos)) {
+                    intptr_t p = pos;
+                    while (p > 0 && canBeLead(p - 1)) --p;
+                    if (((pos - p) & 1)) --pos;
+                }
+            }
+            return *this;
+        }
+
+        char32_t operator*() const {
+            const unsigned char c = at(pos);
+            if (c < 0x80) return c;
+            wchar_t wide[1];
+            char dbcs[2];
+            dbcs[0] = c;
+            int n = length(pos);
+            if (n == 2) dbcs[1] = at(pos + 1);
+            if (MultiByteToWideChar(CP_ACP, MB_ERR_INVALID_CHARS, dbcs, n, wide, 1)) return wide[0];
+            return 0xDC00 + c;  /* invalid sequence; encode error byte in the same way as Python surrogateescape */
+        }
+
+    };
+
+private:
+
+    friend class DocumentIterator;
+
+    intptr_t    end = 0;
+    intptr_t    gap = 0;
+    const char* pt1 = 0;
+    const char* pt2 = 0;
+
+    Scintilla::ScintillaCall&                        sci;
+    boost::basic_regex<char32_t, utf32_regex_traits> uFind;
+    boost::match_results<DocumentIterator>           uMatch;
+    bool                                             regexValid = false;
+
+public:
+
+    RegularExpressionDBCS(Scintilla::ScintillaCall& sci) : sci(sci) {}
+
+    bool can_search() const override { return regexValid; }
+
+    std::wstring find(const std::wstring& s, bool caseSensitive = false) override {
+        try {
+            uFind.assign(utf16to32(s), (caseSensitive ? boost::regex_constants::normal : boost::regex_constants::icase));
+        }
+        catch (const boost::regex_error& e) {
+            regexValid = false;
+            return toWide(e.what(), CP_UTF8);
+        }
+        catch (...) {
+            regexValid = false;
+            return L"Undetermined error processing this regular expression.";
+        }
+        regexValid = true;
+        return L"";
+    }
+
+    std::string format(const std::string& replacement) const override {
+        return fromWide(utf32to16(uMatch.format(utf16to32(toWide(replacement, 0)), boost::format_all)), 0);
+    }
+
+    void invalidate() override {
+        end = gap = 0;
+        pt1 = pt2 = 0;
+    }
+
+    intptr_t length(int n = 0) const override {
+        return uMatch.empty() || n < 0 || n >= static_cast<int>(uMatch.size()) ? -1 : uMatch[n].second.position() - uMatch[n].first.position();
+    }
+
+    size_t mark_count() const override { return !regexValid ? 0 : uFind.mark_count(); }
+
+    intptr_t position(int n = 0) const override { return uMatch.empty() || n < 0 || n >= static_cast<int>(uMatch.size()) ? -1 : uMatch[n].first.position(); }
+
+    bool search(std::string_view s, size_t from = 0) override {
+        if (!regexValid) return false;
+        end = gap = s.length();
+        pt1 = s.data();
+        pt2 = 0;
+        try {
+            return boost::regex_search(DocumentIterator(this, from), DocumentIterator(this, s.length()), uMatch, uFind,
+                                       boost::match_not_dot_newline, DocumentIterator(this, 0));
+        }
+        catch (const boost::regex_error& e) {
+            MessageBox(0, toWide(e.what(), 0).data(), L"Columns++: Error in regular expression search", MB_ICONERROR);
+        }
+        catch (...) {
+            MessageBox(0, L"An undetermined error occurred while performing a regular expression search.",
+                          L"Columns++: Error in regular expression search", MB_ICONERROR);
+        }
+        return false;
+    }
+
+    bool search(intptr_t from, intptr_t to, intptr_t start) override {
+        if (!regexValid) return false;
+        if (pt1 == 0 && pt2 == 0) {
+            end = sci.Length();
+            gap = sci.GapPosition();
+            pt1 = gap > 0   ? reinterpret_cast<const char*>(sci.RangePointer(0  , gap      ))       : 0;
+            pt2 = gap < end ? reinterpret_cast<const char*>(sci.RangePointer(gap, end - gap)) - gap : 0;
+        }
+        try {
+            return boost::regex_search(DocumentIterator(this, from), DocumentIterator(this, to), uMatch, uFind,
+                                       boost::match_not_dot_newline, DocumentIterator(this, start));
+        }
+        catch (const boost::regex_error& e) {
+            MessageBox(0, toWide(e.what(), 0).data(), L"Columns++: Error in regular expression search", MB_ICONERROR);
+        }
+        catch (...) {
+            MessageBox(0, L"An undetermined error occurred while performing a regular expression search.",
+                          L"Columns++: Error in regular expression search", MB_ICONERROR);
+        }
+        return false;
+    }
+
+    size_t size() const override { return uMatch.size(); }
+
+    std::string str(int n) const override {
+        if (uMatch.empty() || n < 0 || n >= static_cast<int>(uMatch.size()) || !uMatch[n].matched) return "";
+        Scintilla::Position s1 = uMatch[n].first.position();
+        Scintilla::Position s2 = uMatch[n].second.position();
+        if (s2 <= gap) return std::string(pt1 + s1, pt1 + s2);
+        if (s1 >= gap) return std::string(pt2 + s1, pt2 + s2);
+        return std::string(pt1 + s1, pt1 + gap) + std::string(pt2 + gap, pt2 + s2);
+    }
+
+    std::string str(std::string_view n) const override {
+        if (uMatch.empty() || n.empty()) return "";
+        auto x = uMatch[n.data()];
+        if (!x.matched) return "";
+        Scintilla::Position s1 = uMatch[n.data()].first.position();
+        Scintilla::Position s2 = uMatch[n.data()].second.position();
+        if (s2 <= gap) return std::string(pt1 + s1, pt1 + s2);
+        if (s1 >= gap) return std::string(pt2 + s1, pt2 + s2);
+        return std::string(pt1 + s1, pt1 + gap) + std::string(pt2 + gap, pt2 + s2);
+    }
+
+};
+
+
 #include "RegularExpressionTS.h"
 
 RegularExpression::RegularExpression(Scintilla::ScintillaCall& sci) {
-    if (sci.CodePage() == 0) rex = new RegularExpressionA(sci);
-                        else rex = new RegularExpressionU(sci);
+    switch (sci.CodePage()) {
+    case 0:
+        rex = new RegularExpressionSBCS(sci);
+        break;
+    case CP_UTF8:
+        rex = new RegularExpressionU(sci);
+        break;
+    default:
+        rex = new RegularExpressionDBCS(sci);
+    }
 }
