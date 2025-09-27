@@ -75,6 +75,8 @@ namespace {
         switch (uMsg) {
 
         case WM_DESTROY:
+            EnableWindow(data.searchData.dialog, TRUE);
+            SetForegroundWindow(data.searchData.dialog);
             return TRUE;
 
         case WM_INITDIALOG:
@@ -86,6 +88,7 @@ namespace {
                 (rcNpp.top + rcNpp.bottom + rcDlg.top - rcDlg.bottom) / 2, 0, 0, SWP_NOSIZE);
             SendDlgItemMessage(hwndDlg, IDC_SEARCH_PROGRESS_BAR, PBM_SETRANGE32, 0, 4096);
             SendDlgItemMessage(hwndDlg, IDC_SEARCH_PROGRESS_BAR, PBM_SETPOS, 0, 0);
+            EnableWindow(data.searchData.dialog, FALSE);
             return TRUE;
         }
 
