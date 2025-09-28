@@ -23,11 +23,10 @@
 #pragma once
 
 #include <windows.h>
-#include <tchar.h>
 
 enum LangType {L_TEXT, L_PHP , L_C, L_CPP, L_CS, L_OBJC, L_JAVA, L_RC,\
 			   L_HTML, L_XML, L_MAKEFILE, L_PASCAL, L_BATCH, L_INI, L_ASCII, L_USER,\
-			   L_ASP, L_SQL, L_VB, L_JS, L_CSS, L_PERL, L_PYTHON, L_LUA, \
+			   L_ASP, L_SQL, L_VB, L_JS_EMBEDDED, L_CSS, L_PERL, L_PYTHON, L_LUA, \
 			   L_TEX, L_FORTRAN, L_BASH, L_FLASH, L_NSIS, L_TCL, L_LISP, L_SCHEME,\
 			   L_ASM, L_DIFF, L_PROPS, L_PS, L_RUBY, L_SMALLTALK, L_VHDL, L_KIX, L_AU3,\
 			   L_CAML, L_ADA, L_VERILOG, L_MATLAB, L_HASKELL, L_INNO, L_SEARCHRESULT,\
@@ -39,9 +38,9 @@ enum LangType {L_TEXT, L_PHP , L_C, L_CPP, L_CS, L_OBJC, L_JAVA, L_RC,\
 			   L_MMIXAL, L_NIM, L_NNCRONTAB, L_OSCRIPT, L_REBOL, \
 			   L_REGISTRY, L_RUST, L_SPICE, L_TXT2TAGS, L_VISUALPROLOG,\
 			   L_TYPESCRIPT, L_JSON5, L_MSSQL, L_GDSCRIPT, L_HOLLYWOOD,\
-			   L_GOLANG, L_RAKU, L_TOML,\
-			   // Don't use L_JS, use L_JAVASCRIPT instead
-			   // The end of enumated language type, so it should be always at the end
+			   L_GOLANG, L_RAKU, L_TOML, L_SAS, L_ERRORLIST, \
+			   // Don't use L_JS_EMBEDDED, use L_JAVASCRIPT instead
+			   // The end of enumerated language type, so it should be always at the end
 			   L_EXTERNAL};
 enum class ExternalLexerAutoIndentMode { Standard, C_Like, Custom };
 enum class MacroStatus { Idle, RecordInProgress, RecordingStopped, PlayingBack };
@@ -84,9 +83,9 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	// lParam[in]: iViewType - could be PRIMARY_VIEW (value 1), SECOND_VIEW (value 2) or ALL_OPEN_FILES (value 0)
 	// return the number of opened files
 
-	#define NPPM_GETOPENFILENAMES  (NPPMSG + 8)
-	// BOOL NPPM_GETOPENFILENAMES(wchar_t** fileNames, int nbFileNames)
-	// Get the open files full paths of both views. User is responsible to allocate an big enough fileNames array by using NPPM_GETNBOPENFILES.
+	#define NPPM_GETOPENFILENAMES_DEPRECATED  (NPPMSG + 8)
+	// BOOL NPPM_GETOPENFILENAMES_DEPRECATED(wchar_t** fileNames, int nbFileNames) - DEPRECATED: It is kept for the compatibility. Use NPPM_GETBUFFERIDFROMPOS & NPPM_GETFULLPATHFROMBUFFERID instead.
+	// Get the open files full paths of both views. User is responsible to allocate a big enough fileNames array by using NPPM_GETNBOPENFILES.
 	// wParam[out]: fileNames - array of file path
 	// lParam[in]: nbFileNames is the number of file path.
 	// return value: The number of files copied into fileNames array
@@ -138,15 +137,15 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	// Returns sessionFileName on success, NULL otherwise
 
 
-	#define NPPM_GETOPENFILENAMESPRIMARY (NPPMSG + 17)
-	// BOOL NPPM_GETOPENFILENAMESPRIMARY(wchar_t** fileNames, int nbFileNames)
+	#define NPPM_GETOPENFILENAMESPRIMARY_DEPRECATED (NPPMSG + 17)
+	// BOOL NPPM_GETOPENFILENAMESPRIMARY_DEPRECATED(wchar_t** fileNames, int nbFileNames) - DEPRECATED: It is kept for the compatibility. Use NPPM_GETBUFFERIDFROMPOS & NPPM_GETFULLPATHFROMBUFFERID instead.
 	// Get the open files full paths of main view. User is responsible to allocate an big enough fileNames array by using NPPM_GETNBOPENFILES.
 	// wParam[out]: fileNames - array of file path
 	// lParam[in]: nbFileNames is the number of file path.
 	// return value: The number of files copied into fileNames array
 
-	#define NPPM_GETOPENFILENAMESSECOND (NPPMSG + 18)
-	// BOOL NPPM_GETOPENFILENAMESSECOND(wchar_t** fileNames, int nbFileNames)
+	#define NPPM_GETOPENFILENAMESSECOND_DEPRECATED (NPPMSG + 18)
+	// BOOL NPPM_GETOPENFILENAMESSECOND_DEPRECATED(wchar_t** fileNames, int nbFileNames) - DEPRECATED: It is kept for the compatibility. Use NPPM_GETBUFFERIDFROMPOS & NPPM_GETFULLPATHFROMBUFFERID instead.
 	// Get the open files full paths of sub-view. User is responsible to allocate an big enough fileNames array by using NPPM_GETNBOPENFILES.
 	// wParam[out]: fileNames - array of file path
 	// lParam[in]: nbFileNames is the number of file path.
@@ -161,7 +160,7 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 
 	#define NPPM_DESTROYSCINTILLAHANDLE_DEPRECATED (NPPMSG + 21)
 	// BOOL NPPM_DESTROYSCINTILLAHANDLE_DEPRECATED(0, HWND hScintilla) - DEPRECATED: It is kept for the compatibility.
-	// Notepad++ will deallocate every createed Scintilla control on exit, this message returns TRUE but does nothing.
+	// Notepad++ will deallocate every created Scintilla control on exit, this message returns TRUE but does nothing.
 	// wParam: 0 (not used)
 	// lParam[in]: hScintilla is Scintilla handle
 	// Return TRUE
@@ -242,14 +241,14 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 
 	#define NPPM_DMMSHOW (NPPMSG + 30)
 	// BOOL NPPM_DMMSHOW(0, HWND hDlg)
-	// Show the dialog which was previously regeistered by NPPM_DMMREGASDCKDLG.
+	// Show the dialog which was previously registered by NPPM_DMMREGASDCKDLG.
 	// wParam: 0 (not used)
 	// lParam[in]: hDlg is the handle of dialog to show
 	// Return TRUE
 
 	#define NPPM_DMMHIDE	(NPPMSG + 31)
 	// BOOL NPPM_DMMHIDE(0, HWND hDlg)
-	// Hide the dialog which was previously regeistered by NPPM_DMMREGASDCKDLG.
+	// Hide the dialog which was previously registered by NPPM_DMMREGASDCKDLG.
 	// wParam: 0 (not used)
 	// lParam[in]: hDlg is the handle of dialog to hide
 	// Return TRUE
@@ -266,8 +265,8 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	// Pass the necessary dockingData to Notepad++ in order to make your dialog dockable.
 	// wParam: 0 (not used)
 	// lParam[in]: pData is the pointer of tTbData. Please check tTbData structure in "Docking.h"
-	//             Minimum informations which needs to be filled out are hClient, pszName, dlgID, uMask and pszModuleName.
-	//             Notice that rcFloatand iPrevCont shouldn't be filled. They are used internally.
+	//             Minimum information which needs to be filled out are hClient, pszName, dlgID, uMask and pszModuleName.
+	//             Notice that rcFloat and iPrevCont shouldn't be filled. They are used internally.
 	// Return TRUE
 
 	#define NPPM_LOADSESSION (NPPMSG + 34)
@@ -337,7 +336,7 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	// Get OS (Windows) version.
 	// wParam: 0 (not used)
 	// lParam: 0 (not used)
-	// Return enum winVer, which is defined at the begining of this file
+	// Return enum winVer, which is defined at the beginning of this file
 
 	#define NPPM_DMMGETPLUGINHWNDBYNAME (NPPMSG + 43)
 	// HWND NPPM_DMMGETPLUGINHWNDBYNAME(const wchar_t *windowName, const wchar_t *moduleName)
@@ -372,9 +371,9 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 
 	#define NPPM_MSGTOPLUGIN (NPPMSG + 47)
 		struct CommunicationInfo {
-			long internalMsg;             // an integer defined by plugin Y, known by plugin X, identifying the message being sent.
-			const wchar_t * srcModuleName;  // the complete module name (with the extesion .dll) of caller (plugin X).
-			void* info;                   // defined by plugin, the informations to be exchanged between X and Y. It's a void pointer so it should be defined by plugin Y and known by plugin X.
+			long internalMsg;               // an integer defined by plugin Y, known by plugin X, identifying the message being sent.
+			const wchar_t * srcModuleName;  // the complete module name (with the extension .dll) of caller (plugin X).
+			void* info;                     // defined by plugin, the information to be exchanged between X and Y. It's a void pointer so it should be defined by plugin Y and known by plugin X.
 		};
 	// BOOL NPPM_MSGTOPLUGIN(wchar_t *destModuleName, CommunicationInfo *info)
 	// Send a private information to a plugin with given plugin name. This message allows the communication between 2 plugins.
@@ -527,7 +526,7 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	// Get the EOL format of the document with given bufferID.
 	// wParam[in]: BufferID to get EolType format from
 	// lParam: 0 (not used)
-	// Returned value is  -1 on error, otherwize EolType format:
+	// Returned value is  -1 on error, otherwise EolType format:
 	// 0: Windows (CRLF)
 	// 1: Macos (CR)
 	// 2: Unix (LF)
@@ -634,7 +633,7 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	//   BOOL isAllocatedSuccessful = ::SendMessage(nppData._nppHandle, NPPM_ALLOCATECMDID, 4, &idBegin);
 	//
 	// if isAllocatedSuccessful is TRUE, and value of idBegin is 46581
-	// then menu iten ID 46581, 46582, 46583 and 46584 are preserved by Notepad++, and they are safe to be used by the plugin.
+	// then menu item ID 46581, 46582, 46583 and 46584 are preserved by Notepad++, and they are safe to be used by the plugin.
 
 	#define NPPM_ALLOCATEMARKER  (NPPMSG + 82)
     // BOOL NPPM_ALLOCATEMARKER(int numberRequested, int* startNumber)
@@ -656,7 +655,7 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	// int NPPM_GETLANGUAGENAME(LangType langType, wchar_t* langName)
 	// Get programming language name from the given language type (enum LangType).
 	// wParam[in]: langType is the number of LangType
-	// lParam[out]: langName is the buffer to recieve the language name string
+	// lParam[out]: langName is the buffer to receive the language name string
 	// Return value is the number of copied character / number of character to copy (\0 is not included)
 	//
 	// You should call this function 2 times - the first time you pass langName as NULL to get the number of characters to copy.
@@ -667,7 +666,7 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	// INT NPPM_GETLANGUAGEDESC(int langType, wchar_t *langDesc)
 	// Get programming language short description from the given language type (enum LangType)
 	// wParam[in]: langType is the number of LangType
-	// lParam[out]: langDesc is the buffer to recieve the language description string
+	// lParam[out]: langDesc is the buffer to receive the language description string
 	// Return value is the number of copied character / number of character to copy (\0 is not included)
 	//
 	// You should call this function 2 times - the first time you pass langDesc as NULL to get the number of characters to copy.
@@ -815,7 +814,7 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	// BOOL NPPM_GETEXTERNALLEXERAUTOINDENTMODE(const wchar_t* languageName, ExternalLexerAutoIndentMode* autoIndentMode)
 	// Get ExternalLexerAutoIndentMode for an installed external programming language.
 	// wParam[in]: languageName is external language name to search
-	// lParam[out]: autoIndentMode could recieve one of three following values
+	// lParam[out]: autoIndentMode could receive one of three following values
 	//              - Standard (0) means Notepad++ will keep the same TAB indentation between lines;
 	//              - C_Like (1) means Notepad++ will perform a C-Language style indentation for the selected external language;
 	//              - Custom (2) means a Plugin will be controlling auto-indentation for the current language.
@@ -825,7 +824,7 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	// BOOL NPPM_SETEXTERNALLEXERAUTOINDENTMODE(const wchar_t* languageName, ExternalLexerAutoIndentMode autoIndentMode)
 	// Set ExternalLexerAutoIndentMode for an installed external programming language.
 	// wParam[in]: languageName is external language name to set
-	// lParam[in]: autoIndentMode could recieve one of three following values
+	// lParam[in]: autoIndentMode could receive one of three following values
 	//             - Standard (0) means Notepad++ will keep the same TAB indentation between lines;
 	//             - C_Like (1) means Notepad++ will perform a C-Language style indentation for the selected external language;
 	//             - Custom (2) means a Plugin will be controlling auto-indentation for the current language.
@@ -905,7 +904,7 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 
 	#define NPPM_GETBOOKMARKID (NPPMSG + 111)
 	// int NPPM_GETBOOKMARKID(0, 0)
-	// Get the bookmark ID - use this API to get bookmark ID dynamically that garantees you get always the right bookmark ID even it's been changed through the different versions.
+	// Get the bookmark ID - use this API to get bookmark ID dynamically that guarantees you get always the right bookmark ID even it's been changed through the different versions.
 	// wParam: 0 (not used)
 	// lParam: 0 (not used)
 	// Return bookmark ID
@@ -925,7 +924,7 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	// Might not work properly in C# plugins.
 	// wParam[in]: dmFlags has 2 possible value dmfInit (0x0000000BUL) & dmfHandleChange (0x0000000CUL) - see above definition
 	// lParam[in]: hwnd is the dialog handle of plugin -  Docking panels don't need to call NPPM_DARKMODESUBCLASSANDTHEME
-	// Returns succesful combinations of flags.
+	// Returns successful combinations of flags.
 
 	// Examples:
 	//
@@ -971,7 +970,7 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	// lParam[in]: tabIndex - index (in the view indicated above). -1 for currently active tab
 	// Return tab color ID which contains the following values: 0 (yellow), 1 (green), 2 (blue), 3 (orange), 4 (pink) or -1 (no color)
 	//
-	// Note: there's no symetric command NPPM_SETTABCOLORID. Plugins can use NPPM_MENUCOMMAND to set current tab color with the desired tab color ID.
+	// Note: there's no symmetric command NPPM_SETTABCOLORID. Plugins can use NPPM_MENUCOMMAND to set current tab color with the desired tab color ID.
 
 	#define NPPM_SETUNTITLEDNAME (NPPMSG + 115)
 	// BOOL NPPM_SETUNTITLEDNAME(BufferID id, const wchar_t* newName)
@@ -991,14 +990,14 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	// Return the number of char copied/to copy
 
 	#define NPPM_ADDSCNMODIFIEDFLAGS (NPPMSG + 117)
-	// BOOL NPPM_ADDSCNMODIFIEDFLAGS(0, unsigned long scnMotifiedFlags2Add)
+	// BOOL NPPM_ADDSCNMODIFIEDFLAGS(0, unsigned long scnModifiedFlags2Add)
 	// Add the necessary SCN_MODIFIED flags so that your plugin will receive the SCN_MODIFIED notification for these events, enabling your specific treatments.
 	// By default, Notepad++ only forwards SCN_MODIFIED with the following 5 flags/events:
 	// SC_MOD_DELETETEXT | SC_MOD_INSERTTEXT | SC_PERFORMED_UNDO | SC_PERFORMED_REDO | SC_MOD_CHANGEINDICATOR to plugins.
 	// If your plugin needs to process other SCN_MODIFIED events, you should add the required flags by sending this message to Notepad++. You can send it immediately after receiving NPPN_READY,
 	// or only when your plugin needs to listen to specific events (to avoid penalizing Notepad++'s performance). Just ensure that the message is sent only once.
 	// wParam: 0 (not used)
-	// lParam[in]: scnMotifiedFlags2Add - Scintilla SCN_MODIFIED flags to add. 
+	// lParam[in]: scnModifiedFlags2Add - Scintilla SCN_MODIFIED flags to add. 
 	// Return TRUE
 	//
 	// Example:
@@ -1018,8 +1017,28 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	//  	...
 	//  }
 
+	#define NPPM_GETTOOLBARICONSETCHOICE (NPPMSG + 118)
+	// BOOL NPPM_GETTOOLBARICONSETCHOICE(0, 0)
+	// Get Notepad++ toolbar icon set choice (Fluent UI: small, Fluent UI: large, Filled Fluent UI: small, Filled Fluent UI: large and Standard icons: small.
+	// wParam: 0 (not used)
+	// lParam: 0 (not used)
+	// Return toolbar icon set choice as an integer value. Here are 5 possible values:
+	// 0 (Fluent UI: small), 1 (Fluent UI: large), 2 (Filled Fluent UI: small), 3 (Filled Fluent UI: large) and 4 (Standard icons: small).
 
-	// For RUNCOMMAND_USER
+	#define NPPM_GETNPPSETTINGSDIRPATH (NPPMSG + 119)
+	// int NPPM_GETNPPSETTINGSDIRPATH(size_t strLen, wchar_t *settingsDirPath)
+	// Get path for the active Notepad++ settings: it will use -settingsDir path if that's defined; if not, it will use Cloud directory if that's defined;
+	// if not, it will use the AppData settings directory, or finally the installation path. This allows plugins to have one interface to find out
+	// where the active Notepad++ settings are stored, whichever location they are currently set to.
+	// wParam[in]: strLen - size of allocated buffer "settingsDirPath"
+	// lParam[out]: settingsDirPath - Users should call it with settingsDirPath be NULL to get the required number of wchar_t (not including the terminating nul character),
+	//              allocate settingsDirPath buffer with the return value + 1, then call it again to get the path.
+	// Returns the number of wchar_t copied/to copy. If the return value is 0, then the "strLen" is not enough to copy the path, or the settings path could not be determined.
+	// 
+	// Note: This message is for the active Notepad++ configuration location.  If you are looking for the settings directory for plugins (...\Plugins\Config\),
+	// use NPPM_GETPLUGINSCONFIGDIR instead.
+
+// For RUNCOMMAND_USER
 	#define VAR_NOT_RECOGNIZED 0
 	#define FULL_CURRENT_PATH 1
 	#define CURRENT_DIRECTORY 2
@@ -1218,10 +1237,28 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	//scnNotification->nmhdr.hwndFrom = hwndNpp;
 	//scnNotification->nmhdr.idFrom = 0;
 
-	#define NPPN_CMDLINEPLUGINMSG (NPPN_FIRST + 28)  // To notify plugins that the new argument for plugins (via '-pluginMessage="YOUR_PLUGIN_ARGUMENT"' in command line) is available
+	#define NPPN_CMDLINEPLUGINMSG (NPPN_FIRST + 28)  // To notify plugins that there are plugin arguments pluginMessage (wchar_t*) is available
 	//scnNotification->nmhdr.code = NPPN_CMDLINEPLUGINMSG;
 	//scnNotification->nmhdr.hwndFrom = hwndNpp;
 	//scnNotification->nmhdr.idFrom = pluginMessage; //where pluginMessage is pointer of type wchar_t
+	// 
+	// User can pass arguments to plugins via command line argument using:
+	// -pluginMessage="PLUGIN1_ARG1=V1;PLUGIN1_ARG2=V2;PLUGIN2_ARG=V;..."
+	// 
+	// The full string (wchar_t*) will be delivered to all plugins via the NPPN_CMDLINEPLUGINMSG notification. Each plugins can parse and extract the arguments relevant to itself.
+	// 
+	// To avoid the collisions among plugins, the following protocol should be followed:
+	// 1. Each plugin must use its unique namespace (its folder name in plugins directory) as a prefix for its argument names.
+	// 2. The symbol ';' must be used as the delimiter between arguments when there are 2 or more arguments in the pluginMessage string.
+	// 3. The symbol '=' must be used as delimiter between argument names and their values.
+	// 
+	// Example (via the command line):
+	// -pluginMessage="NppExecScriptPath=C:\Program Files\Notepad++\plugins\NppExec\init.py;NppExecArg2=arg2Value;mimeToolsSettings=disable;pluginYInfo=show"
+	// 
+	// Interpretation:
+	// - Plugin "NppExec" processes: NppExecScriptPath=C:\Program Files\Notepad++\plugins\NppExec\init.py & NppExecArg2=arg2Value
+	// - Plugin "mimeTools" processes: mimeToolsSettings=disable
+	// - Plugin "pluginY" processes: pluginYInfo=show
 
 	#define NPPN_EXTERNALLEXERBUFFER (NPPN_FIRST + 29)  // To notify lexer plugins that the buffer (in idFrom) is just applied to a external lexer
 	//scnNotification->nmhdr.code = NPPN_EXTERNALLEXERBUFFER;
@@ -1242,3 +1279,10 @@ enum Platform { PF_UNKNOWN, PF_X86, PF_X64, PF_IA64, PF_ARM64 };
 	//scnNotification->nmhdr.code = NPPN_NATIVELANGCHANGED;
 	//scnNotification->nmhdr.hwndFrom = hwndNpp
 	//scnNotification->nmhdr.idFrom = 0; // preserved for the future use, must be zero
+
+	#define NPPN_TOOLBARICONSETCHANGED (NPPN_FIRST + 32) // To notify plugins that toolbar icon set selection has changed
+	//scnNotification->nmhdr.code = NPPN_TOOLBARICONSETCHANGED;
+	//scnNotification->nmhdr.hwndFrom = hwndNpp;
+	//scnNotification->nmhdr.idFrom = iconSetChoice;
+	// where iconSetChoice could be 1 of 5 possible values:
+	// 0 (Fluent UI: small), 1 (Fluent UI: large), 2 (Filled Fluent UI: small), 3 (Filled Fluent UI: large) and 4 (Standard icons: small).

@@ -193,17 +193,17 @@ BOOL ColumnsPlusPlusData::aboutDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam
                 std::wstring changes = path + L"\\ColumnsPlusPlus\\CHANGELOG.md";
                 if (PathFileExists(changes.data()) == TRUE) {
                     SendMessage(nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(changes.data()));
-                    SendMessage(nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_SETREADONLY);
+                    SendMessage(nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_TOGGLEREADONLY);
                 }
                 std::wstring license = path + L"\\ColumnsPlusPlus\\LICENSE.txt";;
                 if (PathFileExists(license.data()) == TRUE) {
                     SendMessage(nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(license.data()));
-                    SendMessage(nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_SETREADONLY);
+                    SendMessage(nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_TOGGLEREADONLY);
                 }
                 std::wstring source = path + L"\\ColumnsPlusPlus\\source.txt";
                 if (PathFileExists(source.data()) == TRUE) {
                     SendMessage(nppData._nppHandle, NPPM_DOOPEN, 0, reinterpret_cast<LPARAM>(source.data()));
-                    SendMessage(nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_SETREADONLY);
+                    SendMessage(nppData._nppHandle, NPPM_MENUCOMMAND, 0, IDM_EDIT_TOGGLEREADONLY);
                 }
                 SendMessage(nppData._nppHandle, NPPM_SWITCHTOFILE, 0, reinterpret_cast<LPARAM>(changes.data()));
             }
