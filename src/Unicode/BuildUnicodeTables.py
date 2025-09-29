@@ -38,7 +38,7 @@ dcpParse = re.compile(r"([0-9a-fA-F]++)(?:\.\.([0-9a-fA-F]++))?+\s*+;\s*+InCB\s*
 emojiParse = re.compile(r"([0-9a-fA-F]++)(?:\.\.([0-9a-fA-F]++))?+\s*+;\s*+Extended_Pictographic\b");
 graphParse = re.compile(r"([0-9a-fA-F]++)(?:\.\.([0-9a-fA-F]++))?+\s*+;\s*+(\w++)");
 
-excludeFrom = 0X32400
+excludeFrom = 0X33480
 excludeTo   = 0XE0000
 stopAt      = 0XF0000
 firstGraphBreakComplex = 0x200000
@@ -126,6 +126,8 @@ for line in ucd:
     if codept >= stopAt :
         break
     if fields[1].find(", Last>") >= 0 :
+        if codept >= excludeFrom and last < excludeFrom :
+            out.write(f"** ERROR: Code point {codept:X} within exclusion zone; table will be broken! **\n");
         for i in range(last + 1, codept) :
             codeEntry(i, fields)
     else :
