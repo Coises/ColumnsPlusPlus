@@ -53,8 +53,7 @@ inline PairClusters pairCluster(const char32_t c1, const char32_t c2) {
     return no;
 }
 
-inline bool multipleCluster(const RegularExpressionU::DocumentIterator& position,
-                            const RegularExpressionU::DocumentIterator& backstop) {
+template<typename DocumentIterator> bool multipleCluster(const DocumentIterator& position, const DocumentIterator& backstop) {
 
     const char32_t c = *position;
 
@@ -95,199 +94,73 @@ inline bool multipleCluster(const RegularExpressionU::DocumentIterator& position
     return false;
 }
 
-// repeat for RegularExpressionSBCS and RegularExpressionDBCS
+template<typename DocumentIterator>
+bool implement_match_combining(DocumentIterator& position, const DocumentIterator& last, const DocumentIterator& backstop) {
 
-inline bool multipleCluster(const RegularExpressionSBCS::DocumentIterator& position,
-    const RegularExpressionSBCS::DocumentIterator& backstop) {
+    if (position == last) return false;
 
-    const char32_t c = *position;
+    char32_t c1 = *position;
 
-    if (unicodeGCB(c) == GraphBreak_Regional_Indicator) {
-        auto p = position;
-        size_t count = 0;
-        while (p != backstop && unicodeGCB(*--p) == GraphBreak_Regional_Indicator) ++count;
-        return count & 1;
+    if (position != backstop) /* we could be within a grapheme; if so, we must return false */ {
+        auto prior = position;
+        --prior;
+        char32_t c0 = *prior;
+        PairClusters pc01 = pairCluster(c0, c1);
+        if (pc01 == PairClusters::yes) return false;
+        if (pc01 == PairClusters::maybe && multipleCluster(position, backstop)) return false;
     }
 
-    if (unicodeExtPict(c)) {
-        auto p = position;
-        if (p == backstop || *--p != 0x200D) return false;
-        while (p != backstop && unicodeGCB(*--p) == GraphBreak_Extend);
-        return unicodeExtPict(*p);
+    for (char32_t c2; ++position != last; c1 = c2) {
+        c2 = *position;
+        PairClusters pc12 = pairCluster(c1, c2);
+        if (pc12 == PairClusters::no) break;
+        if (pc12 == PairClusters::yes) continue;
+        if (!multipleCluster(position, backstop)) break;
     }
 
-    if (unicodeICB(c) == IndicBreak_Consonant) {
-        bool foundLinker = false;
-        auto p = position;
-        while (p != backstop) {
-            --p;
-            switch (unicodeICB(*p)) {
-            case IndicBreak_Consonant:
-                return foundLinker;
-            case IndicBreak_Extend:
-                break;
-            case IndicBreak_Linker:
-                foundLinker = true;
-                break;
-            case IndicBreak_None:
-                return false;
-            }
-        }
-        return false;
-    }
+    return true;
 
-    return false;
-}
-
-inline bool multipleCluster(const RegularExpressionDBCS::DocumentIterator& position,
-    const RegularExpressionDBCS::DocumentIterator& backstop) {
-
-    const char32_t c = *position;
-
-    if (unicodeGCB(c) == GraphBreak_Regional_Indicator) {
-        auto p = position;
-        size_t count = 0;
-        while (p != backstop && unicodeGCB(*--p) == GraphBreak_Regional_Indicator) ++count;
-        return count & 1;
-    }
-
-    if (unicodeExtPict(c)) {
-        auto p = position;
-        if (p == backstop || *--p != 0x200D) return false;
-        while (p != backstop && unicodeGCB(*--p) == GraphBreak_Extend);
-        return unicodeExtPict(*p);
-    }
-
-    if (unicodeICB(c) == IndicBreak_Consonant) {
-        bool foundLinker = false;
-        auto p = position;
-        while (p != backstop) {
-            --p;
-            switch (unicodeICB(*p)) {
-            case IndicBreak_Consonant:
-                return foundLinker;
-            case IndicBreak_Extend:
-                break;
-            case IndicBreak_Linker:
-                foundLinker = true;
-                break;
-            case IndicBreak_None:
-                return false;
-            }
-        }
-        return false;
-    }
-
-    return false;
 }
 
 template <>
 bool boost::BOOST_REGEX_DETAIL_NS::perl_matcher<RegularExpressionU::DocumentIterator,
     std::allocator<boost::sub_match<RegularExpressionU::DocumentIterator>>, utf32_regex_traits>::match_combining() {
-
-    if (position == last) return false;
-
-    char32_t c1 = *position;
-
-    if (position != backstop) /* we could be within a grapheme; if so, we must return false */ {
-        auto prior = position;
-        --prior;
-        char32_t c0 = *prior;
-        PairClusters pc01 = pairCluster(c0, c1);
-        if (pc01 == PairClusters::yes) return false;
-        if (pc01 == PairClusters::maybe && multipleCluster(position, backstop)) return false;
-    }
-
-    for (char32_t c2; ++position != last; c1 = c2) {
-        c2 = *position;
-        PairClusters pc12 = pairCluster(c1, c2);
-        if (pc12 == PairClusters::no) break;
-        if (pc12 == PairClusters::yes) continue;
-        if (!multipleCluster(position, backstop)) break;
-    }
-
+    if (!implement_match_combining(position, last, backstop)) return false;
     pstate = pstate->next.p;
     return true;
-
-}
-
-// repeat for RegularExpressionSBCS and RegularExpressionDBCS
-
-template <>
-bool boost::BOOST_REGEX_DETAIL_NS::perl_matcher<RegularExpressionSBCS::DocumentIterator,
-    std::allocator<boost::sub_match<RegularExpressionSBCS::DocumentIterator>>, utf32_regex_traits>::match_combining() {
-
-    if (position == last) return false;
-
-    char32_t c1 = *position;
-
-    if (position != backstop) /* we could be within a grapheme; if so, we must return false */ {
-        auto prior = position;
-        --prior;
-        char32_t c0 = *prior;
-        PairClusters pc01 = pairCluster(c0, c1);
-        if (pc01 == PairClusters::yes) return false;
-        if (pc01 == PairClusters::maybe && multipleCluster(position, backstop)) return false;
-    }
-
-    for (char32_t c2; ++position != last; c1 = c2) {
-        c2 = *position;
-        PairClusters pc12 = pairCluster(c1, c2);
-        if (pc12 == PairClusters::no) break;
-        if (pc12 == PairClusters::yes) continue;
-        if (!multipleCluster(position, backstop)) break;
-    }
-
-    pstate = pstate->next.p;
-    return true;
-
 }
 
 template <>
 bool boost::BOOST_REGEX_DETAIL_NS::perl_matcher<RegularExpressionDBCS::DocumentIterator,
     std::allocator<boost::sub_match<RegularExpressionDBCS::DocumentIterator>>, utf32_regex_traits>::match_combining() {
-
-    if (position == last) return false;
-
-    char32_t c1 = *position;
-
-    if (position != backstop) /* we could be within a grapheme; if so, we must return false */ {
-        auto prior = position;
-        --prior;
-        char32_t c0 = *prior;
-        PairClusters pc01 = pairCluster(c0, c1);
-        if (pc01 == PairClusters::yes) return false;
-        if (pc01 == PairClusters::maybe && multipleCluster(position, backstop)) return false;
-    }
-
-    for (char32_t c2; ++position != last; c1 = c2) {
-        c2 = *position;
-        PairClusters pc12 = pairCluster(c1, c2);
-        if (pc12 == PairClusters::no) break;
-        if (pc12 == PairClusters::yes) continue;
-        if (!multipleCluster(position, backstop)) break;
-    }
-
+    if (!implement_match_combining(position, last, backstop)) return false;
     pstate = pstate->next.p;
     return true;
+}
 
+// Single-byte character sets do not contain combining characters
+
+template <>
+bool boost::BOOST_REGEX_DETAIL_NS::perl_matcher<RegularExpressionSBCS::DocumentIterator,
+    std::allocator<boost::sub_match<RegularExpressionSBCS::DocumentIterator>>, utf32_regex_traits>::match_combining() {
+    if (position == last) return false;
+    ++position;
+    pstate = pstate->next.p;
+    return true;
 }
 
 
 // This is the logic used to test for matches to [...] and \p{...} expressions
 // Most of it is copied verbatim from \boost\regex\v5\perl_matcher.hpp lines 118 to 288;
 // but the named class matching is altered to ignore case insensitivity.
-//
-// It is used once with our iterators and once with char32_t*, so we must specialize it four times.
 
-template <>
-RegularExpressionU::DocumentIterator boost::BOOST_REGEX_DETAIL_NS::re_is_set_member(
-    RegularExpressionU::DocumentIterator next,
-    RegularExpressionU::DocumentIterator last,
-    const boost::BOOST_REGEX_DETAIL_NS::re_set_long<utf32_regex_traits::char_class_type>* set_,
-    const boost::BOOST_REGEX_DETAIL_NS::regex_data<char32_t, utf32_regex_traits>& e, bool icase) {
+namespace boost { namespace BOOST_REGEX_DETAIL_NS {
 
-    typedef RegularExpressionU::DocumentIterator iterator;     // ADDED: typedef template parameters
+template <typename iterator>
+iterator implement_re_is_set_member(iterator next, iterator last,
+    const re_set_long<utf32_regex_traits::char_class_type>* set_,
+    const regex_data<char32_t, utf32_regex_traits>& e, bool icase) {
+
     typedef char32_t                             charT;        // ADDED: typedef template parameters
     typedef utf32_regex_traits                   traits_type;  // ADDED: typedef template parameters
     typedef utf32_regex_traits::char_class_type  char_classT;  // ADDED: typedef template parameters
@@ -398,356 +271,33 @@ RegularExpressionU::DocumentIterator boost::BOOST_REGEX_DETAIL_NS::re_is_set_mem
 }
 
 template <>
-RegularExpressionSBCS::DocumentIterator boost::BOOST_REGEX_DETAIL_NS::re_is_set_member(
-    RegularExpressionSBCS::DocumentIterator next,
-    RegularExpressionSBCS::DocumentIterator last,
-    const boost::BOOST_REGEX_DETAIL_NS::re_set_long<utf32_regex_traits::char_class_type>* set_,
-    const boost::BOOST_REGEX_DETAIL_NS::regex_data<char32_t, utf32_regex_traits>& e, bool icase) {
-
-    typedef RegularExpressionSBCS::DocumentIterator iterator;     // ADDED: typedef template parameters
-    typedef char32_t                                charT;        // ADDED: typedef template parameters
-    typedef utf32_regex_traits                      traits_type;  // ADDED: typedef template parameters
-    typedef utf32_regex_traits::char_class_type     char_classT;  // ADDED: typedef template parameters
-
-    const charT* p = reinterpret_cast<const charT*>(set_ + 1);
-    iterator ptr;
-    unsigned int i;
-    //bool icase = e.m_flags & regex_constants::icase;
-
-    if (next == last) return next;
-
-    typedef typename traits_type::string_type traits_string_type;
-    const ::boost::regex_traits_wrapper<traits_type>& traits_inst = *(e.m_ptraits);
-
-    // dwa 9/13/00 suppress incorrect MSVC warning - it claims this is never
-    // referenced
-    (void)traits_inst;
-
-    // try and match a single character, could be a multi-character
-    // collating element...
-    for (i = 0; i < set_->csingles; ++i)
-    {
-        ptr = next;
-        if (*p == static_cast<charT>(0))
-        {
-            // treat null string as special case:
-            if (traits_inst.translate(*ptr, icase))
-            {
-                ++p;
-                continue;
-            }
-            return set_->isnot ? next : (ptr == next) ? ++next : ptr;
-        }
-        else
-        {
-            while (*p && (ptr != last))
-            {
-                if (traits_inst.translate(*ptr, icase) != *p)
-                    break;
-                ++p;
-                ++ptr;
-            }
-
-            if (*p == static_cast<charT>(0)) // if null we've matched
-                return set_->isnot ? next : (ptr == next) ? ++next : ptr;
-
-            p = re_skip_past_null(p);     // skip null
-        }
-    }
-
-    charT col = traits_inst.translate(*next, icase);
-
-    if (set_->cranges || set_->cequivalents)
-    {
-        traits_string_type s1;
-        //
-        // try and match a range, NB only a single character can match
-        if (set_->cranges)
-        {
-            if ((e.m_flags & regex_constants::collate) == 0)
-                s1.assign(1, col);
-            else
-            {
-                charT a[2] = { col, charT(0), };
-                s1 = traits_inst.transform(a, a + 1);
-            }
-            for (i = 0; i < set_->cranges; ++i)
-            {
-                if (STR_COMP(s1, p) >= 0)
-                {
-                    do { ++p; } while (*p);
-                    ++p;
-                    if (STR_COMP(s1, p) <= 0)
-                        return set_->isnot ? next : ++next;
-                }
-                else
-                {
-                    // skip first string
-                    do { ++p; } while (*p);
-                    ++p;
-                }
-                // skip second string
-                do { ++p; } while (*p);
-                ++p;
-            }
-        }
-        //
-        // try and match an equivalence class, NB only a single character can match
-        if (set_->cequivalents)
-        {
-            charT a[2] = { col, charT(0), };
-            s1 = traits_inst.transform_primary(a, a + 1);
-            for (i = 0; i < set_->cequivalents; ++i)
-            {
-                if (STR_COMP(s1, p) == 0)
-                    return set_->isnot ? next : ++next;
-                // skip string
-                do { ++p; } while (*p);
-                ++p;
-            }
-        }
-    }
-    if (traits_inst.isctype(*next, set_->cclasses) == true)                                // CHANGE: col => *next
-        return set_->isnot ? next : ++next;
-    if ((set_->cnclasses != 0) && (traits_inst.isctype(*next, set_->cnclasses) == false))  // CHANGE: col => *next
-        return set_->isnot ? next : ++next;
-    return set_->isnot ? ++next : next;
+RegularExpressionU::DocumentIterator re_is_set_member(
+    RegularExpressionU::DocumentIterator next, RegularExpressionU::DocumentIterator last,
+    const re_set_long<utf32_regex_traits::char_class_type>* set_, const regex_data<char32_t, utf32_regex_traits>& e, bool icase) {
+    return implement_re_is_set_member(next, last, set_, e, icase);
 }
 
 template <>
-RegularExpressionDBCS::DocumentIterator boost::BOOST_REGEX_DETAIL_NS::re_is_set_member(
-    RegularExpressionDBCS::DocumentIterator next,
-    RegularExpressionDBCS::DocumentIterator last,
-    const boost::BOOST_REGEX_DETAIL_NS::re_set_long<utf32_regex_traits::char_class_type>* set_,
-    const boost::BOOST_REGEX_DETAIL_NS::regex_data<char32_t, utf32_regex_traits>& e, bool icase) {
-
-    typedef RegularExpressionDBCS::DocumentIterator iterator;     // ADDED: typedef template parameters
-    typedef char32_t                                charT;        // ADDED: typedef template parameters
-    typedef utf32_regex_traits                      traits_type;  // ADDED: typedef template parameters
-    typedef utf32_regex_traits::char_class_type     char_classT;  // ADDED: typedef template parameters
-
-    const charT* p = reinterpret_cast<const charT*>(set_ + 1);
-    iterator ptr;
-    unsigned int i;
-    //bool icase = e.m_flags & regex_constants::icase;
-
-    if (next == last) return next;
-
-    typedef typename traits_type::string_type traits_string_type;
-    const ::boost::regex_traits_wrapper<traits_type>& traits_inst = *(e.m_ptraits);
-
-    // dwa 9/13/00 suppress incorrect MSVC warning - it claims this is never
-    // referenced
-    (void)traits_inst;
-
-    // try and match a single character, could be a multi-character
-    // collating element...
-    for (i = 0; i < set_->csingles; ++i)
-    {
-        ptr = next;
-        if (*p == static_cast<charT>(0))
-        {
-            // treat null string as special case:
-            if (traits_inst.translate(*ptr, icase))
-            {
-                ++p;
-                continue;
-            }
-            return set_->isnot ? next : (ptr == next) ? ++next : ptr;
-        }
-        else
-        {
-            while (*p && (ptr != last))
-            {
-                if (traits_inst.translate(*ptr, icase) != *p)
-                    break;
-                ++p;
-                ++ptr;
-            }
-
-            if (*p == static_cast<charT>(0)) // if null we've matched
-                return set_->isnot ? next : (ptr == next) ? ++next : ptr;
-
-            p = re_skip_past_null(p);     // skip null
-        }
-    }
-
-    charT col = traits_inst.translate(*next, icase);
-
-    if (set_->cranges || set_->cequivalents)
-    {
-        traits_string_type s1;
-        //
-        // try and match a range, NB only a single character can match
-        if (set_->cranges)
-        {
-            if ((e.m_flags & regex_constants::collate) == 0)
-                s1.assign(1, col);
-            else
-            {
-                charT a[2] = { col, charT(0), };
-                s1 = traits_inst.transform(a, a + 1);
-            }
-            for (i = 0; i < set_->cranges; ++i)
-            {
-                if (STR_COMP(s1, p) >= 0)
-                {
-                    do { ++p; } while (*p);
-                    ++p;
-                    if (STR_COMP(s1, p) <= 0)
-                        return set_->isnot ? next : ++next;
-                }
-                else
-                {
-                    // skip first string
-                    do { ++p; } while (*p);
-                    ++p;
-                }
-                // skip second string
-                do { ++p; } while (*p);
-                ++p;
-            }
-        }
-        //
-        // try and match an equivalence class, NB only a single character can match
-        if (set_->cequivalents)
-        {
-            charT a[2] = { col, charT(0), };
-            s1 = traits_inst.transform_primary(a, a + 1);
-            for (i = 0; i < set_->cequivalents; ++i)
-            {
-                if (STR_COMP(s1, p) == 0)
-                    return set_->isnot ? next : ++next;
-                // skip string
-                do { ++p; } while (*p);
-                ++p;
-            }
-        }
-    }
-    if (traits_inst.isctype(*next, set_->cclasses) == true)                                // CHANGE: col => *next
-        return set_->isnot ? next : ++next;
-    if ((set_->cnclasses != 0) && (traits_inst.isctype(*next, set_->cnclasses) == false))  // CHANGE: col => *next
-        return set_->isnot ? next : ++next;
-    return set_->isnot ? ++next : next;
+RegularExpressionSBCS::DocumentIterator re_is_set_member(
+    RegularExpressionSBCS::DocumentIterator next, RegularExpressionSBCS::DocumentIterator last,
+    const re_set_long<utf32_regex_traits::char_class_type>* set_, const regex_data<char32_t, utf32_regex_traits>& e, bool icase) {
+    return implement_re_is_set_member(next, last, set_, e, icase);
 }
 
 template <>
-char32_t* boost::BOOST_REGEX_DETAIL_NS::re_is_set_member(
-    char32_t* next,
-    char32_t* last,
-    const boost::BOOST_REGEX_DETAIL_NS::re_set_long<utf32_regex_traits::char_class_type>* set_,
-    const boost::BOOST_REGEX_DETAIL_NS::regex_data<char32_t, utf32_regex_traits>& e, bool icase) {
-
-    typedef char32_t*                            iterator;     // ADDED: typedef template parameters
-    typedef char32_t                             charT;        // ADDED: typedef template parameters
-    typedef utf32_regex_traits                   traits_type;  // ADDED: typedef template parameters
-    typedef utf32_regex_traits::char_class_type  char_classT;  // ADDED: typedef template parameters
-
-    const charT* p = reinterpret_cast<const charT*>(set_ + 1);
-    iterator ptr;
-    unsigned int i;
-    //bool icase = e.m_flags & regex_constants::icase;
-
-    if (next == last) return next;
-
-    typedef typename traits_type::string_type traits_string_type;
-    const ::boost::regex_traits_wrapper<traits_type>& traits_inst = *(e.m_ptraits);
-
-    // dwa 9/13/00 suppress incorrect MSVC warning - it claims this is never
-    // referenced
-    (void)traits_inst;
-
-    // try and match a single character, could be a multi-character
-    // collating element...
-    for (i = 0; i < set_->csingles; ++i)
-    {
-        ptr = next;
-        if (*p == static_cast<charT>(0))
-        {
-            // treat null string as special case:
-            if (traits_inst.translate(*ptr, icase))
-            {
-                ++p;
-                continue;
-            }
-            return set_->isnot ? next : (ptr == next) ? ++next : ptr;
-        }
-        else
-        {
-            while (*p && (ptr != last))
-            {
-                if (traits_inst.translate(*ptr, icase) != *p)
-                    break;
-                ++p;
-                ++ptr;
-            }
-
-            if (*p == static_cast<charT>(0)) // if null we've matched
-                return set_->isnot ? next : (ptr == next) ? ++next : ptr;
-
-            p = re_skip_past_null(p);     // skip null
-        }
-    }
-
-    charT col = traits_inst.translate(*next, icase);
-
-
-    if (set_->cranges || set_->cequivalents)
-    {
-        traits_string_type s1;
-        //
-        // try and match a range, NB only a single character can match
-        if (set_->cranges)
-        {
-            if ((e.m_flags & regex_constants::collate) == 0)
-                s1.assign(1, col);
-            else
-            {
-                charT a[2] = { col, charT(0), };
-                s1 = traits_inst.transform(a, a + 1);
-            }
-            for (i = 0; i < set_->cranges; ++i)
-            {
-                if (STR_COMP(s1, p) >= 0)
-                {
-                    do { ++p; } while (*p);
-                    ++p;
-                    if (STR_COMP(s1, p) <= 0)
-                        return set_->isnot ? next : ++next;
-                }
-                else
-                {
-                    // skip first string
-                    do { ++p; } while (*p);
-                    ++p;
-                }
-                // skip second string
-                do { ++p; } while (*p);
-                ++p;
-            }
-        }
-        //
-        // try and match an equivalence class, NB only a single character can match
-        if (set_->cequivalents)
-        {
-            charT a[2] = { col, charT(0), };
-            s1 = traits_inst.transform_primary(a, a + 1);
-            for (i = 0; i < set_->cequivalents; ++i)
-            {
-                if (STR_COMP(s1, p) == 0)
-                    return set_->isnot ? next : ++next;
-                // skip string
-                do { ++p; } while (*p);
-                ++p;
-            }
-        }
-    }
-    if (traits_inst.isctype(*next, set_->cclasses) == true)                                // CHANGE: col => *next
-        return set_->isnot ? next : ++next;
-    if ((set_->cnclasses != 0) && (traits_inst.isctype(*next, set_->cnclasses) == false))  // CHANGE: col => *next
-        return set_->isnot ? next : ++next;
-    return set_->isnot ? ++next : next;
+RegularExpressionDBCS::DocumentIterator re_is_set_member(
+    RegularExpressionDBCS::DocumentIterator next, RegularExpressionDBCS::DocumentIterator last,
+    const re_set_long<utf32_regex_traits::char_class_type>* set_, const regex_data<char32_t, utf32_regex_traits>& e, bool icase) {
+    return implement_re_is_set_member(next, last, set_, e, icase);
 }
+
+template <>
+char32_t* re_is_set_member(char32_t* next, char32_t* last,
+    const re_set_long<utf32_regex_traits::char_class_type>* set_, const regex_data<char32_t, utf32_regex_traits>& e, bool icase) {
+    return implement_re_is_set_member(next, last, set_, e, icase);
+}
+
+}}
 
 
 // This is the constructor for the regular expression creator.
