@@ -709,55 +709,52 @@ bool doesRegexUseK(std::wstring_view r) {
 }
 
 std::vector<std::string> prepareReplace(ColumnsPlusPlusData& data) {
-    std::vector<std::string> sciRepl;
+    const std::wstring& r = data.searchData.replaceHistory.back();
     UINT codepage = data.sci.CodePage();
-    if (data.searchData.mode != SearchData::Regex) {
-        sciRepl.push_back(
-            data.searchData.mode == SearchData::Extended ? expandExtendedSearchString(data.searchData.replaceHistory.back(), codepage)
-                                                         : fromWide(data.searchData.replaceHistory.back(), codepage)
-            );
-        return sciRepl;
-    }
-    std::string r = fromWide(data.searchData.replaceHistory.back(), codepage);
+    if (data.searchData.mode != SearchData::Regex)
+        return { data.searchData.mode == SearchData::Extended ? expandExtendedSearchString(r, codepage) : fromWide(r, codepage) };
+    std::vector<std::wstring> v;
     bool insideQuotes = false;
     int  depth = 0;
-    sciRepl.emplace_back();
+    v.emplace_back();
     for (size_t i = 0; i < r.length(); ++i) {
         if (insideQuotes) {
-            if (r[i] == '\'') insideQuotes = false;
-            sciRepl.back() += r[i];
+            if (r[i] == L'\'') insideQuotes = false;
+            v.back() += r[i];
         }
         else if (depth) {
             switch (r[i]) {
-            case '\'' :
+            case L'\'' :
                 insideQuotes = true;
                 break;
-            case '(' :
+            case L'(' :
                 ++depth;
                 break;
-            case ')' :
-                if (!--depth) sciRepl.emplace_back();
+            case L')' :
+                if (!--depth) v.emplace_back();
                 break;
             }
-            sciRepl.back() += r[i];
+            v.back() += r[i];
         }
         else {
-            sciRepl.back() += r[i];
+            v.back() += r[i];
             switch (r[i]) {
-            case '(':
-                if (i < r.length() - 2 && r.substr(i, 3) == "(?=") {
+            case L'(':
+                if (i < r.length() - 2 && r.substr(i, 3) == L"(?=") {
                     i += 2;
-                    sciRepl.emplace_back();
+                    v.emplace_back();
                     depth = 1;
                 }
                 break;
-            case '\\':
-                if (i < r.length() - 1) sciRepl.back() += r[++i];
+            case L'\\':
+                if (i < r.length() - 1) v.back() += r[++i];
                 break;
             }
         }
     }
-    return sciRepl;
+    std::vector<std::string> rv;
+    for (const auto& s : v) rv.push_back(fromWide(s, codepage));
+    return rv;
 }
 
 bool prepareSubstitutions(ColumnsPlusPlusData& data, const std::vector<std::string>& sciRepl) {
