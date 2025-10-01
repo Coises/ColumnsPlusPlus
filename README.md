@@ -4,6 +4,8 @@ Columns++ is a plugin for [Notepad++](https://github.com/notepad-plus-plus/notep
 
 Like Notepad++, Columns++ is released under the GNU General Public License (either version 3 of the License, or, at your option, any later version). Some original source code files which are not dependent on Notepad++ are released under the [MIT (Expat) license](https://www.opensource.org/licenses/MIT): see individual files for details.
 
+Columns++ does not work with versions of Notepad++ older than 8.4.3 (release date 2022-07-08).
+
 Columns++ uses the [C++ Mathematical Expression Toolkit Library
 (ExprTk)](https://github.com/ArashPartow/exprtk) by Arash Partow (https://www.partow.net/), which is released under the [MIT License](https://www.opensource.org/licenses/MIT).
 

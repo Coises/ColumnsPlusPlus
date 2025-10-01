@@ -1,5 +1,15 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.3 -- October 1st, 2025
+
+* Regular expressions now match based on Unicode code points in all documents, so the syntax and semantics of regular expressions are no longer dependent on the underlying representation in Scintilla. The features added in version 1.2 for Unicode documents now work in all documents.
+
+* Regular expressions did not work properly in ANSI documents for the system default code pages 932 (Japanese, Shift-JIS), 936 (Chinese Simplified, GB2312), 949 (Korean, Windows-949 / Unified Hangul Code) or 950 (Chinese Traditional, Big5) in version 1.2. Regular expressions now match these documents based on Unicode code points.
+
+* Character information tables for regular expressions were updated to reflect Unicode 17.0.0 (released on 2025-09-09).
+
+* Some errors not yet reported in practice were fixed. Some documentation was reformatted and corrected.
+
 ## Version 1.2 -- February 26th, 2025
 
 This version is focused on improving the behavior of regular expressions for Unicode documents:
