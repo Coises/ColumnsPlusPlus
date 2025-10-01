@@ -79,6 +79,8 @@ body #centershortlines ~ article section   {max-width: 48em;}
 
 p.subsub            {margin-left: 1.5em;}
 
+.note               {padding: 0 1.5em; font-size: .93em;}
+
 table.optionsTable        {border: none; margin: 1em 0 1em 1em; width: calc(100% - 1em - 2px); border-collapse: collapse;}
 table.optionsTable th     {padding: .5em .5em .5em .5em; font-weight: bold;   text-align: left; vertical-align: top; border: 1px solid black;}
 table.optionsTable td     {padding: .5em .5em .5em .5em; font-weight: normal; text-align: left; vertical-align: top; border: 1px solid black;}
@@ -164,7 +166,15 @@ window.addEventListener("load", doPageLoad);
 
 <section id=introduction><h2>Introduction</h2>
 
-<p><strong>Columns++</strong> is a plugin for <a href="https://notepad-plus-plus.org/">Notepad++</a> which offers features for working with text and data arranged in columns, including an implementation of elastic tabstops, enhanced searching and sorting, column alignment and numeric calulations. Like <strong>Notepad++</strong>, <strong>Columns++</strong> is released under the <a href="https://www.gnu.org/licenses/gpl.html">GNU General Public License</a> (either <a href="https://www.gnu.org/licenses/gpl-3.0.html">version 3</a> of the License, or, at your option, any later version). <strong>Columns++</strong> was first released by <a href="http://www.coises.com/">Randall Joseph Fellmy</a> in 2023; you can find the source code  on <a href="https://github.com/Coises/ColumnsPlusPlus">GitHub</a>.</p>
+<p><strong>Columns++</strong> is a plugin for <a href="https://notepad-plus-plus.org/">Notepad++</a> which offers features for working with text and data arranged in columns, including an implementation of elastic tabstops, enhanced searching and sorting, column alignment and numeric calulations.</p>
+
+<p class=note>Like Notepad++, Columns++ is released under the <a href="https://www.gnu.org/licenses/gpl.html">GNU General Public License</a> (either <a href="https://www.gnu.org/licenses/gpl-3.0.html">version 3</a> of the License, or, at your option, any later version). Some original source code files which are not dependent on Notepad++ are released under the <a href="https://www.opensource.org/licenses/MIT">MIT (Expat) license</a>: see individual files for details. Columns++ was first released by <a href="http://www.coises.com/">Randall Joseph Fellmy</a> in 2023; you can find the source code  on <a href="https://github.com/Coises/ColumnsPlusPlus">GitHub</a>.</p>
+
+<p>You can add <strong>Columns++</strong> to your <strong>Notepad++</strong> installation using the <strong>Plugins Admin...</strong> dialog from the <strong>Plugins</strong> menu. On the <strong>Available</strong> tab, check the box beside Columns++ in the list, then click the <strong>Install</strong> button near the top right. You can use the <strong>Updates</strong> tab in the same dialog to install updated versions.</p>
+
+<p class=note>It is also possible to install Columns++ manually, which you might want to do if you want a recently released version before it is incorporated in the Plugins Admin list. You can find <a href="https://github.com/Coises/ColumnsPlusPlus#installation">manual installation instructions</a> and <a href="https://github.com/Coises/ColumnsPlusPlus/releases">all releases</a> in the GitHub repository.</p>
+
+<p class=note>Columns++ does not work with versions of <strong>Notepad++</strong> older than 8.4.3 (release date 2022-07-08).</p>
 
 <p><strong>Columns++</strong> uses the <a href="https://github.com/ArashPartow/exprtk">C++ Mathematical Expression Toolkit Library (ExprTk)</a> by <a href="https://www.partow.net/">Arash Partow</a>, which is released under the <a href="https://www.opensource.org/licenses/MIT">MIT license</a>; <a href="https://github.com/nlohmann/json">JSON for Modern C++</a> by <a href="https://nlohmann.me">Niels Lohmann</a>, which is released under the <a href="https://www.opensource.org/licenses/MIT">MIT license</a>; the <a href="https://github.com/boostorg/regex/">Boost.Regex library</a>, which is released under the <a href="https://www.boost.org/LICENSE_1_0.txt">Boost Software License, Version 1.0</a>; and some files from the <a href="https://www.unicode.org/ucd/">Unicode Character Database</a>, which is released under the <a href="https://www.unicode.org/license.txt">Unicode License V3</a>.
 
@@ -294,7 +304,7 @@ window.addEventListener("load", doPageLoad);
 
 <section id=regular><h2>Regular expressions</h2>
 
-<p>Several commands in <strong>Columns++</strong> can use regular expressions for matching character strings. <strong>Columns++</strong> uses the same regular expression engine, <a href="https://www.boost.org/doc/libs/1_83_0/libs/regex/">Boost.Regex</a>, used in <strong>Notepad++</strong>, so the syntax and behavior are mostly the same. Some considerations unique to <strong>Columns++</strong> are described below.</p>
+<p>Several commands in <strong>Columns++</strong> can use regular expressions for matching character strings. <strong>Columns++</strong> uses the same regular expression engine, <a href="https://www.boost.org/doc/libs/latest/libs/regex/">Boost.Regex</a>, used in <strong>Notepad++</strong>, so the syntax and behavior are mostly the same. Some considerations unique to <strong>Columns++</strong> are described below.</p>
 
 <p>Within a rectangular selection, the selection in each row is matched independently of the surrounding text. The <strong>^</strong> assertion matches the beginning of the selection within a row, the <strong>$</strong> assertion matches the end of the selection, and lookahead and lookbehind assertions cannot examine text past the boundaries of the selection. (Lookbehind assertions in <strong>Notepad++</strong> can examine all text back to the beginning of the document, even when counting or replacing in a selection.) When using the <strong>Search in indicated region</strong> dialog, the region to be searched can be made up of one or more separate segments, each of which is searched independently. When a rectangular selection initializes the search region, each row of the selection becomes a separate segment of the search region.</p>
 
@@ -302,13 +312,21 @@ window.addEventListener("load", doPageLoad);
 
 <p>Matches for regular expressions using the <strong>\K</strong> directive are never replaced when performing stepwise Find and Replace in <strong>Notepad++</strong>. In the <strong>Search in indicated region</strong> dialog in <strong>Columns++</strong>, such matches can be replaced if you do not click outside the dialog between finding the match and replacing it.</p>
 
-<h3>Unicode</h3>
+<h3 id=regularUnicode>Unicode</h3>
 
-<p>There are some significant differences in the way <strong>Columns++</strong> and <strong>Notepad++</strong> match regular expressions in Unicode documents. <strong>Columns++</strong> treats the document text as a series of Unicode code points (i.e., UTF-32) while <strong>Notepad++</strong> treats it as UTF-16. Most of the differences are related to this change.</p>
+<p>In documents containing characters outside the <a href="https://en.wikipedia.org/wiki/ASCII#Character_set">ASCII character set</a> there are some significant differences in the way <strong>Columns++</strong> and <strong>Notepad++</strong> match regular expressions. <strong>Columns++</strong> matches document text as if it were a series of <a href="https://en.wikipedia.org/wiki/Unicode">Unicode</a> code points (i.e., <a href="https://en.wikipedia.org/wiki/UTF-32">UTF-32</a>) while <strong>Notepad++</strong> matches documents either as <a href="https://en.wikipedia.org/wiki/Windows_code_page#ANSI_code_page">ANSI</a> bytes in the system default code page or as <a href="https://en.wikipedia.org/wiki/UTF-16">UTF-16</a> code units. Most of the differences are related to this change.</p>
+
+<p class=note>In <strong>Columns++</strong> version 1.2, regular expressions applied to ANSI documents match as byte sequences in the system default code page, while Unicode and Character Set documents are matched as described in this section. Beginning with version 1.3, regular expressions always match as Unicode.</p>
+
+<p>When using hexadecimal codes (<code>\x<em>hh</em></code> or <code>\x{<em>hhhh</em>}</code>) to specify a character in <strong>Columns++</strong> regular expressions, you must use the Unicode code point. Character ranges (e.g., <code>[&#x2020;-&#x2030;]</code>) represent the range of Unicode code points, not the range implied by any code page.</p>
+
+<p class=note>The hexadecimal values for ASCII characters (<code>x00</code>-<code>x7f</code>) are the same in all code pages and in Unicode. There is one partial exception: in some East Asian codepages, <code>&#xa5;</code>, the Yen/Yuan sign, shares the byte value <code>x5c</code> with <code>\</code>, the backslash character. This is a matter of appearance only; the Unicode Yen/Yuan sign, <code>xa5</code>, is not an ASCII character, and the ASCII character <code>x5c</code> functions as a backslash whether it appears as <code>\</code> or as <code>&#xa5;</code>.</p>
+
+<p class=note>As an example of character ranges, <code>&#x2022;</code>, the bullet, is included in the Unicode range <code>[&#x2020;-&#x2030;]</code>, from the <a href="https://www.compart.com/en/unicode/block/U+2000">General Punctuation block</a>; but it is not between those two characters in the common <a href="https://en.wikipedia.org/wiki/Windows-1252#Codepage_layout">Windows-1252</a> code page. In a regular expression in <strong>Columns++</strong> that range will match a bullet, even (from version 1.3 on) in an ANSI document when the system default code page is Windows-1252. In a <strong>Notepad++</strong> search it would not match in an ANSI document, but it would match in a Unicode document.</p>
 
 <p>There are no surrogate pairs in <strong>Columns++</strong> regular expressions; each code point matches as a single character. To enter any Unicode character in hexadecimal notation, use the full code point; for example, enter &#x1f642; as <code>\x{1f642}</code>. (The surrogate pair, <code>\x{d83d}\x{de42}</code>, which must be used in <strong>Notepad++</strong> search, <em>will not match</em> in <strong>Columns++</strong>.)</p>
 
-<p><strong>Scintilla</strong>, the display control used in <strong>Notepad++</strong>, represents Unicode internally as UTF-8. (This is true whether the file containing the document is UTF-8, UTF-16 or anything else other than “ANSI.”) When displaying Unicode documents that contain invalid UTF-8, Scintilla shows each byte that cannot be decoded as a hexadecimal code in reversed colors. You can match any of these bytes with <code>\i</code>; to match a specific byte, use the hexadecimal code Scintilla displays as a symbolic character name, e.g., <code>[[.xF7.]]</code>. (When matching a regular expression, <strong>Columns++</strong> treats each of these error bytes as if it were the Unicode code point formed by adding <code>0xdc00</code> to the invalid byte. These code points are in the surrogate range and are invalid as UTF-32 code units.)</p>
+<p><strong>Scintilla</strong>, the display control used in <strong>Notepad++</strong>, represents Unicode internally as UTF-8. (This is true whether the file containing the document is UTF-8, UTF-16 or anything else other than ANSI.) When displaying Unicode documents that contain invalid UTF-8, Scintilla shows each byte that cannot be decoded as a hexadecimal code in reversed colors. You can match any of these bytes with <code>\i</code>; to match a specific byte, use the hexadecimal code Scintilla displays as a symbolic character name, e.g., <code>[[.xF7.]]</code>. (When matching a regular expression, <strong>Columns++</strong> treats each of these error bytes as if it were the Unicode code point formed by adding <code>0xdc00</code> to the invalid byte. These code points are in the surrogate range and are invalid as UTF-32 code units.)</p>
 
 <p>The period (<code>.</code>) matches any one code point except the characters which end lines in Scintilla: carriage return (<code>\x0d</code> or <code>\r</code>) and newline (also called line feed, <code>\x0a</code> or <code>\n</code>). This corresponds to the <a href="https://npp-user-manual.org/docs/searching/#single-character-matches">documented</a> behavior of the period, but not the actual behavior in Notepad++ (where there are several other control characters it does not match). Use <code>\X</code> to match a character including any combining code points (marks) which follow it. (In Notepad++ search, <code>.</code> and <code>\X</code> do not work as expected when the code points involved are outside the basic multilingual plane, that is, 0x10000 or greater.)</p>
 
@@ -488,7 +506,7 @@ window.addEventListener("load", doPageLoad);
 <tr><td><code>[[.sfco.]]</code></td>                                     <td>1bca1</td><td>shorthand format continuing overlap</td></tr>
 <tr><td><code>[[.sfds.]]</code></td>                                     <td>1bca2</td><td>shorthand format down step</td></tr>
 <tr><td><code>[[.sfus.]]</code></td>                                     <td>1bca3</td><td>shorthand format up step</td></tr>
-<tr><td><code>[[.x80.]]–[[.xff.]]</code></td>                            <td></td>     <td>invalid UTF-8 bytes</td></tr>
+<tr><td><code>[[.x80.]], [[.x81.]],... [[.xff.]]</code></td>             <td>     </td><td>specific invalid UTF-8 bytes</td></tr>
 </table>
 
 </section>
@@ -521,7 +539,7 @@ window.addEventListener("load", doPageLoad);
 <br><strong>(?=<em>formula</em>)</strong> or <strong>(?=<em>format</em>:<em>formula</em>)</strong>
 <br>within the replacement string; the <a href="#formulas">Formulas</a> section describes them in detail.</p>
 
-<p><em>Technical note: The results of formulas are enclosed in parentheses and substituted into the regular expression replacement string before it is processed by the regular expression engine. Ordinarily this results in expected behavior and needs no consideration by the user. However, formulas in <strong>Columns++</strong> support the <strong>return</strong> call described in section 20 of the <a href="https://github.com/ArashPartow/exprtk#readme">ExprTk documentation</a>. Using this call, it is possible to substitute an arbitrary character string; since the substitution occurs before regular expression replacement processing, characters substituted in this way will be interpreted as part of regular expression replacement. For example, </em><strong>(?=return ['$', reg(1)])</strong><em> would be replaced by the capture group the number of which is given by the first capture group.</em></p>
+<p class=note>The results of formulas are enclosed in parentheses and substituted into the regular expression replacement string before it is processed by the regular expression engine. Ordinarily this results in expected behavior and needs no consideration by the user. However, formulas in Columns++ support the <code>return</code> call described in section 20 of the <a href="https://github.com/ArashPartow/exprtk#readme">ExprTk documentation</a>. Using this call, it is possible to substitute an arbitrary character string; since the substitution occurs before regular expression replacement processing, characters substituted in this way will be interpreted as part of regular expression replacement. For example, <code>(?=return ['$', reg(1)])</code> would be replaced by the capture group the number of which is given by the first capture group.</p>
 
 <h3>Extended search syntax</h3>
 
@@ -857,13 +875,13 @@ Up to <strong><em>d</em></strong> decimal places will be shown, but no fewer tha
 
 <p>The <strong>Overwrite selection</strong> checkbox at the bottom left of the dialog controls whether the results of the conversion replace the selected timestamps (checked) or whether one or more new columns are added to the right of the selection to hold the results (default, unchecked).</p>
 
-<p><em>Note: The <strong>Timestamps...</strong> command does not work properly on older versions of Windows. <strong>Columns++</strong> attempts to detect this and removes the menu item on those systems. Based on Microsoft documentation, the author expects that it will be fully functional on Windows 10 version 1903/19H1 and later, and on Windows Server 2022 and later; it may work on some older systems with the exception of time zone functionality.</em></p>
+<p class=note> The <strong>Timestamps...</strong> command does not work properly on older versions of Windows. Columns++ attempts to detect this and removes the menu item on those systems. Based on Microsoft documentation, the author expects that it will be fully functional on Windows 10 version 1903/19H1 and later, and on Windows Server 2022 and later; it may work on some older systems with the exception of time zone functionality.</p>
 
 <h3>From counter</h3>
 
 <p><strong>From counter</strong> processing may be enabled or disabled using the check box at the top left of the section. When enabled, this section controls the interpretation of any items in the selection which consist of a single number. The number is treated as a counter representing elapsed time. The starting point is called the <em>epoch</em> and the length of time represented by an increase of one in the counter is called the <em>unit</em>.
 
-<p><em>Note: As with other</em> <strong>Columns++</strong> <em>commands, numbers to be recognized as counters can include spaces, apostrophes and either commas or periods (whichever is not selected as the decimal separator). If your data contains date and time formats that are separated only by these characters (for example, <tt>12.10.1980</tt> if</em> <strong>Decimal separator is comma</strong> <em>is selected), be sure to disable the</em> <strong>From counter</strong> <em>section. You can leave it enabled if all your date and time formatted data uses separators that would disqualify the entries as numbers.</em></p>
+<p class=note>As with other Columns++ commands, numbers to be recognized as counters can include spaces, apostrophes, commas and/or periods. If your data contains date and time formats that are separated only by these characters (for example, <code>12.10.1980</code> if <strong>Decimal separator is comma</strong> is selected), be sure to disable the <strong>From counter</strong> section. You can leave it enabled if all your date and time formatted data uses separators that would disqualify the entries as numbers. </p>
 
 <table class=optionsTable>
 <tr><th>Unix time</th><td><p>a common timestamp counter, for which the epoch is January 1st, 1970 and the unit is one second. Unix time does not count leap seconds.</p></td></tr>
@@ -897,7 +915,7 @@ Up to <strong><em>d</em></strong> decimal places will be shown, but no fewer tha
 <tr><th>Z</th><td>an ISO 8601 time zone offset — the letter <strong>Z</strong>, or a plus or minus sign followed by two digits, four digits, or two digits, a colon and two digits representing the hours and minutes ahead of (East, plus sign) or behind (West, minus sign) UTC by which the given times have been offset</td></tr>
 </table>
 <p>The groups <strong>y</strong> and either <strong>D</strong> or both <strong>M</strong> and <strong>d</strong> must match and provide valid values for the parse to succeed.</p>
-<p><strong>Example</strong>: Suppose you have entries of the form <tt>2018.113t14.08</tt> representing 14:08 on the 113th day of 2018; you could use <strong style="white-space: nowrap;">(?&lt;y&gt;\d+)\.(?&lt;D&gt;\d+)t(?&lt;H&gt;\d+)\.(?&lt;m&gt;\d+)</strong> to parse them.</p>
+<p><strong>Example</strong>: Suppose you have entries of the form <code>2018.113t14.08</code> representing 14:08 on the 113th day of 2018; you could use <strong style="white-space: nowrap;">(?&lt;y&gt;\d+)\.(?&lt;D&gt;\d+)t(?&lt;H&gt;\d+)\.(?&lt;m&gt;\d+)</strong> to parse them.</p>
 </td></tr>
 </table>
 
@@ -929,7 +947,7 @@ Up to <strong><em>d</em></strong> decimal places will be shown, but no fewer tha
 <tr><th>MMM</th><td>abbreviation for the month</td></tr>
 <tr><th>MMMM</th><td>name of the month</td></tr>
 <tr><th>MMMMM</th><td>name of the month, padded with blanks as needed to equal the length of the longest name</td></tr>
-<tr><th>NNNN</th><td>name of the month (nominative case)<br><em>Note: Some locales support nominative and genitive cases of the names of months; for those locales,</em> <strong>MMMM</strong> <em>substitutes the genitive case and</em> <strong>NNNN</strong> <em>the nominative case. In locales without this distinction, both names are the same.</td></tr>
+<tr><th>NNNN</th><td>name of the month (nominative case)<br><em>Note: Some locales support nominative and genitive cases of the names of months; for those locales,</em> <strong>MMMM</strong> <em>substitutes the genitive case and</em> <strong>NNNN</strong> <em>the nominative case. In locales without this distinction, both names are the same.</em></td></tr>
 <tr><th>NNNNN</th><td>name of the month (nominative case), padded with blanks as needed to equal the length of the longest name</td></tr>
 <tr><th>d</th><td>day of the month as one or two digits</td></tr>
 <tr><th>dd</th><td>day of the month as two digits (with leading zero for 1-9)</td></tr>
