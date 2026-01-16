@@ -27,7 +27,7 @@ class RegularExpressionInterface {
 public:
     virtual ~RegularExpressionInterface() {}
     virtual bool         can_search(                                                 ) const = 0;
-    virtual std::wstring find      (const std::wstring& s, bool caseSensitive = false)       = 0;
+    virtual std::wstring find      (const std::wstring& s, bool caseSensitive        )       = 0;
     virtual std::string  format    (const std::string& replacement                   ) const = 0;
     virtual void         invalidate(                                                 )       = 0;
     virtual intptr_t     length    (int n = 0                                        ) const = 0;
@@ -46,7 +46,7 @@ public:
     RegularExpression(Scintilla::ScintillaCall& sci);
     ~RegularExpression() { if (rex) delete rex; }
     bool         can_search(                                                 ) const {return rex->can_search(                );}
-    std::wstring find      (const std::wstring& s, bool caseSensitive = false)       {return rex->find      (s, caseSensitive);}
+    std::wstring find      (const std::wstring& s, bool caseSensitive        )       {return rex->find      (s, caseSensitive);}
     std::string  format    (const std::string& replacement                   ) const {return rex->format    (replacement     );}
     void         invalidate(                                                 )       {       rex->invalidate(                );}
     intptr_t     length    (int n = 0                                        ) const {return rex->length    (n               );}

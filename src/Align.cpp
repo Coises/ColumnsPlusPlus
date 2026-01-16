@@ -282,10 +282,11 @@ INT_PTR CALLBACK alignDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
             auto n = GetWindowTextLength(h);
             std::wstring s(n, 0);
             s.resize(GetWindowText(h, s.data(), n + 1));
+            bool matchCase = IsDlgButtonChecked(hwndDlg, IDC_ALIGN_MATCH_CASE) == BST_CHECKED;
             std::wstring error = s.empty() ? L"Enter something to align." : L"";
             if (!s.empty() && IsDlgButtonChecked(hwndDlg, IDC_ALIGN_REGEX) == BST_CHECKED) {
                 RegularExpression rx(data.sci);
-                error = rx.find(s);
+                error = rx.find(s, matchCase);
             }
             if (!error.empty()) {
                 COMBOBOXINFO cbi;
@@ -303,7 +304,7 @@ INT_PTR CALLBACK alignDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM 
             if (!validateSpin(data.align.margin, hwndDlg, IDC_ALIGN_MARGIN_SPIN, L"Indent must be a value between 0 and 99.")) return TRUE;
             updateComboHistory(hwndDlg, IDC_ALIGN_BY, data.align.history);
             data.align.marginRight = IsDlgButtonChecked(hwndDlg, IDC_ALIGN_MARGIN_RIGHT) == BST_CHECKED;
-            data.align.matchCase   = IsDlgButtonChecked(hwndDlg, IDC_ALIGN_MATCH_CASE) == BST_CHECKED;
+            data.align.matchCase   = matchCase;
             data.align.alignOn     = IsDlgButtonChecked(hwndDlg, IDC_ALIGN_LAST ) == BST_CHECKED ? AlignSettings::Last
                                    : IsDlgButtonChecked(hwndDlg, IDC_ALIGN_REGEX) == BST_CHECKED ? AlignSettings::Regex
                                                                                                  : AlignSettings::First;

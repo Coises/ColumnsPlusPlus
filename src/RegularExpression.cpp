@@ -256,7 +256,7 @@ public:
 
     bool can_search() const override { return regexValid; }
 
-    std::wstring find(const std::wstring& s, bool caseSensitive = false) override {
+    std::wstring find(const std::wstring& s, bool caseSensitive) override {
         try {
             uFind.assign(utf16to32(s), (caseSensitive ? boost::regex_constants::normal : boost::regex_constants::icase));
         }
@@ -433,7 +433,7 @@ public:
 
     bool can_search() const override { return regexValid; }
 
-    std::wstring find(const std::wstring& s, bool caseSensitive = false) override {
+    std::wstring find(const std::wstring& s, bool caseSensitive) override {
         try {
             uFind.assign(utf16to32(s), (caseSensitive ? boost::regex_constants::normal : boost::regex_constants::icase));
         }
@@ -656,7 +656,7 @@ public:
 
     bool can_search() const override { return regexValid; }
 
-    std::wstring find(const std::wstring& s, bool caseSensitive = false) override {
+    std::wstring find(const std::wstring& s, bool caseSensitive) override {
         try {
             uFind.assign(utf16to32(s), (caseSensitive ? boost::regex_constants::normal : boost::regex_constants::icase));
         }

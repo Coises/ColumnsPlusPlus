@@ -295,13 +295,14 @@ INT_PTR CALLBACK calculateDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
                 SendMessage(hwndDlg, WM_NEXTDLGCTL, reinterpret_cast<WPARAM>(cbi.hwndItem), TRUE);
                 return TRUE;
             }
+            bool matchCase = SendDlgItemMessage(hwndDlg, IDC_CALCULATE_MATCH_CASE, BM_GETCHECK, 0, 0) == BST_CHECKED;
             h = GetDlgItem(hwndDlg, IDC_CALCULATE_REGEX);
             n = SendMessage(h, WM_GETTEXTLENGTH, 0, 0);
             if (n) {
                 RegularExpression rx(data.sci);
                 std::wstring w(n, 0);
                 SendMessage(h, WM_GETTEXT, n + 1, reinterpret_cast<LPARAM>(w.data()));
-                std::wstring error = rx.find(w, 0);
+                std::wstring error = rx.find(w, matchCase);
                 if (!error.empty()) {
                     COMBOBOXINFO cbi;
                     cbi.cbSize = sizeof(COMBOBOXINFO);
@@ -318,7 +319,7 @@ INT_PTR CALLBACK calculateDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPA
             }
             updateComboHistory(hwndDlg, IDC_CALCULATE_FORMULA, data.calc.formulaHistory);
             updateComboHistory(hwndDlg, IDC_CALCULATE_REGEX, data.calc.regexHistory);
-            data.calc.matchCase     = SendDlgItemMessage(hwndDlg, IDC_CALCULATE_MATCH_CASE    , BM_GETCHECK, 0, 0) == BST_CHECKED;
+            data.calc.matchCase = matchCase;
             data.calc.skipUnmatched = SendDlgItemMessage(hwndDlg, IDC_CALCULATE_SKIP_UNMATCHED, BM_GETCHECK, 0, 0) == BST_CHECKED;
             data.calc.thousands = IsDlgButtonChecked(hwndDlg, IDC_THOUSANDS_COMMA     ) == BST_CHECKED ? CalculateSettings::Comma
                                 : IsDlgButtonChecked(hwndDlg, IDC_THOUSANDS_APOSTROPHE) == BST_CHECKED ? CalculateSettings::Apostrophe

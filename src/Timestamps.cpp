@@ -285,7 +285,7 @@ INT_PTR CALLBACK timestampsDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LP
                         return TRUE;
                     }
                     RegularExpression rx(data.sci);
-                    std::wstring error = rx.find(dateParse);
+                    std::wstring error = rx.find(dateParse, true);
                     if (!error.empty()) {
                         showBalloonTip(hwndDlg, IDC_TIMESTAMP_FROM_PARSE, error, true);
                         return TRUE;

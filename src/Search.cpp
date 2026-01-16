@@ -334,7 +334,7 @@ bool updateFindHistory(ColumnsPlusPlusData& data) {
     std::wstring error = s.empty() ? L"Enter something to find." : L"";
     if (!s.empty() && data.searchData.mode == SearchData::Regex) {
         RegularExpression rx(data.sci);
-        error = rx.find(s);
+        error = rx.find(s, data.searchData.matchCase);
     }
     if (!error.empty()) {
         COMBOBOXINFO cbi;

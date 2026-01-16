@@ -443,6 +443,7 @@ INT_PTR CALLBACK sortDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
         case IDOK:
         {
             if (IsDlgButtonChecked(hwndDlg, IDC_SORT_REGEX) == BST_CHECKED || IsDlgButtonChecked(hwndDlg, IDC_SORT_TABBED) == BST_CHECKED) {
+                bool regexMatchCase = IsDlgButtonChecked(hwndDlg, IDC_SORT_MATCH_CASE) == BST_CHECKED;
                 if (IsDlgButtonChecked(hwndDlg, IDC_SORT_REGEX) == BST_CHECKED) {
                     HWND h = GetDlgItem(hwndDlg, IDC_SORT_FIND_WHAT);
                     auto n = SendMessage(h, WM_GETTEXTLENGTH, 0, 0);
@@ -451,7 +452,7 @@ INT_PTR CALLBACK sortDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
                         RegularExpression rx(data.sci);
                         std::wstring w(n, 0);
                         SendMessage(h, WM_GETTEXT, n + 1, reinterpret_cast<LPARAM>(w.data()));
-                        error = rx.find(w, 0);
+                        error = rx.find(w, regexMatchCase);
                     }
                     if (!error.empty()) {
                         COMBOBOXINFO cbi;
@@ -491,7 +492,7 @@ INT_PTR CALLBACK sortDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM l
                 if (IsDlgButtonChecked(hwndDlg, IDC_SORT_REGEX) == BST_CHECKED) {
                     data.sort.keyType = SortSettings::Regex;
                     updateComboHistory(hwndDlg, IDC_SORT_FIND_WHAT, data.sort.regexHistory);
-                    data.sort.regexMatchCase = IsDlgButtonChecked(hwndDlg, IDC_SORT_MATCH_CASE) == BST_CHECKED;
+                    data.sort.regexMatchCase = regexMatchCase;
                     data.sort.regexUseKey    = IsDlgButtonChecked(hwndDlg, IDC_SORT_USE_KEY   ) == BST_CHECKED;
                 }
                 else data.sort.keyType = SortSettings::Tabbed;
