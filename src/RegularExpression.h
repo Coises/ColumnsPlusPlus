@@ -1,5 +1,5 @@
 // This file is part of Columns++ for Notepad++.
-// Copyright 2023, 2025 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
+// Copyright 2023, 2025, 2026 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
 
 // The Columns++ source code contained in this file is independent of Notepad++ code.
 // It is released under the MIT (Expat) license:

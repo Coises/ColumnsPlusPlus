@@ -1,5 +1,11 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.3.1 -- January 17th, 2026
+
+* Fixed an error in testing regular expression validity which caused expressions to be flagged as errors when match case was checked if and only if they were invalid when match case was not checked.
+
+* Fixed an error in the Timestamps dialog which caused the regular expression Parse option for From Date and Time to be unusable.
+
 ## Version 1.3 -- October 1st, 2025
 
 * Regular expressions now match based on Unicode code points in all documents, so the syntax and semantics of regular expressions are no longer dependent on the underlying representation in Scintilla. The features added in version 1.2 for Unicode documents now work in all documents.
