@@ -1,5 +1,9 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.3.2 -- March 25th, 2026
+
+* Added an option to keep the separator character when converting from separated values to tabbed presentation.
+
 ## Version 1.3.1 -- January 17th, 2026
 
 * Fixed an error in testing regular expression validity which caused expressions to be flagged as errors when match case was checked if and only if they were invalid when match case was not checked.

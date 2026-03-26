@@ -1087,6 +1087,10 @@ defines an escape character for separated values. The character following an esc
 <p>This tends to “clutter” the appearance of the tabbed document; however, it makes it possible to “round-trip” to tabs and back to separated values without any change in fields that were not edited. If you intend to convert a separated values file to tabbed presentation for ease of editing and there are non-standard details in the way quotes, escapes or blanks are used in the separated values file which must be preserved when converting back, keep this box checked for both conversions.</p>
 <p>When this box is unchecked, <strong>Columns++</strong> quotes or escapes fields containing leading blanks or quotes anywhere in the field when converting from tabbed presentation to separated values. When checked, so long as the field will not cause a parsing failure — such as by containing an unquoted and unescaped separator character, or by beginning with a quote but not being a properly quoted field when taken in its entirety — <strong>Columns++</strong> will preserve the field as is.</p>
 </td></tr>
+<tr><th>Keep separator character when converting to tabbed</th><td>
+<p>indicates that tabs should be inserted after each separator character, rather than replacing the separator characters, when converting to tabbed presentation.</p>
+<p>When converting from tabbed presentation to separated values, a separator character occurring just before a tab will be assumed to be a preserved separator character and not part of the field value if this box is checked.</p>
+</td></tr>
 </table>
 
 <tr><th>Tab, new line and return characters in tabbed documents</th><td>

@@ -121,6 +121,7 @@
 #define IDC_CSV_ESCAPE_WITH_BACKSLASH   1111
 #define IDC_CSV_ESCAPE_EDIT             1111
 #define IDC_CSV_URL_EDIT                1112
+#define IDC_CSV_KEEP_SEPARATOR          1113
 #define IDC_CSV_BACKSLASH               1114
 #define IDC_CSV_ESCAPE_CHECK            1114
 #define IDC_CSV_TNR_RADIO               1115

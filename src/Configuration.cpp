@@ -1,5 +1,5 @@
 // This file is part of Columns++ for Notepad++.
-// Copyright 2023, 2024 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
+// Copyright 2023, 2024, 2026 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -135,6 +135,7 @@ void ColumnsPlusPlusData::loadConfiguration() {
                 else if (setting == "csvapostrophe"             ) csv.apostrophe                   = value != "0";
                 else if (setting == "csvescape"                 ) csv.escape                       = value != "0";
                 else if (setting == "csvpreservequotes"         ) csv.preserveQuotes               = value != "0";
+                else if (setting == "csvkeepseparator"          ) csv.keepSeparator                = value != "0";
                 else if (setting == "extendsingleline"          ) {if (configLevel > 1) extendSingleLine = value != "0";}
                 else if (setting == "extendfulllines"           ) {if (configLevel > 1) extendFullLines  = value != "0";}
                 else if (setting == "extendzerowidth"           ) {if (configLevel > 1) extendZeroWidth  = value != "0";}
@@ -423,6 +424,7 @@ void ColumnsPlusPlusData::saveConfiguration() {
     file << "csvApostrophe\t"               << csv.apostrophe                                        << std::endl;
     file << "csvEscape\t"                   << csv.escape                                            << std::endl;
     file << "csvPreserveQuotes\t"           << csv.preserveQuotes                                    << std::endl;
+    file << "csvKeepSeparator\t"            << csv.keepSeparator                                     << std::endl;
     file << "csvSeparator\t"                << encodeDelimitedString(std::wstring(1,csv.separator )) << std::endl;
     file << "csvEscapeChar\t"               << encodeDelimitedString(std::wstring(1,csv.escapeChar)) << std::endl;
     file << "csvEncodeTNR\t"                << encodeDelimitedString(std::wstring(1,csv.encodeTNR )) << std::endl;

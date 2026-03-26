@@ -1,5 +1,5 @@
 // This file is part of Columns++ for Notepad++.
-// Copyright 2023, 2024 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
+// Copyright 2023, 2024, 2026 by Randall Joseph Fellmy <software@coises.com>, <http://www.coises.com/software/>
 
 // This program is free software: you can redistribute it and/or modify
 // it under the terms of the GNU General Public License as published by
@@ -68,6 +68,7 @@ INT_PTR CALLBACK csvDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
         SendDlgItemMessage(hwndDlg, IDC_CSV_APOSTROPHE     , BM_SETCHECK, data.csv.apostrophe     ? BST_CHECKED : BST_UNCHECKED, 0);
         SendDlgItemMessage(hwndDlg, IDC_CSV_ESCAPE_CHECK   , BM_SETCHECK, data.csv.escape         ? BST_CHECKED : BST_UNCHECKED, 0);
         SendDlgItemMessage(hwndDlg, IDC_CSV_PRESERVE_QUOTES, BM_SETCHECK, data.csv.preserveQuotes ? BST_CHECKED : BST_UNCHECKED, 0);
+        SendDlgItemMessage(hwndDlg, IDC_CSV_KEEP_SEPARATOR , BM_SETCHECK, data.csv.keepSeparator  ? BST_CHECKED : BST_UNCHECKED, 0);
         EnableWindow(GetDlgItem(hwndDlg, IDC_CSV_ESCAPE_EDIT), data.csv.escape ? TRUE : FALSE);
         switch (data.csv.encodingStyle) {
         case CsvSettings::TNR:
@@ -159,6 +160,7 @@ INT_PTR CALLBACK csvDialogProc(HWND hwndDlg, UINT uMsg, WPARAM wParam, LPARAM lP
             data.csv.apostrophe     = apostrophe;
             data.csv.escape         = escape;
             data.csv.preserveQuotes = SendDlgItemMessage(hwndDlg, IDC_CSV_PRESERVE_QUOTES, BM_GETCHECK, 0, 0) == BST_CHECKED;
+            data.csv.keepSeparator  = SendDlgItemMessage(hwndDlg, IDC_CSV_KEEP_SEPARATOR , BM_GETCHECK, 0, 0) == BST_CHECKED;
             data.csv.encodingStyle  = encTNR ? CsvSettings::TNR : encURL ? CsvSettings::URL : CsvSettings::Replace;
             EndDialog(hwndDlg, 0);
             return TRUE;
@@ -329,6 +331,7 @@ void ColumnsPlusPlusData::separatedValuesToTabs() {
                     }
                     if (q == std::wstring::npos) start_of_field = std::string::npos;
                     else {
+                        if (s[q] == csv.separator && csv.keepSeparator) t += s[q];
                         t += s[q] == csv.separator ? '\t' : s[q];
                         start_of_field = q + 1;
                     }
@@ -412,7 +415,8 @@ void ColumnsPlusPlusData::tabsToSeparatedValues() {
         std::string t;
         for (size_t p = 0;;) {
             size_t q = s.find_first_of(L"\t\n\r", p);
-            std::wstring field = s.substr(p, q - p);
+            std::wstring field = s.substr(p,
+                csv.keepSeparator && q != std::string::npos && q != 0 && s[q] == L'\t' && s[q - 1] == csv.separator ? q - p - 1 : q - p);
             if (!field.empty()) {
                 if (csv.encodingStyle == CsvSettings::TNR) {
                     for (size_t i = 0; i = field.find_first_of(csv.encodeTNR, i), i < field.length() - 1; ++i) {
