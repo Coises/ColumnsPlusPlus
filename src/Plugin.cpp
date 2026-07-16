@@ -228,8 +228,32 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
                                                                                                                         : data.searchData.allocatedIndicator;
             if (data.searchData.indicator < 21) data.searchData.indicator = data.searchData.customIndicator;
             SetWindowSubclass(data.nppData._nppHandle, nppSubclassProcedure, 0, 0);
-            getScintillaPointers();
-            data.bufferActivated();
+            {
+                // Delaying the initial bufferActivated call by using PostMessage to trigger it
+                // avoids a rare but fatal crash in Scintilla rendering. The cause appears to be
+                // "too many" layout changes at once. It only happens with DirectWrite rendering.
+                static WNDCLASS wc = { 0 };
+                wc.hInstance       = data.dllInstance;
+                wc.lpszClassName   = L"Coises.ColumnsPlusPlus.ReadyMessage";
+                wc.lpfnWndProc     = [](HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lParam) -> LRESULT {
+                    if (uMsg == WM_USER + 1) {
+                        bypassNotifications = true;
+                        getScintillaPointers();
+                        data.bufferActivated();
+                        bypassNotifications = false;
+                        DestroyWindow(hWnd);
+                        return 0;
+                    }
+                    if (uMsg == WM_DESTROY) {
+                        UnregisterClass(wc.lpszClassName, wc.hInstance);
+                        return 0;
+                    }
+                    return ::DefWindowProc(hWnd, uMsg, wParam, lParam);
+                };
+                RegisterClass(&wc);
+                HWND hWndMsg = CreateWindowEx(0, wc.lpszClassName, L"", 0, 0, 0, 0, 0, HWND_MESSAGE, 0, data.dllInstance, 0);
+                if (hWndMsg) PostMessage(hWndMsg, WM_USER + 1, 0, 0);
+            }
             break;
 
         case NPPN_SHUTDOWN:
