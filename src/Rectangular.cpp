@@ -201,7 +201,7 @@ RectangularSelection& RectangularSelection::refit(bool addLine) {
     if (data.settings.elasticEnabled) {
         DocumentData* ddp = data.getDocument();
         data.analyzeTabstops(*ddp);
-        Scintilla::Position firstVisible = data.sci.FirstVisibleLine();
+        Scintilla::Position firstVisible = data.sci.DocLineFromVisible(data.sci.FirstVisibleLine());
         Scintilla::Position lastVisible  = firstVisible + data.sci.LinesOnScreen();
         data.setTabstops(*ddp, std::min(std::min(_anchor.ln, _caret.ln), firstVisible),
                                std::max(std::max(_anchor.ln, _caret.ln), lastVisible));

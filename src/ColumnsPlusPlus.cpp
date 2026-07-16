@@ -148,7 +148,7 @@ void ColumnsPlusPlusData::setTabstops(DocumentData& dd, Scintilla::Line firstNee
     if (epi.lineTabsSet->size() != static_cast<size_t>(lineCount)) epi.lineTabsSet->assign(lineCount, 0);
     epi.lineCacheStatus = ElasticProgressInfo::LineCacheRemove;
     if (firstNeeded == -1) {
-        epi.firstNeeded = sci.FirstVisibleLine();
+        epi.firstNeeded = sci.DocLineFromVisible(sci.FirstVisibleLine());
         epi.lastNeeded  = std::min(epi.firstNeeded + linesOnScreen, lineCount - 1);
         epi.setTabstops(true);
     }

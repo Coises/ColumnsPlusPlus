@@ -98,7 +98,7 @@ void replaceSortSelection(ColumnsPlusPlusData& data, SortSelection& ss, const Re
     if (data.settings.elasticEnabled) {
         DocumentData* ddp = data.getDocument();
         data.analyzeTabstops(*ddp);
-        Scintilla::Line firstVisible = data.sci.FirstVisibleLine();
+        Scintilla::Line firstVisible = data.sci.DocLineFromVisible(data.sci.FirstVisibleLine());
         Scintilla::Line lastVisible = firstVisible + data.sci.LinesOnScreen();
         data.setTabstops(*ddp, std::min(ss.textLine, firstVisible), std::max(ss.textLine + lines - 1, lastVisible));
     }
@@ -140,7 +140,7 @@ void replaceSortColumn(ColumnsPlusPlusData& data, const SortSelection& ss, const
     if (data.settings.elasticEnabled) {
         DocumentData* ddp = data.getDocument();
         data.analyzeTabstops(*ddp);
-        Scintilla::Line firstVisible = data.sci.FirstVisibleLine();
+        Scintilla::Line firstVisible = data.sci.DocLineFromVisible(data.sci.FirstVisibleLine());
         Scintilla::Line lastVisible = firstVisible + data.sci.LinesOnScreen();
         data.setTabstops(*ddp, std::min(ss.textLine, firstVisible), std::max(ss.textLine + lines - 1, lastVisible));
     }
