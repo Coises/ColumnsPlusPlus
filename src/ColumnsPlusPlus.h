@@ -455,7 +455,7 @@ public:
                 yLoc = yNext;
             }
         }
-        return xEnd - xLoc;
+        return xEnd - xLoc + width;
     }
 
     // ColumnsPlusPlus.cpp
