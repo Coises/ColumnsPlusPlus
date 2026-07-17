@@ -248,7 +248,7 @@ extern "C" __declspec(dllexport) void beNotified(SCNotification *np) {
                         UnregisterClass(wc.lpszClassName, wc.hInstance);
                         return 0;
                     }
-                    return ::DefWindowProc(hWnd, uMsg, wParam, lParam);
+                    return DefWindowProc(hWnd, uMsg, wParam, lParam);
                 };
                 RegisterClass(&wc);
                 HWND hWndMsg = CreateWindowEx(0, wc.lpszClassName, L"", 0, 0, 0, 0, 0, HWND_MESSAGE, 0, data.dllInstance, 0);

@@ -22,116 +22,8 @@
 #include "WindowsScintillaCommon.h"
 #include "RegularExpression.h"
 #include "Unicode\UnicodeRegexTraits.h"
+#include "UnicodeFormatTranslation.h"
 #include <mbstring.h>
-
-
-namespace utf8byte {
-    bool isASCII(char c) { return (c & 0x80) == 0x00; }
-    bool isTrail(char c) { return (c & 0xC0) == 0x80; }
-    bool isLead2(char c) { return (c & 0xE0) == 0xC0 && (c & 0xFE) != 0xC0; }
-    bool isLead3(char c) { return (c & 0xF0) == 0xE0; }
-    bool isLead4(char c) { return (c & 0xFC) == 0xF0 || c == 0xF4; }
-    bool isTrash(char c) { return (c & 0xFE) == 0xC0 || ((c & 0xF0) == 0xF0 && (c & 0x0C) != 0x00 && c != 0xF4); }
-    bool badPair(unsigned char c1, unsigned char c2) {
-        // checks first two of 3 or 4 byte sequences; does not validate 1 or 2 byte sequences
-        return ((c1 == 0xE0 && c2 < 0xA0) || (c1 == 0xED && c2 > 0x9F) || (c1 == 0xF0 && c2 < 0x90) || (c1 == 0xF4 && c2 > 0x8F));
-    }
-    size_t implicit_length(char c) {
-        return isASCII(c) ? 1
-             : isLead2(c) ? 2
-             : isLead3(c) ? 3
-             : isLead4(c) ? 4
-                          : 0;
-    }
-    bool valid_trail(char c1, char c2, char c3)          { return !badPair(c1, c2) && isTrail(c2) && isTrail(c3); }
-    bool valid_trail(char c1, char c2, char c3, char c4) { return !badPair(c1, c2) && isTrail(c2) && isTrail(c3) && isTrail(c4); }
-    char32_t to32(char c1, char c2)                   { return (((c1 & 0x1F) <<  6) |  (c2 & 0x3F)); }
-    char32_t to32(char c1, char c2, char c3)          { return (((c1 & 0x0F) << 12) | ((c2 & 0x3F) <<  6) |  (c3 & 0x3F)); }
-    char32_t to32(char c1, char c2, char c3, char c4) { return (((c1 & 0x07) << 18) | ((c2 & 0x3F) << 12) | ((c3 & 0x3F) << 6) | (c4 & 0x3F)); }
-}
-
-
-// Translation between utf-8, utf-16 and utf-32
-
-std::basic_string<char32_t> utf16to32(const std::wstring_view w) {
-    std::basic_string<char32_t> u;
-    for (size_t i = 0; i < w.length(); ++i) {
-        if (w[i] >= 0xD800 && w[i] < 0xDC00 && i + 1 < w.length() && w[i + 1] >= 0xDC00 && w[i + 1] <= 0xDFFF) {
-            u += (static_cast<char32_t>(w[i] & 0x7FF) << 10 | (w[i + 1] & 0x03FF)) + 0x10000;
-            ++i;
-        }
-        else u += w[i];
-    }
-    return u;
-}
-
-std::wstring utf32to16(const std::basic_string_view<char32_t> u) {
-    std::wstring w;
-    for (size_t i = 0; i < u.length(); ++i) {
-        if (u[i] >= 0x10000) {
-            w += static_cast<wchar_t>(0xD800 + ((u[i] - 0x10000) >> 10));
-            w += static_cast<wchar_t>(0xDC00 + (u[i] & 0x03FF));
-        }
-        else w += static_cast<wchar_t>(u[i]);
-    }
-    return w;
-}
-
-std::basic_string<char32_t> utf8to32(const std::string_view s) {
-    std::basic_string<char32_t> u;
-    for (size_t i = 0; i < s.length(); ++i) {
-        switch (utf8byte::implicit_length(s[i])) {
-        case 1:
-            u += s[i];
-            continue;
-        case 2:
-            if (i + 1 >= s.length() || !utf8byte::isTrail(s[i + 1])) break;
-            u += utf8byte::to32(s[i], s[i + 1]);
-            i += 1;
-            continue;
-        case 3:
-            if (i + 2 >= s.length() || !utf8byte::valid_trail(s[i], s[i + 1], s[i + 2])) break;
-            u += utf8byte::to32(s[i], s[i + 1], s[i + 2]);
-            i += 2;
-            continue;
-        case 4:
-            if (i + 3 >= s.length() || !utf8byte::valid_trail(s[i], s[i + 1], s[i + 2]), s[i + 3]) break;
-            u += utf8byte::to32(s[i], s[i + 1], s[i + 2]);
-            i += 3;
-            continue;
-        }
-        u += 0xDC00 + s[i];  // Invalid Unicode code point: encode error byte in the same way as Python surrogateescape
-    }
-    return u;
-}
-
-std::string utf32to8(const std::basic_string_view<char32_t> u) {
-    std::string s;
-    for (auto c : u) {
-        if (c < 0x80) s += static_cast<char>(c);
-        else if (c < 0x800) {
-            s += static_cast<char>((c >> 6) | 0xC0);
-            s += static_cast<char>((c & 0x3F) | 0x80);
-        }
-        else if (c >= 0xD800 && c <= 0xDFFF) {
-            if (c >= 0xDC80 && c <= 0xDCFF) s += static_cast<char>(0xFF & c);
-            else s += "\xEF\xBF\xBD";
-        }
-        else if (c <= 0x10000) {
-            s += static_cast<char>((c >> 12) | 0xE0);
-            s += static_cast<char>(((c >> 6) & 0x3F) | 0x80);
-            s += static_cast<char>((c & 0x3F) | 0x80);
-        }
-        else if (c <= 0x110000){
-            s += static_cast<char>((c >> 18) | 0xF0);
-            s += static_cast<char>(((c >> 12) & 0x3F) | 0x80);
-            s += static_cast<char>(((c >> 6) & 0x3F) | 0x80);
-            s += static_cast<char>((c & 0x3F) | 0x80);
-        }
-        else s += "\xEF\xBF\xBD";
-    }
-    return s;
-}
 
 
 class RegularExpressionU : public RegularExpressionInterface {
@@ -273,7 +165,7 @@ public:
     }
 
     std::string format(const std::string& replacement) const override {
-        return utf32to8(uMatch.format(utf8to32(replacement), boost::format_all));
+        return utf32to8(uMatch.format(utf8to32(replacement), boost::format_all), InvalidUnicode::Preserve_8);
     }
 
     void invalidate() override {
