@@ -1,5 +1,15 @@
 # Columns++ for Notepad++ -- Releases
 
+## Version 1.3.3 -- July 18th, 2026
+
+* Avoid a rare but fatal crash during startup.
+
+* Fix two errors that could cause incorrect display of elastic tabstops in documents with wrapped or folded lines.
+
+* Fix an error that caused failure to recognize non-BMP Unicode characters in regular expression replacement strings.
+
+* Update Boost.Regex to 1.90.0.
+
 ## Version 1.3.2 -- March 25th, 2026
 
 * Added an option to keep the separator character when converting from separated values to tabbed presentation.
