@@ -103,7 +103,7 @@ inline std::u32string utf8to32(const std::string_view s, InvalidUnicode errs = I
             i += 2;
             continue;
         case 4:
-            if (i + 3 >= s.length() || !utf8byte::valid_trail(s[i], s[i + 1], s[i + 2]), s[i + 3]) break;
+            if (i + 3 >= s.length() || !utf8byte::valid_trail(s[i], s[i + 1], s[i + 2], s[i + 3])) break;
             u += utf8byte::to32(s[i], s[i + 1], s[i + 2], s[i + 3]);
             i += 3;
             continue;
